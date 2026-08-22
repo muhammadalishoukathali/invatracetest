@@ -1,0 +1,43 @@
+/* Design tokens lifted verbatim from the approved InvaTrace prototype.
+   Do not introduce new colour values; extend this file instead. */
+:root {
+  --green: #1B7A50;
+  --green-dark: #166341;
+  --deep: #12402C;
+  --green-light: #EFF6F1;
+  --green-border: #D3E7DA;
+  --amber: #D9880F;
+  --red: #C2412D;
+  --red-light: #FBEAE6;
+  --red-border: #F0CFC8;
+
+  --ink: #16201B;
+  --body: #4B5A52;
+  --muted: #77857E;
+  --icon: #8B978F;
+
+  --surface: #FFFFFF;
+  --bg: #F4F6F3;
+  --bg-alt: #EDF0EC;
+  --border: #E2E7E1;
+  --hover: #F1F4F0;
+
+  --r-chip: 99px;
+  --r-card: 12px;
+  --r-input: 11px;
+  --r-button: 9px;
+
+  --h-compact: 34px;
+  --h-chip: 36px;
+  --h-nav: 44px;
+  --h-primary: 46px;
+
+  --shadow-sm: 0 1px 2px rgba(20, 40, 30, 0.16);
+  --shadow-md: 0 1px 3px rgba(20, 40, 30, 0.28);
+
+  --sidebar-w: 248px;
+  --tabbar-h: 60px;
+
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
