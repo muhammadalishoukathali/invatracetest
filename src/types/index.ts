@@ -169,6 +169,10 @@ export interface VerifyItem {
   modelVersion: string
   location: GeoPoint
   locationAccuracyM: number | null
+  /** Human-readable Malaysian place label — e.g. "Bukit Kiara · West Trail".
+   *  Mock reverse-geocode in Iter 1; real backend will use MapTiler / OSM
+   *  Nominatim with a Malaysia-scoped bias. */
+  place: string
   extent: ExtentSize
   notes: string
   submitterId: string

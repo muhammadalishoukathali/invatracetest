@@ -1,10 +1,11 @@
 /**
- * Threat map (Arch §4.1). MapLibre GL over OSM raster tiles. ODbL attribution
- * is always visible (MapLibre's AttributionControl is compact:false so the
- * "© OpenStreetMap contributors" line stays open at all zoom levels).
+ * Threat map (Arch §4.1). MapLibre GL over OpenFreeMap "positron"-style vector
+ * tiles — a light, low-noise base that keeps invasive-pin colours readable.
+ * ODbL attribution stays open at every zoom level (compact:false).
  *
- * Vector tiles are the eventual target (Arch §3) but need a keyed provider;
- * raster OSM is used here so the demo runs without an external account.
+ * Panning is confined to Malaysia so the map does not wander to random parts
+ * of the world; this matches Iteration 1's scope (Peninsular Malaysia field
+ * trials centred on Bukit Kiara).
  */
 import { useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
@@ -12,6 +13,7 @@ import * as maplibregl from 'maplibre-gl'
 import type { Map, Marker } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { api } from '@/lib/api'
+import { useIsDesktop } from '@/lib/useIsDesktop'
 import { useMap as useMapStore } from '@/lib/map-store'
 import type { Sighting } from '@/types'
 import { PinSheet } from './PinSheet'
@@ -19,18 +21,25 @@ import { Legend } from './Legend'
 import { Filters } from './Filters'
 
 const CENTRE: [number, number] = [101.6412, 3.1497]  // Bukit Kiara
-const INITIAL_ZOOM = 14
+const INITIAL_ZOOM = 13.5
+const INITIAL_ZOOM_MOBILE = 13
 
-/* OpenFreeMap serves OSM vector tiles under an open licence with CORS enabled
-   and no API key — matches Arch §3 "vector tiles, ODbL attribution".
-   tile.openstreetmap.org blocks cross-origin canvas reads which taints the
-   WebGL texture (opaque response → blank map), so it is not usable here. */
-const STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty'
+/* Rough bounding box for all of Malaysia (west Sarawak to Sabah, north to
+   Perlis). Users can zoom and pan freely inside; the camera will not drift
+   into Thailand, Indonesia or the open sea. */
+const MY_BOUNDS: [[number, number], [number, number]] = [
+  [99.3, 0.8],   // SW: south of Kudat, west of Langkawi
+  [119.5, 7.5],  // NE: east of Sabah, north of Perlis
+]
+
+/* OpenFreeMap Bright — full colour vector style, OSM data + ODbL, no key. */
+const STYLE_URL = 'https://tiles.openfreemap.org/styles/bright'
 
 export function MapView() {
   const container = useRef<HTMLDivElement>(null)
   const map = useRef<Map | null>(null)
   const markers = useRef<Marker[]>([])
+  const isDesktop = useIsDesktop()
   const { species, statuses, search, select } = useMapStore()
 
   const { data } = useQuery({
@@ -39,24 +48,43 @@ export function MapView() {
     staleTime: 60_000,
   })
 
-  /* Init map once. */
+  /* Init map once — recreated only if the desktop breakpoint flips. */
   useEffect(() => {
     if (!container.current || map.current) return
     const m = new maplibregl.Map({
       container: container.current,
       style: STYLE_URL,
       center: CENTRE,
-      zoom: INITIAL_ZOOM,
-      minZoom: 10,
+      zoom: isDesktop ? INITIAL_ZOOM : INITIAL_ZOOM_MOBILE,
+      minZoom: 6,
       maxZoom: 19,
+      maxBounds: MY_BOUNDS,
       attributionControl: false,
+      pitchWithRotate: false,
+      dragRotate: false,          // simpler two-finger UX on phones
+      touchZoomRotate: true,
+      touchPitch: false,
     })
     m.addControl(new maplibregl.AttributionControl({
       compact: false,
       customAttribution: '© <a href="https://openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> · ODbL',
     }), 'bottom-right')
-    m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
+    m.addControl(new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }), 'top-right')
+    m.addControl(new maplibregl.GeolocateControl({
+      positionOptions: { enableHighAccuracy: true },
+      showUserLocation: true, trackUserLocation: false,
+    }), 'top-right')
     map.current = m
+    if (import.meta.env.DEV) (window as unknown as { __map?: Map }).__map = m
+
+    /* Kick tile requests once style parses. Without this nudge, MapLibre v6
+     *  sits at "style parsed but no tiles requested" — resizing alone is not
+     *  enough; a fresh jumpTo forces the source manager to compute a viewport
+     *  and request the covering tiles. */
+    m.once('style.load', () => {
+      m.resize()
+      m.jumpTo({ center: CENTRE, zoom: isDesktop ? INITIAL_ZOOM : INITIAL_ZOOM_MOBILE })
+    })
 
     /* Container may size after mount (auth shell renders, then main flexes to
        full height); keep the canvas in sync via ResizeObserver. */
@@ -68,6 +96,7 @@ export function MapView() {
       m.remove()
       map.current = null
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   /* Re-render pins whenever data or filters change. */
@@ -96,10 +125,16 @@ export function MapView() {
   }, [data, species, statuses, search, select])
 
   return (
-    <div style={{ position: 'relative', height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+    <div style={{
+      position: 'relative', height: '100%', minHeight: 0,
+      display: 'flex', flexDirection: 'column',
+    }}>
       <Filters />
       <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
-        <div ref={container} style={{ position: 'absolute', inset: 0 }} />
+        <div ref={container} style={{
+          position: 'absolute', inset: 0,
+          touchAction: 'none',   // let MapLibre own all touch gestures
+        }} />
         <Legend />
       </div>
       <PinSheet />
@@ -110,6 +145,8 @@ export function MapView() {
 /**
  * Build a DOM element for a sighting marker. Colour by risk, ring by status.
  * A dashed ring signals a candidate sighting (reduced-precision pin).
+ * The marker is a "teardrop" so it points at the exact coordinate rather than
+ * hovering ambiguously nearby.
  */
 function pinElement(s: Sighting): HTMLElement {
   const el = document.createElement('button')
@@ -119,13 +156,18 @@ function pinElement(s: Sighting): HTMLElement {
   const colour = s.risk === 'high' ? '#C2412D' : '#D9880F'
   const isCandidate = s.status === 'candidate'
   const isRemoved = s.status === 'removed'
+  const fill = isRemoved ? '#8B978F' : colour
+  const strokeDash = isCandidate ? 'stroke-dasharray="3 2.5"' : ''
+  el.innerHTML = `
+    <svg width="26" height="34" viewBox="0 0 26 34" xmlns="http://www.w3.org/2000/svg" style="display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.3));">
+      <path d="M13 33 C 13 33 24 20 24 11 A 11 11 0 1 0 2 11 C 2 20 13 33 13 33 Z"
+            fill="${fill}" stroke="#fff" stroke-width="2" ${strokeDash} />
+      <circle cx="13" cy="11" r="4.5" fill="#fff" opacity="${isRemoved ? 0.6 : 0.9}" />
+    </svg>`
   el.style.cssText = `
-    width: 22px; height: 22px; border-radius: 50%; cursor: pointer;
-    background: ${isRemoved ? '#8B978F' : colour};
-    border: 2px ${isCandidate ? 'dashed #fff' : 'solid #fff'};
-    box-shadow: 0 1px 4px rgba(0,0,0,0.4);
-    opacity: ${isRemoved ? 0.65 : 1};
-    padding: 0;
+    width: 26px; height: 34px; padding: 0; background: transparent;
+    border: none; cursor: pointer; opacity: ${isRemoved ? 0.7 : 1};
+    -webkit-tap-highlight-color: transparent;
   `
   return el
 }

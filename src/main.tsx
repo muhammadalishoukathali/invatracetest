@@ -20,7 +20,20 @@ const queryClient = new QueryClient({
 async function start() {
   if (import.meta.env.DEV && import.meta.env.VITE_ENABLE_MOCKS === 'true') {
     const { worker } = await import('@/mocks/browser')
-    await worker.start({ onUnhandledRequest: 'bypass' })
+    /* MSW intercepts everything under `/` in dev, which breaks MapLibre's
+     *  module worker script (it silently returns an empty body). Only route
+     *  /api requests through MSW; let workers, HMR, tiles, fonts, and vendor
+     *  bundles hit the real network unmodified. */
+    /* Register MSW's service worker inside /api/ so its scope is limited to
+     *  API paths only. Without this, the worker intercepts every fetch on the
+     *  page — including MapLibre's cross-origin vector tiles — and MSW v2's
+     *  passthrough path corrupts binary responses (empty PBFs → blank map).
+     *  Note: Vite's default fs config serves /public/api/* as /api/*, and
+     *  the browser sets scope = directory of the SW file. */
+    await worker.start({
+      onUnhandledRequest: 'bypass',
+      serviceWorker: { url: '/api/mockServiceWorker.js' },
+    })
   }
 
   try {

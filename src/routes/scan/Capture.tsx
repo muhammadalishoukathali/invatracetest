@@ -7,9 +7,14 @@ import { getAdapter } from '@/lib/model-adapter'
 import { api } from '@/lib/api'
 import type { SpeciesDetail } from '@/types'
 
+/** Two inputs so the user can force camera vs gallery independently. Some
+ *  browsers (iOS Safari before 15, older Android WebView) ignore the
+ *  `capture` attribute — separating the entry points gives a reliable
+ *  "Take photo" affordance even where the attribute is honoured. */
 export function Capture() {
   const navigate = useNavigate()
-  const fileRef = useRef<HTMLInputElement>(null)
+  const cameraRef = useRef<HTMLInputElement>(null)
+  const galleryRef = useRef<HTMLInputElement>(null)
   const { imageUrl, quality, setImage, setQuality, startProcessing, setResult } = useScan()
   const [checking, setChecking] = useState(false)
   const [analysing, setAnalysing] = useState(false)
@@ -63,7 +68,8 @@ export function Capture() {
 
   const retake = () => {
     useScan.getState().reset()
-    if (fileRef.current) fileRef.current.value = ''
+    if (cameraRef.current) cameraRef.current.value = ''
+    if (galleryRef.current) galleryRef.current.value = ''
   }
 
   const qualityFailed = quality && !quality.ok
@@ -71,42 +77,62 @@ export function Capture() {
   return (
     <div style={{ padding: 16, maxWidth: 520, margin: '0 auto' }}>
       <input
-        ref={fileRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        onChange={handleFile}
-        style={{ display: 'none' }}
-        aria-label="Photograph a plant"
+        ref={cameraRef} type="file" accept="image/*" capture="environment"
+        onChange={handleFile} style={{ display: 'none' }}
+        aria-label="Take photo"
+      />
+      <input
+        ref={galleryRef} type="file" accept="image/*"
+        onChange={handleFile} style={{ display: 'none' }}
+        aria-label="Choose photo from gallery"
       />
 
       {!imageUrl ? (
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          disabled={checking}
-          style={{
-            width: '100%', aspectRatio: '4 / 3', borderRadius: 'var(--r-card)',
-            border: '2px dashed var(--border)', background: 'var(--surface)',
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
-            justifyContent: 'center', gap: 12, cursor: 'pointer',
-          }}
-        >
-          <div style={{
-            width: 56, height: 56, borderRadius: '50%', background: 'var(--green-light)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <Icon name="Camera" size={26} color="var(--green)" />
-          </div>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>
-              {checking ? 'Processing...' : 'Tap to photograph'}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <button
+            type="button"
+            onClick={() => cameraRef.current?.click()}
+            disabled={checking}
+            style={{
+              width: '100%', aspectRatio: '4 / 3', borderRadius: 'var(--r-card)',
+              border: '2px dashed var(--border)', background: 'var(--surface)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              justifyContent: 'center', gap: 12, cursor: 'pointer',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <div style={{
+              width: 56, height: 56, borderRadius: '50%', background: 'var(--green-light)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Icon name="Camera" size={26} color="var(--green)" />
             </div>
-            <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>
-              or choose from your gallery
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>
+                {checking ? 'Processing…' : 'Take a photo'}
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>
+                Opens the camera on your phone
+              </div>
             </div>
-          </div>
-        </button>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => galleryRef.current?.click()}
+            disabled={checking}
+            style={{
+              width: '100%', height: 'var(--h-primary)', borderRadius: 'var(--r-button)',
+              border: '1px solid var(--border)', background: 'var(--surface)',
+              color: 'var(--body)', fontWeight: 600, fontSize: 14, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <Icon name="ImagePlus" size={16} color="var(--body)" />
+            Choose from gallery
+          </button>
+        </div>
       ) : (
         <div style={{ position: 'relative' }}>
           <img

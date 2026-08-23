@@ -86,6 +86,7 @@ export function VerifyDetail({ id, onDone, onBack }: Props) {
           background: 'var(--surface)', border: '1px solid var(--border)',
           borderRadius: 'var(--r-card)', padding: '4px 16px',
         }}>
+          <Meta label="Place" value={item.place} />
           <Meta label="Coordinates"
                 value={`${item.location.lat.toFixed(5)}, ${item.location.lng.toFixed(5)}`}
                 sub={item.locationAccuracyM != null ? `±${item.locationAccuracyM} m GPS` : 'Manual entry'}

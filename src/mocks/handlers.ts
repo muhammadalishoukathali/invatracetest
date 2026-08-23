@@ -1,4 +1,4 @@
-import { http, HttpResponse } from 'msw'
+import { http, HttpResponse, passthrough } from 'msw'
 import type {
   AppNotification, MergeCandidate, Report, ReportSubmission, Sighting,
   SightingDetail, User, VerifyCheck, VerifyItem,
@@ -55,6 +55,16 @@ mockUsers.set('nadia@example.org', {
 })
 
 export const handlers = [
+  /* Explicit passthroughs — MSW's default bypass is unreliable for module
+     workers and cross-origin binary fetches. These paths reach the network
+     unmodified, keeping MapLibre's worker and vector tiles working. */
+  http.all('http://localhost:5173/node_modules/*', () => passthrough()),
+  http.all('http://192.168.0.114:5173/node_modules/*', () => passthrough()),
+  http.all('https://tiles.openfreemap.org/*', () => passthrough()),
+  http.all('https://fonts.googleapis.com/*', () => passthrough()),
+  http.all('https://fonts.gstatic.com/*', () => passthrough()),
+  http.all('https://picsum.photos/*', () => passthrough()),
+
   http.get(url('/health'), () =>
     HttpResponse.json({ status: 'ok', database: 'ok' })),
 
@@ -320,6 +330,7 @@ function verifyQueue(): VerifyItem[] {
         modelVersion: s.modelVersion,
         location: s.location,
         locationAccuracyM: s.locationAccuracyM,
+        place: nearestPlace(s.location),
         extent: s.extent,
         notes: s.notes,
         submitterId: r.id,
@@ -380,6 +391,32 @@ function haversine(a: { lat: number; lng: number }, b: { lat: number; lng: numbe
   const s1 = Math.sin(dLat / 2), s2 = Math.sin(dLng / 2)
   const c = s1 * s1 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * s2 * s2
   return Math.round(2 * R * Math.atan2(Math.sqrt(c), Math.sqrt(1 - c)))
+}
+
+/** Simple reverse-geocode stub — nearest Malaysian landmark from a small
+ *  hand-curated list. The real API will hit MapTiler / Nominatim scoped to
+ *  Malaysia. Iteration 1 is Klang Valley only, so the seed covers that. */
+const PLACES: { name: string; lat: number; lng: number }[] = [
+  { name: 'Bukit Kiara · West Trail',        lat: 3.1497, lng: 101.6412 },
+  { name: 'Bukit Kiara · Look-out',           lat: 3.1523, lng: 101.6440 },
+  { name: 'Bukit Kiara · Picnic Area',        lat: 3.1489, lng: 101.6398 },
+  { name: 'Bukit Kiara · Ridge Path',         lat: 3.1516, lng: 101.6371 },
+  { name: 'Taman Tugu · Pond edge',           lat: 3.1502, lng: 101.6688 },
+  { name: 'Bukit Nanas · Reserve entrance',   lat: 3.1521, lng: 101.7020 },
+  { name: 'FRIM Kepong · Canopy walk',        lat: 3.2340, lng: 101.6293 },
+  { name: 'KLCC Park · East pond',            lat: 3.1570, lng: 101.7145 },
+  { name: 'Kota Damansara Community Forest',  lat: 3.1691, lng: 101.5900 },
+  { name: 'Bukit Gasing · North gate',        lat: 3.1044, lng: 101.6538 },
+]
+
+function nearestPlace(loc: { lat: number; lng: number }): string {
+  let best = PLACES[0]
+  let bestD = Number.POSITIVE_INFINITY
+  for (const p of PLACES) {
+    const d = haversine(loc, { lat: p.lat, lng: p.lng })
+    if (d < bestD) { bestD = d; best = p }
+  }
+  return best.name
 }
 
 /** Seed a handful of candidate reports so the queue is not empty on first load. */
