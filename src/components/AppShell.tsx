@@ -45,11 +45,18 @@ export function AppShell() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {!isDesktop && (
-              <button type="button" onClick={signOut} aria-label="Sign out" title="Sign out" style={{
-                width: 38, height: 38, borderRadius: 'var(--r-input)', border: '1px solid var(--border)',
-                background: 'var(--surface)', cursor: 'pointer', display: 'flex',
-                alignItems: 'center', justifyContent: 'center',
-              }}>
+              /* Sign-out lives in the header so pilot testers can swap
+                 accounts, but a stray tap would kick them out mid-report.
+                 Confirm before firing it. */
+              <button type="button" aria-label="Sign out" title="Sign out"
+                onClick={() => {
+                  if (window.confirm('Sign out of InvaTrace?')) signOut()
+                }}
+                style={{
+                  width: 38, height: 38, borderRadius: 'var(--r-input)', border: '1px solid var(--border)',
+                  background: 'var(--surface)', cursor: 'pointer', display: 'flex',
+                  alignItems: 'center', justifyContent: 'center',
+                }}>
                 <Icon name="LogOut" size={18} color="var(--body)" />
               </button>
             )}
@@ -61,6 +68,10 @@ export function AppShell() {
           flex: 1, minHeight: 0,
           overflow: bleed ? 'hidden' : 'auto',
           padding: bleed ? 0 : (isDesktop ? 26 : 16),
+          /* Mobile scrollable pages need extra bottom room so the last row
+             clears the tab-bar + FAB overhang; the tab bar itself sits below
+             this main element, so plain padding is enough. */
+          paddingBottom: bleed ? 0 : (isDesktop ? 26 : 32),
         }}>
           <ErrorBoundary>
             <Outlet />

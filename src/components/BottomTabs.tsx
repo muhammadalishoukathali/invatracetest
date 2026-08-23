@@ -59,10 +59,11 @@ function Tab({ item, role }: { item: NavItem; role: Role }) {
 
 export function BottomTabs({ role }: { role: Role }) {
   const navigate = useNavigate()
-  const items = visibleNav(role)
-  /* Split as evenly as possible so the notch (and thus the FAB) lands in the
-     true visual centre. With an odd total the shorter side goes on the left
-     — matches the prototype where destructive/less-frequent tabs sit right. */
+  /* Mobile bar caps at four items so the FAB always sits in a true 2+2
+     centre. Iteration-3 destinations still appear on the desktop sidebar,
+     so no roadmap detail is lost — the phone just skips inert placeholders
+     that would break symmetry with the notch. */
+  const items = visibleNav(role).filter((i) => i.iteration <= 2).slice(0, 4)
   const mid = Math.floor(items.length / 2)
   const left = items.slice(0, mid)
   const right = items.slice(mid)
