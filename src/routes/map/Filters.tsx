@@ -186,7 +186,7 @@ function FiltersSheet({
             </div>
           </div>
           <button type="button" onClick={onClose} aria-label="Close filters" style={{
-            width: 34, height: 34, borderRadius: '50%', border: 'none',
+            width: 40, height: 40, borderRadius: '50%', border: 'none',
             background: 'var(--hover)', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>

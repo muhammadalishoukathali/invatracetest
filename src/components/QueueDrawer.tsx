@@ -33,7 +33,7 @@ export function QueueDrawer({ queue, onClose, onRetry, flushing }: Props) {
             </div>
           </div>
           <button type="button" onClick={onClose} aria-label="Close" style={{
-            width: 32, height: 32, borderRadius: '50%', border: 'none',
+            width: 40, height: 40, borderRadius: '50%', border: 'none',
             background: 'var(--hover)', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>

@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Icon } from '@/components/Icon'
+import { Skeleton } from '@/components/Skeleton'
 import { api } from '@/lib/api'
 import type { MergeCandidate, VerifyCheck, VerifyItem } from '@/types'
 
@@ -37,12 +38,29 @@ export function VerifyDetail({ id, onDone, onBack }: Props) {
     onSuccess: () => { invalidate(); onDone() },
   })
 
-  if (isLoading || !item) return <div style={{ padding: 20, color: 'var(--muted)' }}>Loading…</div>
+  if (isLoading || !item) {
+    return (
+      <div style={{ maxWidth: 720, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <Skeleton w={110} h={20} />
+        <Skeleton w="100%" h={220} radius={14} />
+        <Skeleton w="70%" h={22} />
+        <Skeleton w="45%" h={14} />
+        <Skeleton w="100%" h={60} radius={12} />
+        <Skeleton w="100%" h={200} radius={12} />
+      </div>
+    )
+  }
 
   const busy = confirm.isPending || reject.isPending || merge.isPending
 
   return (
-    <div style={{ maxWidth: 720, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{
+      maxWidth: 720, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16,
+      /* Bottom clearance so the mobile FAB never sits on top of the action
+         row (Reject/Merge/Confirm). Roughly one FAB-height plus a breathing
+         gap — the outer <main> also carries its own bottom padding. */
+      paddingBottom: 40,
+    }}>
       <button type="button" onClick={onBack} style={{
         display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
         padding: '6px 4px', background: 'transparent', border: 'none',
@@ -107,7 +125,16 @@ export function VerifyDetail({ id, onDone, onBack }: Props) {
         />
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginTop: 4 }}>
-          <Action label="Reject" icon="X" tone="red" onClick={() => reject.mutate()} disabled={busy} />
+          <Action label="Reject" icon="X" tone="red" disabled={busy}
+                  onClick={() => {
+                    /* Rejection is destructive-adjacent — the coordinator
+                       kicks the report out of the queue. Guard with a
+                       confirm so a stray tap on the smallest chip doesn't
+                       lose evidence work. */
+                    if (window.confirm('Reject this report? The submitter will be notified.')) {
+                      reject.mutate()
+                    }
+                  }} />
           <Action label="Merge" icon="Grid3x3" tone="neutral" onClick={() => setMergeOpen(true)} disabled={busy} />
           <Action label="Confirm" icon="Check" tone="green" onClick={() => confirm.mutate()} disabled={busy} />
         </div>
@@ -168,15 +195,18 @@ function Action({ label, icon, tone, onClick, disabled }: {
   label: string; icon: string; tone: 'green' | 'red' | 'neutral'
   onClick: () => void; disabled?: boolean
 }) {
+  /* Destructive tone stays soft-filled (a solid-red button next to a solid-
+     green button reads as ambiguous priority); the wider border + red fg
+     signal weight without stealing the primary CTA. */
   const styles = {
-    green: { bg: 'var(--green)', fg: '#fff', border: 'var(--green)' },
-    red: { bg: 'var(--red-light)', fg: 'var(--red)', border: 'var(--red-border)' },
-    neutral: { bg: 'var(--surface)', fg: 'var(--body)', border: 'var(--border)' },
+    green: { bg: 'var(--green)', fg: '#fff', border: 'var(--green)', bw: 1 },
+    red: { bg: 'var(--red-light)', fg: 'var(--red)', border: 'var(--red)', bw: 1.5 },
+    neutral: { bg: 'var(--surface)', fg: 'var(--body)', border: 'var(--border)', bw: 1 },
   }[tone]
   return (
     <button type="button" onClick={onClick} disabled={disabled} style={{
       height: 'var(--h-primary)', borderRadius: 'var(--r-button)',
-      border: `1px solid ${styles.border}`, background: styles.bg, color: styles.fg,
+      border: `${styles.bw}px solid ${styles.border}`, background: styles.bg, color: styles.fg,
       fontWeight: 600, fontSize: 14, cursor: disabled ? 'not-allowed' : 'pointer',
       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
     }}>
@@ -204,7 +234,7 @@ function MergePicker({ id, onCancel, onPick, busy }: {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
         <div style={{ fontSize: 14, fontWeight: 600 }}>Merge into…</div>
         <button type="button" onClick={onCancel} aria-label="Cancel" style={{
-          width: 28, height: 28, borderRadius: '50%', border: 'none',
+          width: 40, height: 40, borderRadius: '50%', border: 'none',
           background: 'var(--hover)', cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>

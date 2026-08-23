@@ -59,7 +59,7 @@ export function NotificationsPanel() {
         aria-label={`Notifications${unread > 0 ? ` (${unread} unread)` : ''}`}
         onClick={() => setOpen((v) => !v)}
         style={{
-          width: 38, height: 38, borderRadius: 'var(--r-input)',
+          width: 40, height: 40, borderRadius: 'var(--r-input)',
           border: '1px solid var(--border)', background: 'var(--surface)',
           cursor: 'pointer', display: 'flex', alignItems: 'center',
           justifyContent: 'center', position: 'relative',
@@ -162,7 +162,7 @@ function PanelBody({
           )}
           {isSheet && (
             <button type="button" onClick={onClose} aria-label="Close" style={{
-              width: 34, height: 34, borderRadius: '50%', border: 'none',
+              width: 40, height: 40, borderRadius: '50%', border: 'none',
               background: 'var(--hover)', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>

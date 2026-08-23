@@ -53,7 +53,7 @@ export function AppShell() {
                   if (window.confirm('Sign out of InvaTrace?')) signOut()
                 }}
                 style={{
-                  width: 38, height: 38, borderRadius: 'var(--r-input)', border: '1px solid var(--border)',
+                  width: 40, height: 40, borderRadius: 'var(--r-input)', border: '1px solid var(--border)',
                   background: 'var(--surface)', cursor: 'pointer', display: 'flex',
                   alignItems: 'center', justifyContent: 'center',
                 }}>
