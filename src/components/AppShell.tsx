@@ -29,6 +29,7 @@ export function AppShell() {
   return (
     <div style={{ display: 'flex', flexDirection: isDesktop ? 'row' : 'column',
                   height: '100%', background: 'var(--bg)' }}>
+      <a href="#main-content" className="skip-link">Skip to main content</a>
       {isDesktop && <Sidebar user={user} onSignOut={signOut} />}
 
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -56,7 +57,7 @@ export function AppShell() {
           </div>
         </header>
 
-        <main style={{
+        <main id="main-content" tabIndex={-1} style={{
           flex: 1, minHeight: 0,
           overflow: bleed ? 'hidden' : 'auto',
           padding: bleed ? 0 : (isDesktop ? 26 : 16),

@@ -38,13 +38,29 @@ export function Location() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const [manualError, setManualError] = useState<string | null>(null)
+
+  /** Iteration 1 pilot area is Malaysia (design-system pages/report.md).
+   *  Reject anything outside the country bounds so the coordinator queue
+   *  never gets a report from Singapore's downtown by accident. */
   const applyManual = () => {
     const lat = parseFloat(manualLat)
     const lng = parseFloat(manualLng)
-    if (Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-      setLocation({ lat, lng }, null)
-      setStatus('located')
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      setManualError('Enter both latitude and longitude as numbers.')
+      return
     }
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      setManualError('Coordinates out of range.')
+      return
+    }
+    if (lat < 0.8 || lat > 7.5 || lng < 99.3 || lng > 119.5) {
+      setManualError('Coordinates fall outside Malaysia — Iteration 1 covers Malaysia only.')
+      return
+    }
+    setManualError(null)
+    setLocation({ lat, lng }, null)
+    setStatus('located')
   }
 
   const canProceed = !!loc
@@ -113,6 +129,13 @@ export function Location() {
           }}>
             Apply coordinates
           </button>
+          {manualError && (
+            <p role="alert" style={{
+              fontSize: 12, color: 'var(--red)', margin: 0, lineHeight: 1.5,
+            }}>
+              {manualError}
+            </p>
+          )}
         </div>
       </details>
 
