@@ -60,7 +60,10 @@ function Tab({ item, role }: { item: NavItem; role: Role }) {
 export function BottomTabs({ role }: { role: Role }) {
   const navigate = useNavigate()
   const items = visibleNav(role)
-  const mid = Math.ceil(items.length / 2)
+  /* Split as evenly as possible so the notch (and thus the FAB) lands in the
+     true visual centre. With an odd total the shorter side goes on the left
+     — matches the prototype where destructive/less-frequent tabs sit right. */
+  const mid = Math.floor(items.length / 2)
   const left = items.slice(0, mid)
   const right = items.slice(mid)
 
@@ -78,7 +81,9 @@ export function BottomTabs({ role }: { role: Role }) {
       }}>
         {left.map((i) => <Tab key={i.id} item={i} role={role} />)}
 
-        {/* Central spacer that carves out room for the FAB. */}
+        {/* Central spacer that carves out room for the FAB. The FAB is
+            positioned as an absolutely-placed child so it centres on the
+            notch itself regardless of how tabs split. */}
         <div aria-hidden style={{
           width: NOTCH_WIDTH, flexShrink: 0, position: 'relative',
         }}>
@@ -88,28 +93,27 @@ export function BottomTabs({ role }: { role: Role }) {
             height: FAB_LIFT + 6, background: 'var(--surface)',
             borderTopLeftRadius: 34, borderTopRightRadius: 34,
           }} />
+          {/* FAB — child of the notch so left:50% is 50% of the notch. */}
+          <button
+            type="button"
+            onClick={() => navigate('/scan')}
+            aria-label="Scan a plant"
+            style={{
+              position: 'absolute', left: '50%', top: -FAB_LIFT,
+              transform: 'translateX(-50%)',
+              width: FAB_SIZE, height: FAB_SIZE, borderRadius: '50%',
+              border: 'none', background: 'var(--green)', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 6px 14px rgba(20,40,30,0.28)',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <Icon name="ScanLine" size={24} color="#fff" />
+          </button>
         </div>
 
         {right.map((i) => <Tab key={i.id} item={i} role={role} />)}
       </div>
-
-      {/* FAB — absolute so it can sit inside the notch, above the bar's top. */}
-      <button
-        type="button"
-        onClick={() => navigate('/scan')}
-        aria-label="Scan a plant"
-        style={{
-          position: 'absolute', left: '50%', top: -FAB_LIFT,
-          transform: 'translateX(-50%)',
-          width: FAB_SIZE, height: FAB_SIZE, borderRadius: '50%',
-          border: 'none', background: 'var(--green)', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 6px 14px rgba(20,40,30,0.28)',
-          WebkitTapHighlightColor: 'transparent',
-        }}
-      >
-        <Icon name="ScanLine" size={24} color="#fff" />
-      </button>
     </nav>
   )
 }

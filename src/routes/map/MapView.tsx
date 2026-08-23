@@ -62,7 +62,7 @@ export function MapView() {
   const map = useRef<Map | null>(null)
   const markers = useRef<Marker[]>([])
   const isDesktop = useIsDesktop()
-  const { species, statuses, search, select } = useMapStore()
+  const { species, statuses, risks, search, select } = useMapStore()
 
   const { data } = useQuery({
     queryKey: ['sightings'],
@@ -87,8 +87,10 @@ export function MapView() {
       touchZoomRotate: true,
       touchPitch: false,
     })
+    /* Always compact — the (i) bubble expands on tap and keeps the ODbL
+     *  string from butting up against the FAB or navigation controls. */
     m.addControl(new maplibregl.AttributionControl({
-      compact: false,
+      compact: true,
       customAttribution: '© <a href="https://openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> · ODbL · © <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>',
     }), 'bottom-right')
     m.addControl(new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }), 'top-right')
@@ -106,6 +108,14 @@ export function MapView() {
     m.once('style.load', () => {
       m.resize()
       m.jumpTo({ center: CENTRE, zoom: isDesktop ? INITIAL_ZOOM : INITIAL_ZOOM_MOBILE })
+      /* MapLibre's compact attribution renders as a <details open> element
+       *  on first paint — that leaves the full ODbL string sitting in the
+       *  corner. Force it closed so the user sees just the (i) bubble. */
+      requestAnimationFrame(() => {
+        container.current
+          ?.querySelector<HTMLDetailsElement>('.maplibregl-ctrl-attrib.maplibregl-compact')
+          ?.removeAttribute('open')
+      })
     })
 
     /* Container may size after mount (auth shell renders, then main flexes to
@@ -132,6 +142,7 @@ export function MapView() {
     const filtered = data.items.filter((s) => {
       if (species.length && !species.includes(s.speciesId)) return false
       if (statuses.length && !statuses.includes(s.status)) return false
+      if (risks.length && !risks.includes(s.risk)) return false
       if (q && !s.speciesName.toLowerCase().includes(q) && !s.latinName.toLowerCase().includes(q)) return false
       return true
     })
@@ -144,7 +155,7 @@ export function MapView() {
         .addTo(map.current!)
       markers.current.push(marker)
     }
-  }, [data, species, statuses, search, select])
+  }, [data, species, statuses, risks, search, select])
 
   return (
     <div style={{

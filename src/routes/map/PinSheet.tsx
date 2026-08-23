@@ -31,9 +31,13 @@ export function PinSheet() {
 
   if (!selectedId) return null
 
-  const riskColor = data?.risk === 'high' ? 'var(--red)' : 'var(--amber)'
-  const riskLight = data?.risk === 'high' ? 'var(--red-light)' : '#FEF3E2'
-  const riskBorder = data?.risk === 'high' ? 'var(--red-border)' : '#F0D9A8'
+  const isHigh = data?.risk === 'high'
+  const riskColor = isHigh ? 'var(--red)' : 'var(--amber)'
+  const riskLight = isHigh ? 'var(--red-light)' : '#FEF3E2'
+  const riskBorder = isHigh ? 'var(--red-border)' : '#F0D9A8'
+  const directionsHref = data
+    ? `https://www.google.com/maps/dir/?api=1&destination=${data.location.lat},${data.location.lng}`
+    : '#'
 
   /* Portalled so it escapes the map container's stacking context and always
    *  sits above the Legend chip and MapLibre controls. */
@@ -49,19 +53,19 @@ export function PinSheet() {
         background: 'var(--surface)', borderTopLeftRadius: 20, borderTopRightRadius: 20,
         boxShadow: '0 -8px 24px rgba(20,40,30,0.18)',
         paddingBottom: 'env(safe-area-inset-bottom)',
-        maxHeight: '78dvh', overflowY: 'auto',
+        maxHeight: '85dvh', display: 'flex', flexDirection: 'column',
       }}>
         {/* Coloured spine hugging the top edge; instantly signals risk level. */}
         <div aria-hidden style={{
           height: 4, background: data ? riskColor : 'var(--border)',
-          borderTopLeftRadius: 20, borderTopRightRadius: 20,
+          borderTopLeftRadius: 20, borderTopRightRadius: 20, flexShrink: 0,
         }} />
         <div style={{
           width: 40, height: 4, borderRadius: 2, background: 'var(--border)',
-          margin: '10px auto 4px',
+          margin: '10px auto 4px', flexShrink: 0,
         }} />
 
-        <div style={{ padding: '4px 20px 20px' }}>
+        <div style={{ padding: '4px 20px 16px', overflowY: 'auto', flex: 1 }}>
           {isLoading || !data ? (
             <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
               Loading sighting…
@@ -70,19 +74,18 @@ export function PinSheet() {
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
                 <div style={{ display: 'flex', gap: 12, minWidth: 0, flex: 1, alignItems: 'flex-start' }}>
-                  {/* Species avatar tile — coloured circle with leaf glyph. */}
                   <div aria-hidden style={{
-                    width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+                    width: 46, height: 46, borderRadius: 12, flexShrink: 0,
                     background: riskLight, border: `1px solid ${riskBorder}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
                     <Icon name="Leaf" size={22} color={riskColor} />
                   </div>
-                  <div style={{ minWidth: 0 }}>
+                  <div style={{ minWidth: 0, paddingTop: 2 }}>
                     <h2 style={{ fontSize: 19, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
                       {data.speciesName}
                     </h2>
-                    <div style={{ fontSize: 13, color: 'var(--muted)', fontStyle: 'italic', marginTop: 2 }}>
+                    <div style={{ fontSize: 13, color: 'var(--muted)', fontStyle: 'italic', marginTop: 3 }}>
                       {data.latinName}
                     </div>
                   </div>
@@ -98,11 +101,9 @@ export function PinSheet() {
 
               <div style={{ display: 'flex', gap: 6, marginTop: 14, flexWrap: 'wrap' }}>
                 <Pill bg={riskLight} border={riskBorder} fg={riskColor}
-                      label={`${data.risk === 'high' ? 'High' : 'Watch'} risk`} />
+                      label={`${isHigh ? 'High' : 'Watch'} risk`} />
                 <Pill bg="var(--bg-alt)" border="var(--border)" fg={STATUS_COLOR[data.status]}
                       label={STATUS_LABEL[data.status]} />
-                <Pill bg="var(--bg-alt)" border="var(--border)" fg="var(--body)"
-                      label={`${data.reportCount} report${data.reportCount === 1 ? '' : 's'}`} />
               </div>
 
               <div style={{
@@ -112,7 +113,7 @@ export function PinSheet() {
               }}>
                 <Icon name="ShieldCheck" size={18} color="var(--green-dark)" />
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 11, color: 'var(--green-dark)', fontWeight: 600,
+                  <div style={{ fontSize: 11, color: 'var(--green-dark)', fontWeight: 700,
                                 textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                     Recommended action
                   </div>
@@ -122,42 +123,91 @@ export function PinSheet() {
                 </div>
               </div>
 
-              <MetaRow icon="MapPin"
-                       label="Coordinates"
-                       value={`${data.location.lat.toFixed(5)}, ${data.location.lng.toFixed(5)}`}
-                       sub={data.precisionReduced ? 'Location approximated — precision policy §11' : undefined}
-                       mono />
-              <MetaRow icon="Clock" label="Last reported" value={formatTime(data.lastReportedAt)} />
-              <MetaRow icon="User" label="Reporter trust" value={data.reporterTrust} />
+              {/* Compact metadata grid — two per row on wide phones, one column on narrow. */}
+              <div style={{
+                marginTop: 16, display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                gap: 10,
+              }}>
+                <MetaTile icon="MapPin" label="Coordinates"
+                          value={`${data.location.lat.toFixed(4)}, ${data.location.lng.toFixed(4)}`}
+                          sub={data.precisionReduced ? '≈ approximated' : undefined} mono />
+                <MetaTile icon="Clock" label="Last reported"
+                          value={formatTime(data.lastReportedAt)} />
+                <MetaTile icon="User" label="Reporter trust"
+                          value={data.reporterTrust} />
+                <MetaTile icon="ClipboardList" label="Reports"
+                          value={`${data.reportCount}`} />
+              </div>
+
+              {data.precisionReduced && (
+                <p style={{
+                  marginTop: 12, fontSize: 11.5, color: 'var(--muted)',
+                  lineHeight: 1.5, display: 'flex', gap: 6, alignItems: 'flex-start',
+                }}>
+                  <Icon name="Info" size={13} color="var(--muted)" />
+                  <span>Location approximated per precision policy (Arch §11) — candidate and new-trust pins are jittered ~100 m.</span>
+                </p>
+              )}
             </>
           )}
         </div>
+
+        {data && (
+          <div style={{
+            display: 'flex', gap: 10, padding: '12px 18px 14px',
+            borderTop: '1px solid var(--border)', background: 'var(--surface)',
+            flexShrink: 0,
+          }}>
+            <a href={directionsHref} target="_blank" rel="noopener noreferrer" style={{
+              flex: 1, height: 'var(--h-primary)', borderRadius: 'var(--r-button)',
+              border: '1px solid var(--border)', background: 'var(--surface)',
+              color: 'var(--body)', fontWeight: 600, fontSize: 14,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              textDecoration: 'none',
+            }}>
+              <Icon name="Navigation" size={16} color="var(--body)" />
+              Directions
+            </a>
+            <button type="button" onClick={() => select(null)} style={{
+              flex: 1, height: 'var(--h-primary)', borderRadius: 'var(--r-button)',
+              border: 'none', background: 'var(--green)', color: '#fff',
+              fontWeight: 600, fontSize: 14, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}>
+              <Icon name="Check" size={16} color="#fff" />
+              Got it
+            </button>
+          </div>
+        )}
       </aside>
     </>,
     document.body,
   )
 }
 
-function MetaRow({ icon, label, value, sub, mono }: {
+function MetaTile({ icon, label, value, sub, mono }: {
   icon: string; label: string; value: string; sub?: string; mono?: boolean
 }) {
   return (
     <div style={{
-      display: 'flex', gap: 12, alignItems: 'flex-start',
-      marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)',
+      padding: '10px 12px', borderRadius: 10,
+      background: 'var(--bg-alt)', border: '1px solid var(--border)',
+      display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0,
     }}>
-      <Icon name={icon} size={16} color="var(--icon)" />
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600,
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <Icon name={icon} size={13} color="var(--muted)" />
+        <div style={{ fontSize: 10.5, color: 'var(--muted)', fontWeight: 600,
                       textTransform: 'uppercase', letterSpacing: '0.06em' }}>
           {label}
         </div>
-        <div className={mono ? 'mono' : undefined}
-             style={{ marginTop: 3, fontSize: 13.5, color: 'var(--ink)', fontWeight: 500 }}>
-          {value}
-        </div>
-        {sub && <div style={{ marginTop: 3, fontSize: 11.5, color: 'var(--amber)', lineHeight: 1.5 }}>{sub}</div>}
       </div>
+      <div className={mono ? 'mono' : undefined}
+           style={{ fontSize: 13, color: 'var(--ink)', fontWeight: 600,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {value}
+      </div>
+      {sub && <div style={{ fontSize: 10.5, color: 'var(--amber)' }}>{sub}</div>}
     </div>
   )
 }
@@ -165,9 +215,9 @@ function MetaRow({ icon, label, value, sub, mono }: {
 function Pill({ bg, border, fg, label }: { bg: string; border: string; fg: string; label: string }) {
   return (
     <span style={{
-      display: 'inline-flex', alignItems: 'center', padding: '3px 10px',
+      display: 'inline-flex', alignItems: 'center', padding: '4px 10px',
       borderRadius: 'var(--r-chip)', background: bg, border: `1px solid ${border}`,
-      fontSize: 11.5, fontWeight: 600, color: fg,
+      fontSize: 11.5, fontWeight: 700, color: fg,
       textTransform: 'uppercase', letterSpacing: '0.04em',
     }}>
       {label}
