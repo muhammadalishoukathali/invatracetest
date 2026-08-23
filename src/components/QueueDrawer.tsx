@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { Icon } from './Icon'
 import type { QueuedReport } from '@/types'
 
@@ -10,13 +11,13 @@ interface Props {
 
 /** Right-side drawer listing IndexedDB-queued reports awaiting sync. */
 export function QueueDrawer({ queue, onClose, onRetry, flushing }: Props) {
-  return (
+  return createPortal(
     <>
       <div onClick={onClose} aria-hidden style={{
-        position: 'fixed', inset: 0, background: 'rgba(20,32,27,0.32)', zIndex: 40,
+        position: 'fixed', inset: 0, background: 'rgba(20,32,27,0.32)', zIndex: 9998,
       }} />
-      <aside role="dialog" aria-label="Queued reports" style={{
-        position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 41,
+      <aside role="dialog" aria-label="Queued reports" aria-modal="true" style={{
+        position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 9999,
         width: 'min(420px, 100vw)', background: 'var(--surface)',
         boxShadow: '-4px 0 16px rgba(20,40,30,0.14)',
         display: 'flex', flexDirection: 'column',
@@ -84,6 +85,7 @@ export function QueueDrawer({ queue, onClose, onRetry, flushing }: Props) {
           </footer>
         )}
       </aside>
-    </>
+    </>,
+    document.body,
   )
 }

@@ -11,8 +11,9 @@ const LATER = 'Available in a later iteration'
 /* Height of the visible bar plus the FAB overhang. Kept in a const so the
    home-indicator safe-area padding can add on top of it consistently. */
 const BAR_HEIGHT = 62
-const FAB_SIZE = 60
-const FAB_LIFT = 22    // how far the FAB sits above the bar's top edge
+const FAB_SIZE = 54
+const FAB_LIFT = 20         // how far the FAB sits above the bar's top edge
+const NOTCH_WIDTH = 78      // notch column must clearly exceed FAB_SIZE
 
 function Tab({ item, role }: { item: NavItem; role: Role }) {
   const cell: React.CSSProperties = {
@@ -79,7 +80,7 @@ export function BottomTabs({ role }: { role: Role }) {
 
         {/* Central spacer that carves out room for the FAB. */}
         <div aria-hidden style={{
-          width: FAB_SIZE + 12, flexShrink: 0, position: 'relative',
+          width: NOTCH_WIDTH, flexShrink: 0, position: 'relative',
         }}>
           {/* Notch: soft white cutout so the FAB sits in an inset. */}
           <div style={{
@@ -107,7 +108,7 @@ export function BottomTabs({ role }: { role: Role }) {
           WebkitTapHighlightColor: 'transparent',
         }}
       >
-        <Icon name="ScanLine" size={26} color="#fff" />
+        <Icon name="ScanLine" size={24} color="#fff" />
       </button>
     </nav>
   )

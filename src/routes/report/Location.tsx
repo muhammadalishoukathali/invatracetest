@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Icon } from '@/components/Icon'
 import { useReport } from '@/lib/report-store'
+import { useScan } from '@/lib/scan-store'
 import { NextButton } from './parts/NextButton'
 
 type Status = 'idle' | 'locating' | 'located' | 'denied' | 'unavailable'
@@ -10,12 +11,25 @@ const DEFAULT_LOC = { lat: 3.1497, lng: 101.6412 }
 
 export function Location() {
   const { draft, setLocation, next } = useReport()
+  const scanLoc = useScan((s) => s.location)
+  const scanLocStatus = useScan((s) => s.locationStatus)
   const [status, setStatus] = useState<Status>('idle')
   const [manualLat, setManualLat] = useState('')
   const [manualLng, setManualLng] = useState('')
 
   const loc = draft?.location ?? null
   const accuracy = draft?.locationAccuracyM ?? null
+
+  /** Prefer the fix captured at scan-time — the user is already at the plant,
+   *  and the browser doesn't have to prompt for permission again. */
+  useEffect(() => {
+    if (loc) return
+    if (scanLoc) {
+      setLocation(scanLoc.point, scanLoc.accuracyM)
+      setStatus('located')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scanLoc])
 
   const requestGeolocation = () => {
     if (!('geolocation' in navigator)) { setStatus('unavailable'); return }
@@ -34,9 +48,13 @@ export function Location() {
   }
 
   useEffect(() => {
-    if (!loc && status === 'idle') requestGeolocation()
+    if (loc || scanLoc || status !== 'idle') return
+    // If scan-time geolocation is still working, wait for it a beat rather
+    // than firing a second permission prompt.
+    if (scanLocStatus === 'locating') return
+    requestGeolocation()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [scanLocStatus])
 
   const [manualError, setManualError] = useState<string | null>(null)
 
@@ -96,7 +114,12 @@ export function Location() {
         {loc && (
           <Row icon="MapPin" tint="var(--green)"
                title={`${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}`}
-               body={accuracy != null ? `Accurate to ~${accuracy} m` : 'Manual entry'} />
+               body={(() => {
+                 const accStr = accuracy != null ? `Accurate to ~${accuracy} m` : 'Manual entry'
+                 const usedScanFix = !!scanLoc &&
+                   scanLoc.point.lat === loc.lat && scanLoc.point.lng === loc.lng
+                 return usedScanFix ? `${accStr} · captured at scan` : accStr
+               })()} />
         )}
 
         <button type="button" onClick={requestGeolocation} disabled={status === 'locating'} style={{

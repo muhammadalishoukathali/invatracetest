@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Icon } from '@/components/Icon'
-import { useScan } from '@/lib/scan-store'
+import { captureScanLocation, useScan } from '@/lib/scan-store'
 import { resizeImage } from '@/lib/image-utils'
 import { getAdapter } from '@/lib/model-adapter'
 import { api } from '@/lib/api'
@@ -91,7 +91,7 @@ export function Capture() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <button
             type="button"
-            onClick={() => cameraRef.current?.click()}
+            onClick={() => { captureScanLocation(); cameraRef.current?.click() }}
             disabled={checking}
             style={{
               width: '100%', aspectRatio: '4 / 3', borderRadius: 'var(--r-card)',
@@ -119,7 +119,7 @@ export function Capture() {
 
           <button
             type="button"
-            onClick={() => galleryRef.current?.click()}
+            onClick={() => { captureScanLocation(); galleryRef.current?.click() }}
             disabled={checking}
             style={{
               width: '100%', height: 'var(--h-primary)', borderRadius: 'var(--r-button)',

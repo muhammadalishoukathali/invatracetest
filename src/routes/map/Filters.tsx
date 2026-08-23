@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Icon } from '@/components/Icon'
 import { useIsDesktop } from '@/lib/useIsDesktop'
 import { useMap } from '@/lib/map-store'
@@ -64,7 +65,7 @@ export function Filters() {
             fontSize: 13, fontWeight: 600, cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: 6,
           }}>
-            <Icon name="Grid3x3" size={16}
+            <Icon name="SlidersHorizontal" size={16}
                   color={active > 0 ? 'var(--green)' : 'var(--body)'} />
             Filters{active > 0 ? ` · ${active}` : ''}
           </button>
@@ -126,13 +127,16 @@ function FiltersSheet({
   clearFilters: () => void
   active: number
 }) {
-  return (
+  /* Portal so the sheet escapes any ancestor stacking context (the map
+   *  container creates one via absolute-positioned canvas + controls);
+   *  otherwise the Legend chip and MapLibre controls can leak on top. */
+  return createPortal(
     <>
       <div onClick={onClose} aria-hidden style={{
-        position: 'fixed', inset: 0, background: 'rgba(20,32,27,0.32)', zIndex: 50,
+        position: 'fixed', inset: 0, background: 'rgba(20,32,27,0.35)', zIndex: 9998,
       }} />
-      <aside role="dialog" aria-label="Filters" style={{
-        position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 51,
+      <aside role="dialog" aria-label="Filters" aria-modal="true" style={{
+        position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 9999,
         background: 'var(--surface)',
         borderTopLeftRadius: 20, borderTopRightRadius: 20,
         boxShadow: '0 -6px 20px rgba(20,40,30,0.18)',
@@ -189,7 +193,8 @@ function FiltersSheet({
           </div>
         </div>
       </aside>
-    </>
+    </>,
+    document.body,
   )
 }
 
