@@ -12,6 +12,7 @@ import { useQuery } from '@tanstack/react-query'
 import * as maplibregl from 'maplibre-gl'
 import type { Map, Marker } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
+
 import { api } from '@/lib/api'
 import { useIsDesktop } from '@/lib/useIsDesktop'
 import { useMap as useMapStore } from '@/lib/map-store'
@@ -32,8 +33,29 @@ const MY_BOUNDS: [[number, number], [number, number]] = [
   [119.5, 7.5],  // NE: east of Sabah, north of Perlis
 ]
 
-/* OpenFreeMap Bright — full colour vector style, OSM data + ODbL, no key. */
-const STYLE_URL = 'https://tiles.openfreemap.org/styles/bright'
+/* Carto Positron raster tiles — OSM data (ODbL) rendered by Carto, CORS
+ * enabled, no API key. Chosen because MSW's dev service worker interferes
+ * with MapLibre's vector-tile worker path; raster tiles are decoded on the
+ * main thread and sidestep the issue entirely.
+ * Attribution: "© OpenStreetMap contributors © CARTO" per Carto's TOS. */
+const STYLE_URL: maplibregl.StyleSpecification = {
+  version: 8,
+  glyphs: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
+  sources: {
+    'carto-positron': {
+      type: 'raster',
+      tiles: [
+        'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png',
+        'https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png',
+        'https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png',
+        'https://d.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png',
+      ],
+      tileSize: 256,
+      maxzoom: 19,
+    },
+  },
+  layers: [{ id: 'basemap', type: 'raster', source: 'carto-positron' }],
+}
 
 export function MapView() {
   const container = useRef<HTMLDivElement>(null)
@@ -67,7 +89,7 @@ export function MapView() {
     })
     m.addControl(new maplibregl.AttributionControl({
       compact: false,
-      customAttribution: '© <a href="https://openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> · ODbL',
+      customAttribution: '© <a href="https://openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> · ODbL · © <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>',
     }), 'bottom-right')
     m.addControl(new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }), 'top-right')
     m.addControl(new maplibregl.GeolocateControl({

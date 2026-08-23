@@ -7,10 +7,12 @@ import { fileURLToPath, URL } from 'node:url'
 export default defineConfig({
   // Keep Playwright specs out of the vitest run — they use @playwright/test.
   test: { exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**'] },
-  // MapLibre GL ships its own Web Worker as an .mjs file that Vite's dep
-  // optimiser mishandles (drops the worker chunk, main thread hangs on tile
-  // decode). Excluding it forces Vite to serve the untouched ESM bundle.
-  optimizeDeps: { exclude: ['maplibre-gl'] },
+  // Force Vite to prebundle MapLibre so its module worker's transitive
+  // imports (which reference /@vite/client and HMR helpers) get inlined into
+  // a self-contained worker script. Without this, the worker fetches
+  // Vite-injected modules that require `window`/`document`, breaks silently,
+  // and no tiles ever decode → blank map.
+  optimizeDeps: { include: ['maplibre-gl'] },
   plugins: [
     react(),
     VitePWA({
