@@ -11,7 +11,7 @@ export function Legend() {
   if (!isDesktop && !open) {
     return (
       <button type="button" onClick={() => setOpen(true)} aria-label="Show legend" style={{
-        position: 'absolute', bottom: 40, left: 12, zIndex: 5,
+        position: 'absolute', bottom: 'var(--map-legend-bottom)', left: 12, zIndex: 5,
         padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8,
         background: 'var(--surface)', border: '1px solid var(--border)',
         borderRadius: 'var(--r-chip)', boxShadow: 'var(--shadow-sm)',
@@ -25,7 +25,7 @@ export function Legend() {
 
   return (
     <div style={{
-      position: 'absolute', bottom: 40, left: 12, zIndex: 5,
+      position: 'absolute', bottom: 'var(--map-legend-bottom)', left: 12, zIndex: 5,
       padding: '10px 12px', background: 'var(--surface)',
       border: '1px solid var(--border)', borderRadius: 'var(--r-card)',
       boxShadow: 'var(--shadow-sm)', fontSize: 12,

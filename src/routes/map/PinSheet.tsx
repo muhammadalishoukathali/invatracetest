@@ -1,8 +1,10 @@
+import { useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Icon } from '@/components/Icon'
 import { api } from '@/lib/api'
 import { useMap } from '@/lib/map-store'
+import { useDialogA11y } from '@/lib/useDialogA11y'
 import type { SightingDetail, SightingStatus } from '@/types'
 
 const STATUS_LABEL: Record<SightingStatus, string> = {
@@ -21,6 +23,14 @@ const STATUS_COLOR: Record<SightingStatus, string> = {
 
 export function PinSheet() {
   const { selectedId, select } = useMap()
+  const dialogRef = useRef<HTMLElement>(null)
+  const close = () => select(null)
+  useDialogA11y(dialogRef, close, {
+    active: !!selectedId,
+    returnFocus: () => selectedId
+      ? document.querySelector<HTMLElement>(`.map-pin[data-sighting-id="${CSS.escape(selectedId)}"]`)
+      : null,
+  })
 
   const { data, isLoading } = useQuery({
     queryKey: ['sighting', selectedId],
@@ -43,27 +53,37 @@ export function PinSheet() {
    *  sits above the Legend chip and MapLibre controls. */
   return createPortal(
     <>
-      <div onClick={() => select(null)}
+      <div onClick={close}
            aria-hidden
            style={{
              position: 'fixed', inset: 0, background: 'rgba(20,32,27,0.35)', zIndex: 9998,
            }} />
-      <aside role="dialog" aria-label="Sighting details" aria-modal="true" style={{
+      <aside ref={dialogRef} tabIndex={-1}
+        role="dialog" aria-label="Sighting details" aria-modal="true" style={{
         position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 9999,
         background: 'var(--surface)', borderTopLeftRadius: 20, borderTopRightRadius: 20,
         boxShadow: '0 -8px 24px rgba(20,40,30,0.18)',
         paddingBottom: 'env(safe-area-inset-bottom)',
-        maxHeight: '85dvh', display: 'flex', flexDirection: 'column',
+        maxHeight: '85dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden',
       }}>
         {/* Coloured spine hugging the top edge; instantly signals risk level. */}
         <div aria-hidden style={{
           height: 4, background: data ? riskColor : 'var(--border)',
-          borderTopLeftRadius: 20, borderTopRightRadius: 20, flexShrink: 0,
+          flexShrink: 0,
         }} />
         <div style={{
           width: 40, height: 4, borderRadius: 2, background: 'var(--border)',
           margin: '10px auto 4px', flexShrink: 0,
         }} />
+
+        <button type="button" onClick={close} aria-label="Close" data-dialog-initial style={{
+          position: 'absolute', top: 18, right: 20, zIndex: 1,
+          width: 40, height: 40, borderRadius: '50%', border: 'none',
+          background: 'var(--hover)', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Icon name="X" size={16} color="var(--body)" />
+        </button>
 
         <div style={{ padding: '4px 20px 16px', overflowY: 'auto', flex: 1 }}>
           {isLoading || !data ? (
@@ -72,7 +92,7 @@ export function PinSheet() {
             </div>
           ) : (
             <>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, paddingRight: 52 }}>
                 <div style={{ display: 'flex', gap: 12, minWidth: 0, flex: 1, alignItems: 'flex-start' }}>
                   <div aria-hidden style={{
                     width: 46, height: 46, borderRadius: 12, flexShrink: 0,
@@ -90,13 +110,6 @@ export function PinSheet() {
                     </div>
                   </div>
                 </div>
-                <button type="button" onClick={() => select(null)} aria-label="Close" style={{
-                  width: 40, height: 40, borderRadius: '50%', border: 'none',
-                  background: 'var(--hover)', cursor: 'pointer', flexShrink: 0,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <Icon name="X" size={16} color="var(--body)" />
-                </button>
               </div>
 
               <div style={{ display: 'flex', gap: 6, marginTop: 14, flexWrap: 'wrap' }}>

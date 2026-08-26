@@ -1,6 +1,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import './tokens.css';
 
+:root {
+  --map-mobile-bottom-clearance: 32px;
+  --map-legend-bottom: 40px;
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 html, body, #root { height: 100%; }
@@ -84,8 +89,11 @@ a, button, [role='button'], [role='link'] {
 .maplibregl-ctrl-bottom-left {
   bottom: 8px !important;
 }
-@media (max-width: 767px) {
-  .maplibregl-ctrl-bottom-right { bottom: 12px !important; right: 10px !important; }
+@media (max-width: 899px) {
+  :root { --map-legend-bottom: 68px; }
+  .maplibregl-ctrl-bottom-right,
+  .maplibregl-ctrl-bottom-left { bottom: var(--map-mobile-bottom-clearance) !important; }
+  .maplibregl-ctrl-bottom-right { right: 10px !important; }
   .maplibregl-ctrl-top-right { top: 8px !important; right: 8px !important; }
 }
 

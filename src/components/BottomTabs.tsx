@@ -14,6 +14,8 @@ const BAR_HEIGHT = 62
 const FAB_SIZE = 54
 const FAB_LIFT = 20         // how far the FAB sits above the bar's top edge
 const NOTCH_WIDTH = 78      // notch column must clearly exceed FAB_SIZE
+const LEFT_SLOTS = ['map', 'trail'] as const
+const RIGHT_SLOTS = ['verify', 'sessions'] as const
 
 function Tab({ item, role }: { item: NavItem; role: Role }) {
   const cell: React.CSSProperties = {
@@ -59,14 +61,13 @@ function Tab({ item, role }: { item: NavItem; role: Role }) {
 
 export function BottomTabs({ role }: { role: Role }) {
   const navigate = useNavigate()
-  /* Mobile bar caps at four items so the FAB always sits in a true 2+2
-     centre. Iteration-3 destinations still appear on the desktop sidebar,
-     so no roadmap detail is lost — the phone just skips inert placeholders
-     that would break symmetry with the notch. */
-  const items = visibleNav(role).filter((i) => i.iteration <= 2).slice(0, 4)
-  const mid = Math.floor(items.length / 2)
-  const left = items.slice(0, mid)
-  const right = items.slice(mid)
+  /* Keep the information architecture in fixed visual slots. A role that
+     cannot access Verify receives an empty slot, not a shifted centre FAB. */
+  const items = new Map(
+    visibleNav(role)
+      .filter((item) => item.iteration <= 2)
+      .map((item) => [item.id, item]),
+  )
 
   return (
     <nav aria-label="Primary" style={{
@@ -77,19 +78,23 @@ export function BottomTabs({ role }: { role: Role }) {
       boxShadow: '0 -1px 3px rgba(20,40,30,0.04)',
     }}>
       <div style={{
-        display: 'flex', alignItems: 'stretch',
+        display: 'grid', alignItems: 'stretch',
+        gridTemplateColumns: `repeat(2, minmax(0, 1fr)) ${NOTCH_WIDTH}px repeat(2, minmax(0, 1fr))`,
         height: BAR_HEIGHT, position: 'relative',
       }}>
-        {left.map((i) => <Tab key={i.id} item={i} role={role} />)}
+        {LEFT_SLOTS.map((id) => {
+          const item = items.get(id)
+          return item ? <Tab key={id} item={item} role={role} /> : <span key={id} aria-hidden />
+        })}
 
         {/* Central spacer that carves out room for the FAB. The FAB is
             positioned as an absolutely-placed child so it centres on the
             notch itself regardless of how tabs split. */}
-        <div aria-hidden style={{
+        <div style={{
           width: NOTCH_WIDTH, flexShrink: 0, position: 'relative',
         }}>
           {/* Notch: soft white cutout so the FAB sits in an inset. */}
-          <div style={{
+          <div aria-hidden style={{
             position: 'absolute', top: -FAB_LIFT, left: 0, right: 0,
             height: FAB_LIFT + 6, background: 'var(--surface)',
             borderTopLeftRadius: 34, borderTopRightRadius: 34,
@@ -113,7 +118,10 @@ export function BottomTabs({ role }: { role: Role }) {
           </button>
         </div>
 
-        {right.map((i) => <Tab key={i.id} item={i} role={role} />)}
+        {RIGHT_SLOTS.map((id) => {
+          const item = items.get(id)
+          return item ? <Tab key={id} item={item} role={role} /> : <span key={id} aria-hidden />
+        })}
       </div>
     </nav>
   )

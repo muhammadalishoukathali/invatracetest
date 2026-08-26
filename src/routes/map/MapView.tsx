@@ -87,10 +87,10 @@ export function MapView() {
       touchZoomRotate: true,
       touchPitch: false,
     })
-    /* Always compact — the (i) bubble expands on tap and keeps the ODbL
-     *  string from butting up against the FAB or navigation controls. */
+    /* The provider credit stays visible per the approved map specification;
+     * mobile spacing is handled by the shared bottom-overlay clearance. */
     m.addControl(new maplibregl.AttributionControl({
-      compact: true,
+      compact: false,
       customAttribution: '© <a href="https://openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> · ODbL · © <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>',
     }), 'bottom-right')
     m.addControl(new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }), 'top-right')
@@ -108,14 +108,6 @@ export function MapView() {
     m.once('style.load', () => {
       m.resize()
       m.jumpTo({ center: CENTRE, zoom: isDesktop ? INITIAL_ZOOM : INITIAL_ZOOM_MOBILE })
-      /* MapLibre's compact attribution renders as a <details open> element
-       *  on first paint — that leaves the full ODbL string sitting in the
-       *  corner. Force it closed so the user sees just the (i) bubble. */
-      requestAnimationFrame(() => {
-        container.current
-          ?.querySelector<HTMLDetailsElement>('.maplibregl-ctrl-attrib.maplibregl-compact')
-          ?.removeAttribute('open')
-      })
     })
 
     /* Container may size after mount (auth shell renders, then main flexes to
@@ -185,6 +177,7 @@ function pinElement(s: Sighting): HTMLElement {
   const el = document.createElement('button')
   el.type = 'button'
   el.setAttribute('aria-label', `${s.speciesName} — ${s.status}`)
+  el.dataset.sightingId = s.id
   el.className = 'map-pin'
   const colour = s.risk === 'high' ? '#C2412D' : '#D9880F'
   const isCandidate = s.status === 'candidate'
