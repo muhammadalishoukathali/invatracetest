@@ -20,20 +20,21 @@ export function Submitted() {
   return (
     <div style={{
       minHeight: '100dvh', display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--bg)',
+      alignItems: 'center', justifyContent: 'center', background: 'var(--bg)',
+      padding: 'max(24px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left))',
     }}>
       <div style={{ maxWidth: 380, width: '100%', textAlign: 'center' }}>
         <div style={{
           width: 72, height: 72, borderRadius: '50%',
-          background: submitted ? 'var(--green-light)' : '#FEF3E2',
-          border: `1px solid ${submitted ? 'var(--green-border)' : '#F0D9A8'}`,
+          background: submitted ? 'var(--green-light)' : 'var(--amber-light)',
+          border: `1px solid ${submitted ? 'var(--green-border)' : 'var(--amber-border)'}`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           margin: '0 auto 20px',
         }}>
           <Icon
             name={submitted ? 'CircleCheck' : 'WifiOff'}
             size={36}
-            color={submitted ? 'var(--green)' : 'var(--amber)'}
+            color={submitted ? 'var(--green)' : 'var(--amber-text)'}
           />
         </div>
 
@@ -72,7 +73,7 @@ export function Submitted() {
           </button>
           <button type="button" onClick={() => done('/scan')} style={{
             height: 'var(--h-primary)', borderRadius: 'var(--r-button)',
-            border: '1px solid var(--border)', background: 'var(--surface)',
+            border: '1px solid var(--control-border)', background: 'var(--surface)',
             fontWeight: 600, fontSize: 14, cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}>

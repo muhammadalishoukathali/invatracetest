@@ -95,7 +95,7 @@ export function Capture() {
             disabled={checking}
             style={{
               width: '100%', aspectRatio: '4 / 3', borderRadius: 'var(--r-card)',
-              border: '2px dashed var(--border)', background: 'var(--surface)',
+              border: '2px dashed var(--control-border)', background: 'var(--surface)',
               display: 'flex', flexDirection: 'column', alignItems: 'center',
               justifyContent: 'center', gap: 12, cursor: 'pointer',
               WebkitTapHighlightColor: 'transparent',
@@ -123,7 +123,7 @@ export function Capture() {
             disabled={checking}
             style={{
               width: '100%', height: 'var(--h-primary)', borderRadius: 'var(--r-button)',
-              border: '1px solid var(--border)', background: 'var(--surface)',
+              border: '1px solid var(--control-border)', background: 'var(--surface)',
               color: 'var(--body)', fontWeight: 600, fontSize: 14, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               WebkitTapHighlightColor: 'transparent',
@@ -175,7 +175,7 @@ export function Capture() {
 
           {!qualityFailed && (
             <button type="button" onClick={retake} aria-label="Discard photo and retake" style={{
-              position: 'absolute', top: 8, right: 8, width: 32, height: 32,
+              position: 'absolute', top: 8, right: 8, width: 44, height: 44,
               borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.5)',
               cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>

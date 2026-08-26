@@ -13,7 +13,7 @@ export function Legend() {
       <button type="button" onClick={() => setOpen(true)} aria-label="Show legend" style={{
         position: 'absolute', bottom: 'var(--map-legend-bottom)', left: 12, zIndex: 5,
         padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8,
-        background: 'var(--surface)', border: '1px solid var(--border)',
+        background: 'var(--surface)', border: '1px solid var(--control-border)',
         borderRadius: 'var(--r-chip)', boxShadow: 'var(--shadow-sm)',
         fontSize: 12, fontWeight: 500, color: 'var(--body)', cursor: 'pointer',
       }}>
@@ -40,7 +40,7 @@ export function Legend() {
         }}>Legend</span>
         {!isDesktop && (
           <button type="button" onClick={() => setOpen(false)} aria-label="Hide legend" style={{
-            width: 20, height: 20, borderRadius: '50%', border: 'none',
+            width: 44, height: 44, borderRadius: '50%', border: 'none',
             background: 'transparent', cursor: 'pointer', padding: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>

@@ -15,7 +15,6 @@ const FAB_SIZE = 54
 const FAB_LIFT = 20         // how far the FAB sits above the bar's top edge
 const NOTCH_WIDTH = 78      // notch column must clearly exceed FAB_SIZE
 const LEFT_SLOTS = ['map', 'trail'] as const
-const RIGHT_SLOTS = ['verify', 'sessions'] as const
 
 function Tab({ item, role }: { item: NavItem; role: Role }) {
   const cell: React.CSSProperties = {
@@ -61,13 +60,16 @@ function Tab({ item, role }: { item: NavItem; role: Role }) {
 
 export function BottomTabs({ role }: { role: Role }) {
   const navigate = useNavigate()
-  /* Keep the information architecture in fixed visual slots. A role that
-     cannot access Verify receives an empty slot, not a shifted centre FAB. */
+  /* Keep four visible destinations around the centred FAB. Ordinary roles
+     use the four modules shown in the desktop rail; privileged roles replace
+     Impact with their enabled Verify destination. */
   const items = new Map(
     visibleNav(role)
-      .filter((item) => item.iteration <= 2)
       .map((item) => [item.id, item]),
   )
+  const rightSlots = items.has('verify')
+    ? (['verify', 'sessions'] as const)
+    : (['sessions', 'impact'] as const)
 
   return (
     <nav aria-label="Primary" style={{
@@ -118,7 +120,7 @@ export function BottomTabs({ role }: { role: Role }) {
           </button>
         </div>
 
-        {RIGHT_SLOTS.map((id) => {
+        {rightSlots.map((id) => {
           const item = items.get(id)
           return item ? <Tab key={id} item={item} role={role} /> : <span key={id} aria-hidden />
         })}

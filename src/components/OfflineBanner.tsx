@@ -39,14 +39,14 @@ export function OfflineBanner() {
     <>
       <div role="status" aria-live="polite" style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        gap: 12, padding: '8px 16px', flexShrink: 0,
-        background: online ? 'var(--green-light)' : '#FEF3E2',
-        borderBottom: `1px solid ${online ? 'var(--green-border)' : '#F0D9A8'}`,
-        fontSize: 12.5, color: online ? 'var(--green-dark)' : 'var(--amber)',
+        gap: 10, padding: '8px 16px', flexShrink: 0, flexWrap: 'wrap',
+        background: online ? 'var(--green-light)' : 'var(--amber-light)',
+        borderBottom: `1px solid ${online ? 'var(--green-border)' : 'var(--amber-border)'}`,
+        fontSize: 12.5, color: online ? 'var(--green-dark)' : 'var(--amber-text)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
           <Icon name={online ? 'CircleCheck' : 'WifiOff'} size={15}
-                color={online ? 'var(--green)' : 'var(--amber)'} />
+                color={online ? 'var(--green)' : 'var(--amber-text)'} />
           <span style={{ fontWeight: 500 }}>
             {online
               ? `${queue.length} report${queue.length === 1 ? '' : 's'} pending sync`
@@ -82,7 +82,7 @@ export function OfflineBanner() {
 }
 
 const pillBtn: React.CSSProperties = {
-  padding: '4px 10px', borderRadius: 'var(--r-chip)',
+  minHeight: 'var(--h-chip)', padding: '4px 12px', borderRadius: 'var(--r-chip)',
   border: '1px solid currentColor', background: 'transparent',
   fontSize: 12, fontWeight: 500, cursor: 'pointer', color: 'inherit',
 }

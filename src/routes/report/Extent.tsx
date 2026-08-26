@@ -23,19 +23,17 @@ export function Extent() {
         {EXTENT_OPTIONS.map((opt) => {
           const selected = draft.extent === opt.value
           return (
-            <button
-              key={opt.value}
-              type="button"
-              role="radio"
-              aria-checked={selected}
-              onClick={() => setExtent(opt.value)}
+            <label
+              key={opt.value} className="radio-card"
               style={{
                 textAlign: 'left', padding: '14px 16px', borderRadius: 'var(--r-card)',
                 background: selected ? 'var(--green-light)' : 'var(--surface)',
-                border: `1px solid ${selected ? 'var(--green)' : 'var(--border)'}`,
+                border: `1px solid ${selected ? 'var(--green)' : 'var(--control-border)'}`,
                 cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12,
               }}
             >
+              <input className="sr-only" type="radio" name="extent" value={opt.value}
+                checked={selected} onChange={() => setExtent(opt.value)} />
               <div style={{
                 width: 40, height: 40, borderRadius: '50%',
                 background: selected ? 'var(--green)' : 'var(--bg-alt)',
@@ -53,7 +51,7 @@ export function Extent() {
                 </div>
               </div>
               {selected && <Icon name="Check" size={20} color="var(--green)" />}
-            </button>
+            </label>
           )
         })}
       </div>
@@ -68,9 +66,9 @@ export function Extent() {
           maxLength={280}
           rows={3}
           placeholder="Landmarks, access, urgency…"
-          style={{
+          className="field-shell" style={{
             padding: '10px 12px', borderRadius: 'var(--r-input)',
-            border: '1px solid var(--border)', background: 'var(--surface)',
+            border: '1px solid var(--control-border)', background: 'var(--surface)',
             fontSize: 14, fontFamily: 'var(--font-sans)', color: 'var(--ink)',
             resize: 'vertical', lineHeight: 1.5,
           }}

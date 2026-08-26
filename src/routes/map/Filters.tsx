@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Icon } from '@/components/Icon'
 import { useIsDesktop } from '@/lib/useIsDesktop'
 import { useMap } from '@/lib/map-store'
+import { useDialogA11y } from '@/lib/useDialogA11y'
 import type { SightingStatus, Risk } from '@/types'
 
 /** Species list mirrors the /api/v1/species response (Iteration 1 tracked set). */
@@ -13,9 +14,10 @@ const SPECIES = [
   { id: 'clidemia-hirta', label: "Koster's curse" },
 ] as const
 
-const STATUSES: { id: SightingStatus; label: string }[] = [
+const STATUSES: { id: SightingStatus; label: string; dot?: string }[] = [
   { id: 'candidate', label: 'Candidate' },
   { id: 'confirmed', label: 'Confirmed' },
+  { id: 'removed', label: 'Removed', dot: '#8B978F' },
 ]
 
 const RISKS: { id: Risk; label: string; dot: string }[] = [
@@ -40,41 +42,44 @@ export function Filters() {
     }}>
       {/* Search + filters trigger row */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
-        <label style={{ position: 'relative', display: 'block', flex: 1 }}>
-          <span style={{
-            position: 'absolute', left: 10, top: '50%',
-            transform: 'translateY(-50%)', display: 'flex',
-          }}>
+        <label className="field-shell" style={{
+          display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0,
+          height: 'var(--h-nav)', paddingLeft: 11, borderRadius: 'var(--r-input)',
+          border: '1px solid var(--border)', background: 'var(--bg)',
+        }}>
+          <span aria-hidden style={{ display: 'flex', flexShrink: 0 }}>
             <Icon name="Search" size={16} color="var(--muted)" />
           </span>
           <input
             type="search"
+            aria-label="Search species"
+            className="field-control"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search species…"
             style={{
-              width: '100%', height: 'var(--h-nav)', padding: '0 12px 0 34px',
-              borderRadius: 'var(--r-input)', border: '1px solid var(--border)',
-              background: 'var(--bg)', fontSize: 14, color: 'var(--ink)',
+              flex: 1, height: '100%', padding: 0, paddingRight: search ? 0 : 12,
+              border: 'none', outline: 'none',
+              background: 'transparent', fontSize: 14, color: 'var(--ink)',
             }}
           />
           {search && (
             <button type="button" onClick={() => setSearch('')} aria-label="Clear search" style={{
-              position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
-              width: 24, height: 24, borderRadius: '50%', border: 'none',
-              background: 'var(--hover)', cursor: 'pointer', padding: 0,
+              width: 42, height: 42, borderRadius: '50%', border: 'none',
+              background: 'transparent', cursor: 'pointer', padding: 0, flexShrink: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              <Icon name="X" size={12} color="var(--muted)" />
+              <Icon name="X" size={14} color="var(--muted)" />
             </button>
           )}
         </label>
 
         {!isDesktop && (
-          <button type="button" onClick={() => setSheetOpen(true)} aria-haspopup="dialog" style={{
+          <button type="button" onClick={() => setSheetOpen(true)} aria-haspopup="dialog"
+            aria-expanded={sheetOpen} aria-controls="map-filters-sheet" style={{
             flexShrink: 0, height: 'var(--h-nav)', padding: '0 14px',
             borderRadius: 'var(--r-input)',
-            border: `1px solid ${active > 0 ? 'var(--green)' : 'var(--border)'}`,
+            border: `1px solid ${active > 0 ? 'var(--green)' : 'var(--control-border)'}`,
             background: active > 0 ? 'var(--green-light)' : 'var(--surface)',
             color: active > 0 ? 'var(--green-dark)' : 'var(--body)',
             fontSize: 13, fontWeight: 600, cursor: 'pointer',
@@ -101,7 +106,7 @@ export function Filters() {
           ))}
           <Divider />
           {STATUSES.map((s) => (
-            <Chip key={s.id} label={s.label} on={statuses.includes(s.id)}
+            <Chip key={s.id} label={s.label} on={statuses.includes(s.id)} dot={s.dot}
                   onClick={() => toggleStatus(s.id)} />
           ))}
           {active > 0 && (
@@ -155,6 +160,9 @@ function FiltersSheet({
   clearFilters: () => void
   active: number
 }) {
+  const dialogRef = useRef<HTMLElement>(null)
+  useDialogA11y(dialogRef, onClose)
+
   /* Portal so the sheet escapes any ancestor stacking context (the map
    *  container creates one via absolute-positioned canvas + controls);
    *  otherwise the Legend chip and MapLibre controls can leak on top. */
@@ -163,13 +171,14 @@ function FiltersSheet({
       <div onClick={onClose} aria-hidden style={{
         position: 'fixed', inset: 0, background: 'rgba(20,32,27,0.35)', zIndex: 9998,
       }} />
-      <aside role="dialog" aria-label="Filters" aria-modal="true" style={{
+      <aside ref={dialogRef} id="map-filters-sheet" tabIndex={-1}
+        role="dialog" aria-label="Filters" aria-modal="true" style={{
         position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 9999,
         background: 'var(--surface)',
         borderTopLeftRadius: 20, borderTopRightRadius: 20,
         boxShadow: '0 -6px 20px rgba(20,40,30,0.18)',
         paddingBottom: 'env(safe-area-inset-bottom)',
-        maxHeight: '82dvh', display: 'flex', flexDirection: 'column',
+        maxHeight: '82dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden',
       }}>
         <div style={{
           width: 40, height: 4, borderRadius: 2, background: 'var(--border)',
@@ -185,8 +194,8 @@ function FiltersSheet({
               {active === 0 ? 'Showing all sightings' : `${active} active`}
             </div>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close filters" style={{
-            width: 40, height: 40, borderRadius: '50%', border: 'none',
+          <button type="button" onClick={onClose} aria-label="Close filters" data-dialog-initial style={{
+            width: 44, height: 44, borderRadius: '50%', border: 'none',
             background: 'var(--hover)', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
@@ -209,7 +218,7 @@ function FiltersSheet({
           </Group>
           <Group title="Status">
             {STATUSES.map((s) => (
-              <Chip key={s.id} label={s.label} on={selectedStatuses.includes(s.id)}
+              <Chip key={s.id} label={s.label} on={selectedStatuses.includes(s.id)} dot={s.dot}
                     onClick={() => toggleStatus(s.id)} />
             ))}
           </Group>
@@ -223,7 +232,7 @@ function FiltersSheet({
           <button type="button" onClick={clearFilters} disabled={active === 0} style={{
             flex: '0 0 auto', padding: '0 18px', height: 'var(--h-primary)',
             borderRadius: 'var(--r-button)',
-            border: '1px solid var(--border)', background: 'var(--surface)',
+          border: '1px solid var(--control-border)', background: 'var(--surface)',
             color: 'var(--body)', fontWeight: 600, fontSize: 14,
             cursor: active === 0 ? 'not-allowed' : 'pointer',
           }}>

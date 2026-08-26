@@ -61,8 +61,10 @@ export function VerifyQueue() {
                   <div style={{ fontSize: 12.5, color: 'var(--body)', marginTop: 3, fontWeight: 500 }}>
                     {it.place}
                   </div>
-                  <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 2 }}>
-                    <span className="mono">{it.location.lat.toFixed(4)}, {it.location.lng.toFixed(4)}</span>
+                  <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 2, lineHeight: 1.5 }}>
+                    <span className="mono" style={{ whiteSpace: 'nowrap', fontWeight: 500 }}>
+                      {it.location.lat.toFixed(5)}, {it.location.lng.toFixed(5)}
+                    </span>
                     {' · '}
                     {EXTENT_LABEL[it.extent]}
                     {' · '}

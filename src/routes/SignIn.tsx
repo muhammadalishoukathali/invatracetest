@@ -49,7 +49,7 @@ export function SignIn() {
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div>
           <label htmlFor="email" style={label}>Email</label>
-          <div style={field}>
+          <div className="field-shell" style={field}>
             <Icon name="Mail" size={17} color="var(--muted)" />
             <input id="email" type="email" required value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -60,7 +60,7 @@ export function SignIn() {
 
         <div>
           <label htmlFor="password" style={label}>Password</label>
-          <div style={field}>
+          <div className="field-shell" style={field}>
             <Icon name="Lock" size={17} color="var(--muted)" />
             <input id="password" type={showPw ? 'text' : 'password'} required
               value={password} onChange={(e) => setPassword(e.target.value)}
@@ -75,7 +75,7 @@ export function SignIn() {
 
         {error && (
           <p role="alert" style={{
-            fontSize: 13, color: 'var(--red)', background: 'var(--red-light)',
+            fontSize: 13, color: 'var(--red-text)', background: 'var(--red-light)',
             padding: '10px 14px', borderRadius: 'var(--r-button)',
             border: '1px solid var(--red-border)',
           }}>
@@ -120,16 +120,16 @@ const label: React.CSSProperties = {
 }
 const field: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: 10,
-  border: '1px solid var(--border)', borderRadius: 'var(--r-input)',
+  border: '1px solid var(--control-border)', borderRadius: 'var(--r-input)',
   padding: '0 12px', height: 'var(--h-primary)', background: 'var(--surface)',
 }
 const input: React.CSSProperties = {
-  flex: 1, border: 'none', outline: 'none', background: 'transparent',
+  flex: 1, minWidth: 0, width: '100%', border: 'none', outline: 'none', background: 'transparent',
   fontSize: 14, fontFamily: 'inherit', color: 'var(--ink)',
 }
 const toggle: React.CSSProperties = {
-  background: 'none', border: 'none', cursor: 'pointer', padding: 4,
-  display: 'flex', alignItems: 'center',
+  width: 44, height: 44, flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
 }
 const primary: React.CSSProperties = {
   height: 'var(--h-primary)', borderRadius: 'var(--r-button)',
@@ -138,10 +138,10 @@ const primary: React.CSSProperties = {
 }
 const secondary: React.CSSProperties = {
   width: '100%', height: 'var(--h-primary)', borderRadius: 'var(--r-button)',
-  background: 'var(--surface)', color: 'var(--body)', border: '1px solid var(--border)',
+  background: 'var(--surface)', color: 'var(--body)', border: '1px solid var(--control-border)',
   fontSize: 14, fontWeight: 500, cursor: 'pointer',
   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
 }
 const link: React.CSSProperties = {
-  color: 'var(--green)', fontWeight: 500, textDecoration: 'none',
+  color: 'var(--green-dark)', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 2,
 }

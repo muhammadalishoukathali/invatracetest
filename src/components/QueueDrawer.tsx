@@ -1,5 +1,7 @@
+import { useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Icon } from './Icon'
+import { useDialogA11y } from '@/lib/useDialogA11y'
 import type { QueuedReport } from '@/types'
 
 interface Props {
@@ -11,12 +13,16 @@ interface Props {
 
 /** Right-side drawer listing IndexedDB-queued reports awaiting sync. */
 export function QueueDrawer({ queue, onClose, onRetry, flushing }: Props) {
+  const dialogRef = useRef<HTMLElement>(null)
+  useDialogA11y(dialogRef, onClose)
+
   return createPortal(
     <>
       <div onClick={onClose} aria-hidden style={{
         position: 'fixed', inset: 0, background: 'rgba(20,32,27,0.32)', zIndex: 9998,
       }} />
-      <aside role="dialog" aria-label="Queued reports" aria-modal="true" style={{
+      <aside ref={dialogRef} tabIndex={-1}
+        role="dialog" aria-label="Queued reports" aria-modal="true" style={{
         position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 9999,
         width: 'min(420px, 100vw)', background: 'var(--surface)',
         boxShadow: '-4px 0 16px rgba(20,40,30,0.14)',
@@ -24,7 +30,8 @@ export function QueueDrawer({ queue, onClose, onRetry, flushing }: Props) {
       }}>
         <header style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          padding: '14px 18px', borderBottom: '1px solid var(--border)',
+          padding: 'max(14px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) 14px max(18px, env(safe-area-inset-left))',
+          borderBottom: '1px solid var(--border)',
         }}>
           <div>
             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>Pending sync</div>
@@ -32,8 +39,8 @@ export function QueueDrawer({ queue, onClose, onRetry, flushing }: Props) {
               {queue.length} report{queue.length === 1 ? '' : 's'} waiting
             </div>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" style={{
-            width: 40, height: 40, borderRadius: '50%', border: 'none',
+          <button type="button" onClick={onClose} aria-label="Close" data-dialog-initial style={{
+            width: 44, height: 44, borderRadius: '50%', border: 'none',
             background: 'var(--hover)', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
@@ -41,7 +48,10 @@ export function QueueDrawer({ queue, onClose, onRetry, flushing }: Props) {
           </button>
         </header>
 
-        <ul style={{ flex: 1, overflowY: 'auto', listStyle: 'none', padding: 14 }}>
+        <ul style={{
+          flex: 1, overflowY: 'auto', listStyle: 'none',
+          padding: '14px max(14px, env(safe-area-inset-right)) 14px max(14px, env(safe-area-inset-left))',
+        }}>
           {queue.length === 0 && (
             <li style={{ padding: '30px 10px', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
               Queue is empty.
@@ -61,11 +71,14 @@ export function QueueDrawer({ queue, onClose, onRetry, flushing }: Props) {
                   attempt {q.attempts}
                 </span>
               </div>
-              <div className="mono" style={{ fontSize: 11.5, color: 'var(--body)', marginTop: 3 }}>
+              <div className="mono" style={{
+                fontSize: 12, fontWeight: 500, color: 'var(--body)',
+                marginTop: 3, whiteSpace: 'nowrap',
+              }}>
                 {q.submission.location.lat.toFixed(5)}, {q.submission.location.lng.toFixed(5)}
               </div>
               {q.lastError && (
-                <div style={{ fontSize: 11, color: 'var(--red)', marginTop: 4, lineHeight: 1.4 }}>
+                <div style={{ fontSize: 11, color: 'var(--red-text)', marginTop: 4, lineHeight: 1.4 }}>
                   {q.lastError.slice(0, 120)}
                 </div>
               )}
@@ -74,7 +87,10 @@ export function QueueDrawer({ queue, onClose, onRetry, flushing }: Props) {
         </ul>
 
         {queue.length > 0 && (
-          <footer style={{ padding: 14, borderTop: '1px solid var(--border)' }}>
+          <footer style={{
+            padding: '14px max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left))',
+            borderTop: '1px solid var(--border)',
+          }}>
             <button type="button" onClick={onRetry} disabled={flushing} style={{
               width: '100%', height: 'var(--h-primary)', borderRadius: 'var(--r-button)',
               border: 'none', background: 'var(--green)', color: '#fff',

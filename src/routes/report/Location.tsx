@@ -141,7 +141,9 @@ export function Location() {
           Enter coordinates manually
         </summary>
         <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div className="manual-coordinate-grid" style={{
+            display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8,
+          }}>
             <Field label="Latitude" value={manualLat} onChange={setManualLat} placeholder={String(DEFAULT_LOC.lat)} />
             <Field label="Longitude" value={manualLng} onChange={setManualLng} placeholder={String(DEFAULT_LOC.lng)} />
           </div>
@@ -154,7 +156,7 @@ export function Location() {
           </button>
           {manualError && (
             <p role="alert" style={{
-              fontSize: 12, color: 'var(--red)', margin: 0, lineHeight: 1.5,
+              fontSize: 12, color: 'var(--red-text)', margin: 0, lineHeight: 1.5,
             }}>
               {manualError}
             </p>
@@ -188,14 +190,14 @@ function Field({ label, value, onChange, placeholder }: {
   label: string; value: string; onChange: (v: string) => void; placeholder: string
 }) {
   return (
-    <label style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+    <label style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
       <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 500 }}>{label}</span>
       <input
         type="text" inputMode="decimal" value={value} placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        style={{
+        className="field-shell field-control" style={{
           height: 'var(--h-nav)', padding: '0 12px', borderRadius: 'var(--r-input)',
-          border: '1px solid var(--border)', background: 'var(--surface)',
+          border: '1px solid var(--control-border)', background: 'var(--surface)',
           fontSize: 14, fontFamily: 'var(--font-mono)', color: 'var(--ink)',
         }}
       />

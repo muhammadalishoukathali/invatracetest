@@ -28,7 +28,8 @@ export function AppShell() {
 
   return (
     <div style={{ display: 'flex', flexDirection: isDesktop ? 'row' : 'column',
-                  height: '100%', background: 'var(--bg)' }}>
+                  height: '100dvh', background: 'var(--bg)',
+                  paddingTop: isDesktop ? 0 : 'env(safe-area-inset-top)' }}>
       <a href="#main-content" className="skip-link">Skip to main content</a>
       {isDesktop && <Sidebar user={user} onSignOut={signOut} />}
 
@@ -53,7 +54,7 @@ export function AppShell() {
                   if (window.confirm('Sign out of InvaTrace?')) signOut()
                 }}
                 style={{
-                  width: 40, height: 40, borderRadius: 'var(--r-input)', border: '1px solid var(--border)',
+                  width: 44, height: 44, borderRadius: 'var(--r-input)', border: '1px solid var(--control-border)',
                   background: 'var(--surface)', cursor: 'pointer', display: 'flex',
                   alignItems: 'center', justifyContent: 'center',
                 }}>

@@ -8,9 +8,10 @@ export function AuthLayout() {
   if (status === 'authenticated') return <Navigate to="/map" replace />
 
   return (
-    <div style={{
-      minHeight: '100%', display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center', padding: 24,
+    <div className="auth-layout" style={{
+      minHeight: '100dvh', display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', overflowY: 'auto',
+      padding: 'max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))',
       background: 'var(--bg)',
     }}>
       <div style={{ width: '100%', maxWidth: 400 }}>
@@ -21,7 +22,7 @@ export function AuthLayout() {
           <LogoWordmark size={22} />
         </div>
 
-        <div style={{
+        <div className="auth-card" style={{
           background: 'var(--surface)', borderRadius: 'var(--r-card)',
           border: '1px solid var(--border)', padding: '32px 28px',
           boxShadow: 'var(--shadow-sm)',

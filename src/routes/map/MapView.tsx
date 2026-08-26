@@ -1,7 +1,8 @@
 /**
  * Threat map (Arch §4.1). MapLibre GL over OpenFreeMap "positron"-style vector
  * tiles — a light, low-noise base that keeps invasive-pin colours readable.
- * ODbL attribution stays open at every zoom level (compact:false).
+ * ODbL attribution stays visible at every zoom level. On compact screens it
+ * wraps into the bottom-right corner instead of crossing the centre FAB.
  *
  * Panning is confined to Malaysia so the map does not wander to random parts
  * of the world; this matches Iteration 1's scope (Peninsular Malaysia field
@@ -22,8 +23,8 @@ import { Legend } from './Legend'
 import { Filters } from './Filters'
 
 const CENTRE: [number, number] = [101.6412, 3.1497]  // Bukit Kiara
-const INITIAL_ZOOM = 13.5
-const INITIAL_ZOOM_MOBILE = 13
+const INITIAL_ZOOM = 13
+const INITIAL_ZOOM_MOBILE = 13.5
 
 /* Rough bounding box for all of Malaysia (west Sarawak to Sabah, north to
    Perlis). Users can zoom and pan freely inside; the camera will not drift
@@ -40,7 +41,6 @@ const MY_BOUNDS: [[number, number], [number, number]] = [
  * Attribution: "© OpenStreetMap contributors © CARTO" per Carto's TOS. */
 const STYLE_URL: maplibregl.StyleSpecification = {
   version: 8,
-  glyphs: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
   sources: {
     'carto-positron': {
       type: 'raster',
@@ -87,8 +87,8 @@ export function MapView() {
       touchZoomRotate: true,
       touchPitch: false,
     })
-    /* The provider credit stays visible per the approved map specification;
-     * mobile spacing is handled by the shared bottom-overlay clearance. */
+    /* The design baseline requires the provider credit to remain visible;
+     * mobile CSS wraps it inside the right edge, clear of the centre FAB. */
     m.addControl(new maplibregl.AttributionControl({
       compact: false,
       customAttribution: '© <a href="https://openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> · ODbL · © <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>',

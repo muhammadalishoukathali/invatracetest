@@ -10,14 +10,15 @@ interface Props {
 
 export function NextButton({ disabled, onClick, label, loading, variant = 'primary' }: Props) {
   return (
-    <button type="button" onClick={onClick} disabled={disabled || loading} style={{
+    <button type="button" onClick={onClick} disabled={disabled || loading}
+      aria-busy={loading || undefined} style={{
       marginTop: 4, width: '100%', height: 'var(--h-primary)', borderRadius: 'var(--r-button)',
       border: 'none', background: 'var(--green)', color: '#fff',
       fontWeight: 600, fontSize: 15, cursor: disabled ? 'not-allowed' : 'pointer',
       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
     }}>
       {loading ? (
-        <Spinner />
+        <><Spinner /><span>{label}…</span></>
       ) : (
         <>
           {variant === 'submit' && <Icon name="Send" size={16} color="#fff" />}

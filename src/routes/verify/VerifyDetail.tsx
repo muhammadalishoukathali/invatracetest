@@ -108,11 +108,11 @@ export function VerifyDetail({ id, onDone, onBack }: Props) {
           <Meta label="Coordinates"
                 value={`${item.location.lat.toFixed(5)}, ${item.location.lng.toFixed(5)}`}
                 sub={item.locationAccuracyM != null ? `±${item.locationAccuracyM} m GPS` : 'Manual entry'}
-                mono />
+                valueMono />
           <Meta label="Extent" value={EXTENT_LABEL[item.extent]} />
           <Meta label="Submitted" value={formatFull(item.submittedAt)} />
           <Meta label="Model" value={`${item.outcome} · ${Math.round(item.confidence * 100)}%`}
-                sub={item.modelVersion} mono />
+                sub={item.modelVersion} subMono />
         </div>
       </section>
 
@@ -174,19 +174,25 @@ function CheckRow({ c }: { c: VerifyCheck }) {
   )
 }
 
-function Meta({ label, value, sub, mono }: { label: string; value: string; sub?: string; mono?: boolean }) {
+function Meta({ label, value, sub, valueMono, subMono }: {
+  label: string
+  value: string
+  sub?: string
+  valueMono?: boolean
+  subMono?: boolean
+}) {
   return (
     <div style={{ padding: '10px 0', borderTop: '1px solid var(--border)' }}>
       <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 500,
                     textTransform: 'uppercase', letterSpacing: '0.06em' }}>
         {label}
       </div>
-      <div className={mono ? 'mono' : undefined}
+      <div className={valueMono ? 'mono' : undefined}
            style={{ marginTop: 3, fontSize: 13.5, color: 'var(--ink)', fontWeight: 500 }}>
         {value}
       </div>
-      {sub && <div className={mono ? 'mono' : undefined}
-                   style={{ marginTop: 2, fontSize: 11, color: 'var(--muted)' }}>{sub}</div>}
+      {sub && <div className={subMono ? 'mono' : undefined}
+                   style={{ marginTop: 2, fontSize: 12, lineHeight: 1.4, color: 'var(--muted)' }}>{sub}</div>}
     </div>
   )
 }

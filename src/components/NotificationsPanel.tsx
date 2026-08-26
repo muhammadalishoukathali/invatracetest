@@ -7,13 +7,14 @@ import { useNavigate } from 'react-router-dom'
 import { Icon } from './Icon'
 import { useIsDesktop } from '@/lib/useIsDesktop'
 import { useNotifications, useMarkNotificationRead } from '@/lib/notifications'
+import { useDialogA11y } from '@/lib/useDialogA11y'
 import type { AppNotification, NotificationKind } from '@/types'
 
 const KIND_ICON: Record<NotificationKind, string> = {
   report_confirmed: 'CircleCheck',
   report_rejected: 'AlertTriangle',
   queue_new: 'ShieldCheck',
-  sync_ok: 'WifiOff',
+  sync_ok: 'CircleCheck',
   system: 'Bell',
 }
 const KIND_TINT: Record<NotificationKind, string> = {
@@ -57,10 +58,13 @@ export function NotificationsPanel() {
       <button
         type="button"
         aria-label={`Notifications${unread > 0 ? ` (${unread} unread)` : ''}`}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-controls="notifications-panel"
         onClick={() => setOpen((v) => !v)}
         style={{
-          width: 40, height: 40, borderRadius: 'var(--r-input)',
-          border: '1px solid var(--border)', background: 'var(--surface)',
+          width: 44, height: 44, borderRadius: 'var(--r-input)',
+          border: '1px solid var(--control-border)', background: 'var(--surface)',
           cursor: 'pointer', display: 'flex', alignItems: 'center',
           justifyContent: 'center', position: 'relative',
         }}
@@ -112,8 +116,12 @@ function PanelBody({
   layout: 'dropdown' | 'sheet'
 }) {
   const isSheet = layout === 'sheet'
+  const panelRef = useRef<HTMLDivElement>(null)
+  useDialogA11y(panelRef, onClose)
+
   return (
-    <div role="dialog" aria-label="Notifications" aria-modal={isSheet ? 'true' : undefined} style={
+    <div ref={panelRef} id="notifications-panel" tabIndex={-1}
+      role="dialog" aria-label="Notifications" aria-modal={isSheet ? 'true' : undefined} style={
       isSheet ? {
         position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 9999,
         background: 'var(--surface)',
@@ -161,8 +169,8 @@ function PanelBody({
             </button>
           )}
           {isSheet && (
-            <button type="button" onClick={onClose} aria-label="Close" style={{
-              width: 40, height: 40, borderRadius: '50%', border: 'none',
+            <button type="button" onClick={onClose} aria-label="Close" data-dialog-initial style={{
+              width: 44, height: 44, borderRadius: '50%', border: 'none',
               background: 'var(--hover)', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>

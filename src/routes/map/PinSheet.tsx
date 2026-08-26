@@ -15,7 +15,7 @@ const STATUS_LABEL: Record<SightingStatus, string> = {
 }
 
 const STATUS_COLOR: Record<SightingStatus, string> = {
-  candidate: 'var(--amber)',
+  candidate: 'var(--amber-text)',
   confirmed: 'var(--green)',
   rejected: 'var(--muted)',
   removed: 'var(--icon)',
@@ -32,7 +32,7 @@ export function PinSheet() {
       : null,
   })
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['sighting', selectedId],
     queryFn: () => api<SightingDetail>(`/api/v1/sightings/${selectedId}`),
     enabled: !!selectedId,
@@ -42,9 +42,14 @@ export function PinSheet() {
   if (!selectedId) return null
 
   const isHigh = data?.risk === 'high'
-  const riskColor = isHigh ? 'var(--red)' : 'var(--amber)'
-  const riskLight = isHigh ? 'var(--red-light)' : '#FEF3E2'
-  const riskBorder = isHigh ? 'var(--red-border)' : '#F0D9A8'
+  const isRemoved = data?.status === 'removed'
+  const riskAccent = isRemoved
+    ? 'var(--icon)'
+    : isHigh ? 'var(--red)' : 'var(--amber)'
+  const riskColor = isHigh ? 'var(--red-text)' : 'var(--amber-text)'
+  const riskLight = isHigh ? 'var(--red-light)' : 'var(--amber-light)'
+  const riskBorder = isHigh ? 'var(--red-border)' : 'var(--amber-border)'
+  const coordinateDecimals = data?.precisionReduced ? 4 : 5
   const directionsHref = data
     ? `https://www.google.com/maps/dir/?api=1&destination=${data.location.lat},${data.location.lng}`
     : '#'
@@ -58,35 +63,44 @@ export function PinSheet() {
            style={{
              position: 'fixed', inset: 0, background: 'rgba(20,32,27,0.35)', zIndex: 9998,
            }} />
-      <aside ref={dialogRef} tabIndex={-1}
+      <aside ref={dialogRef} tabIndex={-1} className="pin-sheet"
         role="dialog" aria-label="Sighting details" aria-modal="true" style={{
-        position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 9999,
-        background: 'var(--surface)', borderTopLeftRadius: 20, borderTopRightRadius: 20,
-        boxShadow: '0 -8px 24px rgba(20,40,30,0.18)',
+        zIndex: 9999, background: data ? riskAccent : 'var(--border)',
+        boxShadow: 'var(--shadow-sheet)', paddingTop: 6,
         paddingBottom: 'env(safe-area-inset-bottom)',
-        maxHeight: '85dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+        display: 'flex', flexDirection: 'column', overflow: 'hidden',
       }}>
-        {/* Coloured spine hugging the top edge; instantly signals risk level. */}
-        <div aria-hidden style={{
-          height: 4, background: data ? riskColor : 'var(--border)',
-          flexShrink: 0,
-        }} />
-        <div style={{
+        {/* The sheet background forms one continuous rounded risk-colour shell;
+            CSS overlays its white inner surface below the six-pixel accent. */}
+        <div className="pin-sheet__handle" aria-hidden style={{
           width: 40, height: 4, borderRadius: 2, background: 'var(--border)',
-          margin: '10px auto 4px', flexShrink: 0,
+          margin: '12px auto 6px', flexShrink: 0,
         }} />
 
         <button type="button" onClick={close} aria-label="Close" data-dialog-initial style={{
-          position: 'absolute', top: 18, right: 20, zIndex: 1,
-          width: 40, height: 40, borderRadius: '50%', border: 'none',
+          position: 'absolute', top: 14, right: 20, zIndex: 1,
+          width: 44, height: 44, borderRadius: '50%', border: 'none',
           background: 'var(--hover)', cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <Icon name="X" size={16} color="var(--body)" />
+          <Icon name="X" size={17} color="var(--body)" />
         </button>
 
-        <div style={{ padding: '4px 20px 16px', overflowY: 'auto', flex: 1 }}>
-          {isLoading || !data ? (
+        <div className="pin-sheet__content" style={{ overflowY: 'auto', flex: 1 }}>
+          {isError ? (
+            <div role="alert" style={{ padding: '32px 0', textAlign: 'center' }}>
+              <p style={{ color: 'var(--red-text)', fontSize: 13.5 }}>
+                Could not load this sighting.
+              </p>
+              <button type="button" onClick={() => void refetch()} style={{
+                marginTop: 12, minHeight: 44, padding: '0 18px',
+                borderRadius: 'var(--r-button)', border: '1px solid var(--control-border)',
+                background: 'var(--surface)', fontWeight: 600, cursor: 'pointer',
+              }}>
+                Try again
+              </button>
+            </div>
+          ) : isLoading || !data ? (
             <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
               Loading sighting…
             </div>
@@ -137,13 +151,12 @@ export function PinSheet() {
               </div>
 
               {/* Compact metadata grid — two per row on wide phones, one column on narrow. */}
-              <div style={{
+              <div className="pin-sheet__meta" style={{
                 marginTop: 16, display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
                 gap: 10,
               }}>
                 <MetaTile icon="MapPin" label="Coordinates"
-                          value={`${data.location.lat.toFixed(4)}, ${data.location.lng.toFixed(4)}`}
+                          value={`${data.location.lat.toFixed(coordinateDecimals)}, ${data.location.lng.toFixed(coordinateDecimals)}`}
                           sub={data.precisionReduced ? '≈ approximated' : undefined} mono />
                 <MetaTile icon="Clock" label="Last reported"
                           value={formatTime(data.lastReportedAt)} />
@@ -167,8 +180,8 @@ export function PinSheet() {
         </div>
 
         {data && (
-          <div style={{
-            display: 'flex', gap: 10, padding: '12px 18px 14px',
+          <div className="pin-sheet__footer" style={{
+            display: 'flex', gap: 10,
             borderTop: '1px solid var(--border)', background: 'var(--surface)',
             flexShrink: 0,
           }}>
@@ -182,7 +195,7 @@ export function PinSheet() {
               <Icon name="Navigation" size={16} color="var(--body)" />
               Directions
             </a>
-            <button type="button" onClick={() => select(null)} style={{
+            <button type="button" onClick={close} style={{
               flex: 1, height: 'var(--h-primary)', borderRadius: 'var(--r-button)',
               border: 'none', background: 'var(--green)', color: '#fff',
               fontWeight: 600, fontSize: 14, cursor: 'pointer',
@@ -220,7 +233,7 @@ function MetaTile({ icon, label, value, sub, mono }: {
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {value}
       </div>
-      {sub && <div style={{ fontSize: 10.5, color: 'var(--amber)' }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 10.5, color: 'var(--amber-text)' }}>{sub}</div>}
     </div>
   )
 }
