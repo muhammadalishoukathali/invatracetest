@@ -110,7 +110,7 @@ export function MapView() {
       m.jumpTo({ center: CENTRE, zoom: isDesktop ? INITIAL_ZOOM : INITIAL_ZOOM_MOBILE })
     })
 
-    /* Container may size after mount (auth shell renders, then main flexes to
+    /* Container may size after mount (identity boundary renders, then main flexes to
        full height); keep the canvas in sync via ResizeObserver. */
     const ro = new ResizeObserver(() => m.resize())
     ro.observe(container.current)

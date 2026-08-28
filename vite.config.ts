@@ -39,6 +39,25 @@ export default defineConfig({
         // so quantised model files are not silently skipped once they land.
         maximumFileSizeToCacheInBytes: 30 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        runtimeCaching: [
+          {
+            // Identity and recovery traffic contains installation credentials
+            // or one-time secrets and must never enter Cache Storage.
+            urlPattern: ({ url }) => url.pathname.startsWith('/api/v1/profiles'),
+            handler: 'NetworkOnly',
+            method: 'GET',
+          },
+          {
+            urlPattern: ({ url }) => url.pathname.startsWith('/api/v1/profiles'),
+            handler: 'NetworkOnly',
+            method: 'POST',
+          },
+          {
+            urlPattern: ({ url }) => url.pathname.startsWith('/api/v1/profiles'),
+            handler: 'NetworkOnly',
+            method: 'PATCH',
+          },
+        ],
       },
     }),
   ],

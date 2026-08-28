@@ -105,6 +105,8 @@ Density 6/10 = standard. 4/8-pt grid.
 - Every icon-only button has `aria-label`. Every disabled control also has `aria-disabled` + `pointer-events: none`.
 - Two-finger pinch reserved for MapLibre; use `touch-action: none` on the map canvas only.
 - Long-press: no hidden actions. Everything a user can do must have a visible affordance (spec §11).
+- Startup checks for an established installation. Known installations open `/map`; first-time visitors enter the intentional Private access flow.
+- Legacy `/auth/*` URLs redirect to `/private-access`. Private access never uses email/password or conventional account-registration language.
 
 ---
 
@@ -138,7 +140,6 @@ Every page has an override file that specialises this master:
 
 | Route | File | Focus |
 |---|---|---|
-| `/auth/*` | `pages/auth.md` | Sign-in, register, guest bootstrap |
 | `/map` | `pages/map.md` | Threat map, filters, pin sheet |
 | `/scan` | `pages/scan.md` | Camera, quality gate, result |
 | `/report` | `pages/report.md` | 4-step wizard, offline queue |

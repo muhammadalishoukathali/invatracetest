@@ -6,9 +6,13 @@ import { useOnline } from '@/lib/useOnline'
 import { flushQueue, listQueue, onQueueChange } from '@/lib/report-queue'
 import type { QueuedReport } from '@/types'
 import { QueueDrawer } from './QueueDrawer'
+import { useIdentity } from '@/lib/identity'
 
 export function OfflineBanner() {
   const online = useOnline()
+  const identityStatus = useIdentity((state) => state.status)
+  const syncMessage = useIdentity((state) => state.syncMessage)
+  const syncIdentity = useIdentity((state) => state.sync)
   const [queue, setQueue] = useState<QueuedReport[]>([])
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [flushing, setFlushing] = useState(false)
@@ -25,33 +29,49 @@ export function OfflineBanner() {
   const doFlush = useCallback(async () => {
     setFlushing(true)
     try {
+      const sessionReady = identityStatus === 'ready' || await syncIdentity()
+      if (!sessionReady) return
       await flushQueue()
       await refresh()
     } finally {
       setFlushing(false)
     }
-  }, [refresh])
+  }, [identityStatus, refresh, syncIdentity])
 
   const hasQueue = queue.length > 0
-  if (online && !hasQueue) return null
+  const sessionNeedsAttention = identityStatus === 'syncing' || identityStatus === 'error'
+  if (online && !hasQueue && !sessionNeedsAttention) return null
+
+  const isSyncing = identityStatus === 'syncing' || flushing
+  const bannerOnline = online && identityStatus !== 'error'
+  const iconName = !online
+    ? 'WifiOff'
+    : identityStatus === 'error'
+      ? 'AlertTriangle'
+      : identityStatus === 'syncing'
+        ? 'Clock'
+        : 'CircleCheck'
+  const message = !online
+    ? "You're offline. New reports will be saved and sent when you reconnect."
+    : identityStatus === 'syncing'
+      ? 'Restoring synchronization…'
+      : identityStatus === 'error'
+        ? (syncMessage ?? 'Sync is unavailable. Offline-capable features remain available.')
+        : `${queue.length} report${queue.length === 1 ? '' : 's'} pending sync`
 
   return (
     <>
       <div role="status" aria-live="polite" style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         gap: 10, padding: '8px 16px', flexShrink: 0, flexWrap: 'wrap',
-        background: online ? 'var(--green-light)' : 'var(--amber-light)',
-        borderBottom: `1px solid ${online ? 'var(--green-border)' : 'var(--amber-border)'}`,
-        fontSize: 12.5, color: online ? 'var(--green-dark)' : 'var(--amber-text)',
+        background: bannerOnline ? 'var(--green-light)' : 'var(--amber-light)',
+        borderBottom: `1px solid ${bannerOnline ? 'var(--green-border)' : 'var(--amber-border)'}`,
+        fontSize: 12.5, color: bannerOnline ? 'var(--green-dark)' : 'var(--amber-text)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-          <Icon name={online ? 'CircleCheck' : 'WifiOff'} size={15}
-                color={online ? 'var(--green)' : 'var(--amber-text)'} />
-          <span style={{ fontWeight: 500 }}>
-            {online
-              ? `${queue.length} report${queue.length === 1 ? '' : 's'} pending sync`
-              : "You're offline. New reports will be saved and sent when you reconnect."}
-          </span>
+          <Icon name={iconName} size={15}
+                color={bannerOnline ? 'var(--green)' : 'var(--amber-text)'} />
+          <span style={{ fontWeight: 500 }}>{message}</span>
         </div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
           {hasQueue && (
@@ -59,11 +79,18 @@ export function OfflineBanner() {
               View queue
             </button>
           )}
-          {online && hasQueue && (
+          {online && hasQueue && identityStatus === 'ready' && (
             <button type="button" onClick={doFlush} disabled={flushing} style={{
               ...pillBtn, background: 'var(--green)', color: '#fff', border: 'none',
             }}>
-              {flushing ? 'Syncing…' : 'Retry now'}
+              {flushing ? 'Syncing…' : 'Retry reports'}
+            </button>
+          )}
+          {online && identityStatus === 'error' && (
+            <button type="button" onClick={() => void syncIdentity()} disabled={isSyncing} style={{
+              ...pillBtn, background: 'var(--green)', color: '#fff', border: 'none',
+            }}>
+              Retry sync
             </button>
           )}
         </div>

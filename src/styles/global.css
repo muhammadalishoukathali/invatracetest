@@ -6,6 +6,7 @@
 @import '@fontsource/ibm-plex-mono/latin-500.css';
 @import '@fontsource/ibm-plex-mono/latin-600.css';
 @import './tokens.css';
+@import './private-access.css';
 
 :root {
   --map-mobile-bottom-clearance: 32px;
@@ -23,6 +24,10 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
+
+::selection { background: var(--green-border); color: var(--deep); }
+input, textarea { caret-color: var(--green); }
+* { scrollbar-color: var(--control-border) var(--bg-alt); scrollbar-width: thin; }
 
 button, input, textarea, select { font: inherit; color: inherit; }
 button:disabled, input:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -143,7 +148,6 @@ input[type='search']::-webkit-search-cancel-button { display: none; }
   .pin-sheet__content { padding-left: 14px; padding-right: 14px; }
   .pin-sheet__meta { grid-template-columns: 1fr; }
   .pin-sheet__footer { padding-left: 12px; padding-right: 12px; }
-  .auth-card { padding: 24px 20px !important; }
 }
 
 .sr-only {
@@ -221,10 +225,6 @@ a, button, [role='button'], [role='link'] {
 
 @media (max-width: 379px) {
   .manual-coordinate-grid { grid-template-columns: 1fr !important; }
-}
-
-@media (max-height: 620px) {
-  .auth-layout { justify-content: flex-start !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {

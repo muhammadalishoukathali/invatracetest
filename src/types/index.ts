@@ -3,23 +3,64 @@
 export type Role = 'Detector' | 'Volunteer' | 'Coordinator' | 'Expert' | 'Admin'
 export type TrustLevel = 'New' | 'Trusted' | 'Steward'
 
-export interface User {
+/** Server-authoritative profile attached to one pseudonymous installation. */
+export interface PseudonymousProfile {
   id: string
-  name: string | null
-  email: string | null
-  isPseudonymous: boolean
+  displayName: string | null
   role: Role
   trustLevel: TrustLevel
+}
+
+/** Long-lived local identity. This is the only identity record stored by the client. */
+export interface AnonymousIdentity {
+  schemaVersion: 2
+  installationToken: string
+  createdAt: string
+  profileId: string | null
+  recoverySetupComplete: boolean
+}
+
+export interface StartPrivateAccessResponse {
+  accessToken: string
+  profile: PseudonymousProfile
+  recoveryCodes: string[]
+  installationId: string
+}
+
+export interface BootstrapSessionResponse {
+  accessToken: string
+  profile: PseudonymousProfile
+  recoverySetupRequired: boolean
+}
+
+export interface RestorePrivateAccessResponse {
+  accessToken: string
+  profile: PseudonymousProfile
+  installationId: string
+}
+
+export interface RecoveryCodeBatchResponse {
+  recoveryCodes: string[]
+  createdAt: string
+}
+
+export interface AuthorizedInstallation {
+  id: string
+  createdAt: string
+  lastUsedAt: string
+  revokedAt: string | null
+  current: boolean
+}
+
+export interface AccessOverview {
+  profileId: string
+  unusedRecoveryCodeCount: number
+  installations: AuthorizedInstallation[]
 }
 
 /** Arch §8.2 — the lifecycle spine. Only `confirmed` may trigger action. */
 export type SightingStatus = 'candidate' | 'confirmed' | 'rejected' | 'removed'
 export type Risk = 'high' | 'watch'
-
-export interface AuthResponse {
-  accessToken: string
-  user: User
-}
 
 /* ── Scan & species ─────────────────────────────────────── */
 

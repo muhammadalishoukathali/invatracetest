@@ -1,26 +1,31 @@
-import { Outlet, useLocation } from 'react-router-dom'
+import { useEffect, useRef } from 'react'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { BottomTabs } from './BottomTabs'
-import { Icon } from './Icon'
 import { NotificationsPanel } from './NotificationsPanel'
 import { OfflineBanner } from './OfflineBanner'
 import { ErrorBoundary } from './ErrorBoundary'
 import { useIsDesktop } from '@/lib/useIsDesktop'
-import { useSession } from '@/lib/session'
+import { useIdentity } from '@/lib/identity'
 import { NAV } from '@/app/nav'
+import { Icon } from './Icon'
 
 const TITLES: Record<string, [string, string]> = {
   '/map': ['Live threat map', 'Bukit Kiara · updated 2 hours ago'],
   '/verify': ['Verify queue', 'Confirm what reaches the shared map'],
+  '/access': ['Private access', 'Recovery codes and authorized installations'],
 }
 
 export function AppShell() {
   const isDesktop = useIsDesktop()
-  const user = useSession((s) => s.user)
-  const signOut = useSession((s) => s.signOut)
+  const profile = useIdentity((state) => state.profile)
   const { pathname } = useLocation()
+  const navigate = useNavigate()
+  const headingRef = useRef<HTMLHeadingElement>(null)
 
-  if (!user) return null
+  useEffect(() => { headingRef.current?.focus() }, [pathname])
+
+  if (!profile) return null
   const [title, subtitle] = TITLES[pathname] ?? [
     NAV.find((n) => n.path === pathname)?.full ?? 'InvaTrace', '',
   ]
@@ -31,7 +36,7 @@ export function AppShell() {
                   height: '100dvh', background: 'var(--bg)',
                   paddingTop: isDesktop ? 0 : 'env(safe-area-inset-top)' }}>
       <a href="#main-content" className="skip-link">Skip to main content</a>
-      {isDesktop && <Sidebar user={user} onSignOut={signOut} />}
+      {isDesktop && <Sidebar profile={profile} />}
 
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <OfflineBanner />
@@ -41,24 +46,24 @@ export function AppShell() {
           borderBottom: '1px solid var(--border)', flexShrink: 0,
         }}>
           <div>
-            <h1 style={{ fontSize: isDesktop ? 20 : 17, fontWeight: 700 }}>{title}</h1>
+            <h1 ref={headingRef} tabIndex={-1} style={{ fontSize: isDesktop ? 20 : 17, fontWeight: 700 }}>{title}</h1>
             {subtitle && <p style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 2 }}>{subtitle}</p>}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {!isDesktop && (
-              /* Sign-out lives in the header so pilot testers can swap
-                 accounts, but a stray tap would kick them out mid-report.
-                 Confirm before firing it. */
-              <button type="button" aria-label="Sign out" title="Sign out"
-                onClick={() => {
-                  if (window.confirm('Sign out of InvaTrace?')) signOut()
-                }}
+              <button
+                type="button"
+                aria-label="Manage private access"
+                title="Private access"
+                onClick={() => navigate('/access')}
                 style={{
-                  width: 44, height: 44, borderRadius: 'var(--r-input)', border: '1px solid var(--control-border)',
-                  background: 'var(--surface)', cursor: 'pointer', display: 'flex',
-                  alignItems: 'center', justifyContent: 'center',
-                }}>
-                <Icon name="LogOut" size={18} color="var(--body)" />
+                  width: 44, height: 44, borderRadius: 'var(--r-input)',
+                  border: pathname === '/access' ? '1px solid var(--green-border)' : '1px solid var(--border)',
+                  background: pathname === '/access' ? 'var(--green-light)' : 'var(--surface)',
+                  cursor: 'pointer', display: 'grid', placeItems: 'center',
+                }}
+              >
+                <Icon name="User" size={18} color={pathname === '/access' ? 'var(--green)' : 'var(--body)'} />
               </button>
             )}
             <NotificationsPanel />
@@ -80,7 +85,7 @@ export function AppShell() {
         </main>
       </div>
 
-      {!isDesktop && <BottomTabs role={user.role} />}
+      {!isDesktop && <BottomTabs role={profile.role} />}
     </div>
   )
 }

@@ -37,7 +37,7 @@ export function Consent() {
       />
 
       <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.6, marginTop: 4 }}>
-        Coordinates are stored at up to 5-decimal precision (~1 m). Guest reports are pseudonymous.
+        Coordinates are stored at up to 5-decimal precision (~1 m). Reports use a pseudonymous installation profile.
       </p>
 
       <NextButton disabled={!canProceed} onClick={next} label="Review submission" />

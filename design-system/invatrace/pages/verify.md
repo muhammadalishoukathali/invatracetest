@@ -49,7 +49,7 @@ Enter by tapping any list item. Same route, in-component state.
 - Action mutation: button disabled + spinner; on success, invalidate `verify-queue` and return to list.
 
 ## Anti-patterns
-- Do NOT show submitter's real name or email in the queue (guest pseudonymity).
+- Do NOT show identifying submitter details in the queue; display only the pseudonymous profile ID and trust level required for review.
 - Do NOT allow bulk-confirm — every decision is per-item, on the evidence.
 - Do NOT auto-merge based on distance alone; a coordinator must pick.
-- Do NOT expose the queue to non-coordinator roles even under demo credentials.
+- Do NOT expose the queue to non-coordinator roles; a local installation token never grants privileged access.

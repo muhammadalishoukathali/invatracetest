@@ -16,7 +16,7 @@ Turn a scan result into a formal sighting report: location, extent, consent, pre
 3. **Consent.** Two checkboxes, both required to proceed:
    - "This report is accurate to the best of my knowledge"
    - "My photo does not contain personal information"
-   Green info banner above explains what happens next. Small print about coord precision + guest pseudonymity below.
+   Green info banner above explains what happens next. Small print about coordinate precision + pseudonymous installation reporting below.
 4. **Preview.** Photo, then metadata card: Species · Outcome · Location (with GPS accuracy or "Manual entry") · Extent · Notes. Model version bar. Big "Submit report" primary button (with Send icon).
 
 ## Submission outcomes

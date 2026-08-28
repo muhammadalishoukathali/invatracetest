@@ -51,6 +51,7 @@ export class StubAdapter implements ModelAdapter {
   }
 
   async embed(_img: ImageBitmap): Promise<Float32Array> {
+    void _img
     await tick(60)
     const vec = new Float32Array(128)
     for (let i = 0; i < 128; i++) vec[i] = Math.sin(i * 0.1)

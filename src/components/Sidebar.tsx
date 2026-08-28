@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { Icon } from './Icon'
 import { Logo } from './Logo'
 import { isEnabled, visibleNav, type NavItem } from '@/app/nav'
-import type { User } from '@/types'
+import type { PseudonymousProfile } from '@/types'
 
 const LATER = 'Available in a later iteration'
 
@@ -16,7 +16,7 @@ function itemStyle(active: boolean): React.CSSProperties {
   }
 }
 
-function Row({ item, role }: { item: NavItem; role: User['role'] }) {
+function Row({ item, role }: { item: NavItem; role: PseudonymousProfile['role'] }) {
   const enabled = isEnabled(item, role)
   if (!enabled) {
     return (
@@ -40,7 +40,7 @@ function Row({ item, role }: { item: NavItem; role: User['role'] }) {
   )
 }
 
-export function Sidebar({ user, onSignOut }: { user: User; onSignOut: () => void }) {
+export function Sidebar({ profile }: { profile: PseudonymousProfile }) {
   const navigate = useNavigate()
   return (
     <aside style={{
@@ -70,11 +70,15 @@ export function Sidebar({ user, onSignOut }: { user: User; onSignOut: () => void
       </button>
 
       <nav aria-label="Primary" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {visibleNav(user.role).map((i) => <Row key={i.id} item={i} role={user.role} />)}
+        {visibleNav(profile.role).map((i) => <Row key={i.id} item={i} role={profile.role} />)}
       </nav>
 
       <div style={{ marginTop: 'auto', borderTop: '1px solid var(--border)', paddingTop: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <button type="button" onClick={() => navigate('/access')} style={{
+          width: '100%', minHeight: 52, display: 'flex', alignItems: 'center', gap: 10,
+          padding: '6px 8px', margin: '-6px -8px', border: 0,
+          borderRadius: 'var(--r-input)', background: 'transparent', cursor: 'pointer', textAlign: 'left',
+        }}>
           <div style={{
             width: 32, height: 32, borderRadius: '50%', background: 'var(--green-light)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
@@ -86,18 +90,14 @@ export function Sidebar({ user, onSignOut }: { user: User; onSignOut: () => void
               fontSize: 13, fontWeight: 600, overflow: 'hidden',
               textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>
-              {user.name ?? 'Guest reporter'}
+              {profile.displayName ?? 'Local reporter'}
             </div>
-            <div style={{ fontSize: 11, color: 'var(--muted)' }}>{user.role}</div>
+            <div style={{ fontSize: 11, color: 'var(--muted)' }}>
+              {profile.role} · {profile.trustLevel} trust
+            </div>
           </div>
-          <button type="button" onClick={onSignOut} aria-label="Sign out" title="Sign out" style={{
-            width: 32, height: 32, borderRadius: 'var(--r-button)',
-            border: '1px solid var(--border)', background: 'var(--surface)',
-            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <Icon name="LogOut" size={15} color="var(--muted)" />
-          </button>
-        </div>
+          <Icon name="ChevronRight" size={16} color="var(--icon)" />
+        </button>
       </div>
     </aside>
   )

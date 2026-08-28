@@ -3,7 +3,7 @@
  * offline and must survive a page reload). Flow:
  *   1. Client calls submit(): if online → try presign+upload+create.
  *      If any step fails → enqueue.
- *   2. `online` event or manual flushQueue() drains the queue.
+ *   2. Reconnection restores the API session, then calls flushQueue().
  * The IDB store keeps the JPEG blob until the create succeeds.
  */
 import type { PresignedUpload, QueuedReport, Report, ReportSubmission } from '@/types'
@@ -150,9 +150,3 @@ export function onQueueChange(fn: () => void): () => void {
   return () => { listeners.delete(fn) }
 }
 function notifyQueueChanged() { listeners.forEach((fn) => fn()) }
-
-/** Register once at app start — drains the queue when the browser reconnects. */
-export function installOnlineFlush() {
-  if (typeof window === 'undefined') return
-  window.addEventListener('online', () => { flushQueue().catch(() => {}) })
-}

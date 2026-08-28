@@ -1,58 +1,170 @@
-import { http, HttpResponse, passthrough } from 'msw'
+import { http, HttpResponse, passthrough, type JsonBodyType } from 'msw'
 import type {
   AppNotification, MergeCandidate, Report, ReportSubmission, Sighting,
-  SightingDetail, User, VerifyCheck, VerifyItem,
+  AccessOverview, PseudonymousProfile, SightingDetail, VerifyCheck, VerifyItem,
 } from '@/types'
 
-const BASE = ''
-const url = (p: string) => `${BASE}${p}`
+const url = (p: string) => `*${p}`
 
-const mockUsers = new Map<string, { user: User; password: string }>()
 const mockReports: Report[] = []
+const sessions = new Map<string, { profile: PseudonymousProfile; installationId: string }>()
+const MOCK_SERVER_KEY = 'invatrace-mock-server-v2'
+const MOCK_HASH_PEPPER = 'development-only-invatrace-mock-pepper'
 
-/** Session survives a page reload by piggy-backing on sessionStorage. The real
- *  API achieves the same thing with an httpOnly refresh cookie; without this
- *  the fake session evaporates on refresh and every route bounces to sign-in. */
-const SESSION_KEY = 'invatrace-mock-session'
-function loadSession(): User | null {
-  if (typeof sessionStorage === 'undefined') return null
-  try { return JSON.parse(sessionStorage.getItem(SESSION_KEY) ?? 'null') }
-  catch { return null }
+interface MockRecoveryCode {
+  hash: string
+  createdAt: string
+  usedAt: string | null
 }
-function saveSession(u: User | null) {
-  if (typeof sessionStorage === 'undefined') return
-  if (u) sessionStorage.setItem(SESSION_KEY, JSON.stringify(u))
-  else sessionStorage.removeItem(SESSION_KEY)
+
+interface MockInstallation {
+  id: string
+  tokenHash: string
+  createdAt: string
+  lastUsedAt: string
+  revokedAt: string | null
 }
-let mockSession: User | null = loadSession()
-const setSession = (u: User | null) => { mockSession = u; saveSession(u) }
+
+interface MockProfileRecord {
+  profile: PseudonymousProfile
+  setupAcknowledged: boolean
+  recoveryCodes: MockRecoveryCode[]
+  installations: MockInstallation[]
+}
+
+interface MockServerState { profiles: MockProfileRecord[] }
+
+function loadMockServer(): MockServerState {
+  if (typeof localStorage === 'undefined') return { profiles: [] }
+  try {
+    const parsed = JSON.parse(localStorage.getItem(MOCK_SERVER_KEY) ?? '{"profiles":[]}') as MockServerState
+    return Array.isArray(parsed.profiles) ? parsed : { profiles: [] }
+  } catch { return { profiles: [] } }
+}
+
+function saveMockServer(state: MockServerState): void {
+  if (typeof localStorage !== 'undefined') localStorage.setItem(MOCK_SERVER_KEY, JSON.stringify(state))
+}
+
+async function secretHash(secret: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${MOCK_HASH_PEPPER}:${secret}`))
+  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
+const BASE32 = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+function randomGroupedSecret(byteCount = 16): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(byteCount))
+  let bits = 0
+  let value = 0
+  let output = ''
+  for (const byte of bytes) {
+    value = (value << 8) | byte
+    bits += 8
+    while (bits >= 5) {
+      output += BASE32[(value >>> (bits - 5)) & 31]
+      bits -= 5
+    }
+  }
+  if (bits > 0) output += BASE32[(value << (5 - bits)) & 31]
+  return output.match(/.{1,4}/g)!.join('-')
+}
+
+async function freshRecoveryBatch() {
+  const createdAt = new Date().toISOString()
+  const raw = Array.from({ length: 10 }, () => randomGroupedSecret(16))
+  const hashes = await Promise.all(raw.map(secretHash))
+  return {
+    createdAt,
+    raw,
+    records: hashes.map((hash) => ({ hash, createdAt, usedAt: null })),
+  }
+}
+
+function identityJson<T extends JsonBodyType>(data: T, status = 200, headers: Record<string, string> = {}) {
+  return HttpResponse.json(data, {
+    status,
+    headers: { 'Cache-Control': 'no-store', Pragma: 'no-cache', ...headers },
+  })
+}
+
+function validDisplayName(value: unknown): value is string | null | undefined {
+  const hasControlCharacter = typeof value === 'string' && Array.from(value).some((character) => {
+    const code = character.charCodeAt(0)
+    return code < 32 || code === 127
+  })
+  return value === undefined || value === null
+    || (typeof value === 'string' && value.trim().length <= 80 && !hasControlCharacter)
+}
+
+function validInstallationToken(value: unknown): value is string {
+  return typeof value === 'string' && /^[A-Za-z0-9_-]{43}$/.test(value)
+}
+
+function issueSession(record: MockProfileRecord, installationId: string) {
+  const accessToken = `mock-session-${crypto.randomUUID()}`
+  sessions.set(accessToken, { profile: record.profile, installationId })
+  return accessToken
+}
+
+const restoreFailures = new Map<string, { count: number; blockedUntil: number }>()
+function restoreBlocked(profileId: string): number {
+  const entry = restoreFailures.get(profileId)
+  return entry && entry.blockedUntil > Date.now()
+    ? Math.ceil((entry.blockedUntil - Date.now()) / 1000) : 0
+}
+function recordRestoreFailure(profileId: string) {
+  const previous = restoreFailures.get(profileId) ?? { count: 0, blockedUntil: 0 }
+  const count = previous.count + 1
+  restoreFailures.set(profileId, {
+    count,
+    blockedUntil: count < 5 ? 0 : Date.now() + Math.min(60_000, 1000 * 2 ** (count - 5)),
+  })
+}
+
+/**
+ * Mock-only deterministic mapping. It makes page reloads realistic without
+ * storing the raw installation token or pretending to be a production data
+ * store. The production service must persist a strong server-side token hash.
+ */
+export async function createMockProfileForToken(
+  installationToken: string,
+): Promise<PseudonymousProfile> {
+  const digest = await crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(installationToken),
+  )
+  const profileKey = Array.from(new Uint8Array(digest).slice(0, 12))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('')
+  return {
+    id: `anonymous-${profileKey}`,
+    displayName: null,
+    role: 'Detector',
+    trustLevel: 'New',
+  }
+}
 /**
  * Failure-injection knobs so Playwright / manual tests can exercise the
  * offline queue and retry paths without unplugging the machine.
  *   window.__msw = { failPresign: true }   → next presign returns 503
  *   window.__msw = { failReport: true }    → next POST /reports returns 500
+ *   window.__msw = { expireSession: true } → next POST /reports returns 401
  * Cleared automatically after the failing call fires once.
  */
 declare global {
-  interface Window { __msw?: { failPresign?: boolean; failReport?: boolean } }
+  interface Window {
+    __msw?: {
+      failPresign?: boolean
+      failReport?: boolean
+      expireSession?: boolean
+    }
+  }
 }
-const shouldFail = (kind: 'failPresign' | 'failReport') => {
+const shouldInject = (kind: 'failPresign' | 'failReport' | 'expireSession') => {
   const flags = typeof window !== 'undefined' ? window.__msw : undefined
   if (flags?.[kind]) { flags[kind] = false; return true }
   return false
 }
-
-mockUsers.set('nadia@example.org', {
-  password: 'demo1234',
-  user: {
-    id: 'dev-coordinator',
-    name: 'Nadia',
-    email: 'nadia@example.org',
-    isPseudonymous: false,
-    role: 'Coordinator',
-    trustLevel: 'Steward',
-  },
-})
 
 export const handlers = [
   /* Explicit passthroughs — MSW's default bypass is unreliable for module
@@ -71,57 +183,192 @@ export const handlers = [
   http.get(url('/health'), () =>
     HttpResponse.json({ status: 'ok', database: 'ok' })),
 
-  http.post(url('/api/v1/auth/login'), async ({ request }) => {
-    const body = (await request.json()) as { email: string; password: string }
-    const entry = mockUsers.get(body.email)
-    if (!entry || entry.password !== body.password) {
-      return HttpResponse.json({ detail: 'Invalid credentials' }, { status: 401 })
+  http.post(url('/api/v1/profiles/start'), async ({ request }) => {
+    const body = (await request.json()) as { installationToken?: unknown; displayName?: unknown }
+    if (!validInstallationToken(body.installationToken) || !validDisplayName(body.displayName)) {
+      return identityJson({ code: 'invalid_request', detail: 'Private access could not be started.' }, 400)
     }
-    setSession(entry.user)
-    return HttpResponse.json({ accessToken: `mock-${entry.user.id}`, user: entry.user })
-  }),
-
-  http.post(url('/api/v1/auth/register'), async ({ request }) => {
-    const body = (await request.json()) as { name: string; email: string; password: string; role: string }
-    if (mockUsers.has(body.email)) {
-      return HttpResponse.json({ detail: 'Email already registered' }, { status: 409 })
+    const tokenHash = await secretHash(body.installationToken)
+    const state = loadMockServer()
+    if (state.profiles.some((record) => record.installations.some((item) => item.tokenHash === tokenHash))) {
+      return identityJson({ code: 'installation_exists', detail: 'Private access could not be started.' }, 409)
     }
-    const user: User = {
-      id: crypto.randomUUID(),
-      name: body.name,
-      email: body.email,
-      isPseudonymous: false,
-      role: body.role as User['role'],
-      trustLevel: 'New',
-    }
-    mockUsers.set(body.email, { user, password: body.password })
-    setSession(user)
-    return HttpResponse.json({ accessToken: `mock-${user.id}`, user })
-  }),
-
-  http.post(url('/api/v1/profiles/bootstrap'), () => {
-    const user: User = {
-      id: crypto.randomUUID(),
-      name: null,
-      email: null,
-      isPseudonymous: true,
+    const now = new Date().toISOString()
+    const batch = await freshRecoveryBatch()
+    const profile: PseudonymousProfile = {
+      id: `IVT-${randomGroupedSecret(12)}`,
+      displayName: typeof body.displayName === 'string' && body.displayName.trim() ? body.displayName.trim() : null,
       role: 'Detector',
       trustLevel: 'New',
     }
-    setSession(user)
-    return HttpResponse.json({ accessToken: `mock-${user.id}`, user })
-  }),
-
-  http.post(url('/api/v1/auth/refresh'), () => {
-    if (!mockSession) {
-      return HttpResponse.json({ detail: 'No session' }, { status: 401 })
+    const installation: MockInstallation = {
+      id: `ins_${crypto.randomUUID()}`,
+      tokenHash,
+      createdAt: now,
+      lastUsedAt: now,
+      revokedAt: null,
     }
-    return HttpResponse.json({ accessToken: `mock-${mockSession.id}`, user: mockSession })
+    const record: MockProfileRecord = {
+      profile,
+      setupAcknowledged: false,
+      recoveryCodes: batch.records,
+      installations: [installation],
+    }
+    state.profiles.push(record)
+    saveMockServer(state)
+    return identityJson({
+      accessToken: issueSession(record, installation.id),
+      profile,
+      recoveryCodes: batch.raw,
+      installationId: installation.id,
+    }, 201)
   }),
 
-  http.post(url('/api/v1/auth/logout'), () => {
-    setSession(null)
-    return HttpResponse.json({ ok: true })
+  http.post(url('/api/v1/profiles/bootstrap'), async ({ request }) => {
+    const body = (await request.json()) as { installationToken?: unknown }
+    if (!validInstallationToken(body.installationToken)) {
+      return identityJson({ code: 'invalid_request', detail: 'Invalid installation token' }, 400)
+    }
+    const tokenHash = await secretHash(body.installationToken)
+    const state = loadMockServer()
+    const record = state.profiles.find((candidate) => candidate.installations.some((item) => item.tokenHash === tokenHash))
+    const installation = record?.installations.find((item) => item.tokenHash === tokenHash)
+    if (!record || !installation) {
+      return identityJson({ code: 'installation_not_found', detail: 'Installation not found' }, 404)
+    }
+    if (installation.revokedAt) {
+      return identityJson({ code: 'installation_revoked', detail: 'Installation unavailable' }, 401)
+    }
+    installation.lastUsedAt = new Date().toISOString()
+    saveMockServer(state)
+    return identityJson({
+      accessToken: issueSession(record, installation.id),
+      profile: record.profile,
+      recoverySetupRequired: !record.setupAcknowledged,
+    })
+  }),
+
+  http.post(url('/api/v1/profiles/restore'), async ({ request }) => {
+    const body = (await request.json()) as {
+      profileId?: unknown; recoveryCode?: unknown; installationToken?: unknown
+    }
+    const profileId = typeof body.profileId === 'string' ? body.profileId.trim().toUpperCase() : ''
+    const recoveryCode = typeof body.recoveryCode === 'string' ? body.recoveryCode.trim().toUpperCase() : ''
+    const blockedSeconds = restoreBlocked(profileId)
+    const genericError = 'We couldn’t restore this access. Check the profile ID and recovery code, then try again.'
+    if (blockedSeconds) {
+      return identityJson({ detail: genericError }, 429, { 'Retry-After': String(blockedSeconds) })
+    }
+    if (!profileId || profileId.length > 80 || !recoveryCode || recoveryCode.length > 64
+      || !validInstallationToken(body.installationToken)) {
+      recordRestoreFailure(profileId)
+      return identityJson({ detail: genericError }, 400)
+    }
+    const [codeHash, tokenHash] = await Promise.all([secretHash(recoveryCode), secretHash(body.installationToken)])
+    const state = loadMockServer()
+    const record = state.profiles.find((candidate) => candidate.profile.id === profileId)
+    const code = record?.recoveryCodes.find((candidate) => candidate.hash === codeHash && !candidate.usedAt)
+    if (!record || !code) {
+      recordRestoreFailure(profileId)
+      return identityJson({ detail: genericError }, 400)
+    }
+
+    // No await occurs between this final state read and save: concurrent uses
+    // of one code cannot both observe it as unused in this development mock.
+    const now = new Date().toISOString()
+    code.usedAt = now
+    const installation: MockInstallation = {
+      id: `ins_${crypto.randomUUID()}`,
+      tokenHash,
+      createdAt: now,
+      lastUsedAt: now,
+      revokedAt: null,
+    }
+    record.installations.push(installation)
+    saveMockServer(state)
+    restoreFailures.delete(profileId)
+    return identityJson({
+      accessToken: issueSession(record, installation.id),
+      profile: record.profile,
+      installationId: installation.id,
+    })
+  }),
+
+  http.patch(url('/api/v1/profiles/me'), async ({ request }) => {
+    const session = sessionForRequest(request)
+    if (!session) return identityJson({ detail: 'API session unavailable' }, 401)
+    const body = (await request.json()) as { displayName?: unknown }
+    if (!Object.prototype.hasOwnProperty.call(body, 'displayName') || !validDisplayName(body.displayName)) {
+      return identityJson({ detail: 'Display name is invalid.' }, 400)
+    }
+    const state = loadMockServer()
+    const record = state.profiles.find((candidate) => candidate.profile.id === session.profile.id)!
+    record.profile.displayName = typeof body.displayName === 'string' && body.displayName.trim()
+      ? body.displayName.trim() : null
+    saveMockServer(state)
+    for (const value of sessions.values()) {
+      if (value.profile.id === record.profile.id) value.profile = record.profile
+    }
+    return identityJson(record.profile)
+  }),
+
+  http.post(url('/api/v1/profiles/me/recovery-setup/acknowledge'), ({ request }) => {
+    const session = sessionForRequest(request)
+    if (!session) return identityJson({ detail: 'API session unavailable' }, 401)
+    const state = loadMockServer()
+    const record = state.profiles.find((candidate) => candidate.profile.id === session.profile.id)!
+    record.setupAcknowledged = true
+    saveMockServer(state)
+    return new HttpResponse(null, { status: 204, headers: { 'Cache-Control': 'no-store', Pragma: 'no-cache' } })
+  }),
+
+  http.post(url('/api/v1/profiles/me/recovery-codes/rotate'), async ({ request }) => {
+    const session = sessionForRequest(request)
+    if (!session) return identityJson({ detail: 'API session unavailable' }, 401)
+    const batch = await freshRecoveryBatch()
+    const state = loadMockServer()
+    const record = state.profiles.find((candidate) => candidate.profile.id === session.profile.id)!
+    record.recoveryCodes = batch.records
+    saveMockServer(state)
+    return identityJson({ recoveryCodes: batch.raw, createdAt: batch.createdAt })
+  }),
+
+  http.get(url('/api/v1/profiles/me/access'), ({ request }) => {
+    const session = sessionForRequest(request)
+    if (!session) return identityJson({ detail: 'API session unavailable' }, 401)
+    const state = loadMockServer()
+    const record = state.profiles.find((candidate) => candidate.profile.id === session.profile.id)!
+    const overview: AccessOverview = {
+      profileId: record.profile.id,
+      unusedRecoveryCodeCount: record.recoveryCodes.filter((code) => !code.usedAt).length,
+      installations: record.installations.map((item) => ({
+        id: item.id,
+        createdAt: item.createdAt,
+        lastUsedAt: item.lastUsedAt,
+        revokedAt: item.revokedAt,
+        current: item.id === session.installationId,
+      })),
+    }
+    return identityJson(overview)
+  }),
+
+  http.post(url('/api/v1/profiles/me/installations/:id/revoke'), ({ params, request }) => {
+    const session = sessionForRequest(request)
+    if (!session) return identityJson({ detail: 'API session unavailable' }, 401)
+    const installationId = params.id as string
+    if (installationId === session.installationId) {
+      return identityJson({ detail: 'The current installation cannot revoke itself.' }, 400)
+    }
+    const state = loadMockServer()
+    const record = state.profiles.find((candidate) => candidate.profile.id === session.profile.id)!
+    const installation = record.installations.find((item) => item.id === installationId && !item.revokedAt)
+    if (!installation) return identityJson({ detail: 'Installation not found.' }, 404)
+    installation.revokedAt = new Date().toISOString()
+    saveMockServer(state)
+    for (const [token, value] of sessions) {
+      if (value.installationId === installationId) sessions.delete(token)
+    }
+    return new HttpResponse(null, { status: 204, headers: { 'Cache-Control': 'no-store', Pragma: 'no-cache' } })
   }),
 
   http.get(url('/api/v1/species'), () =>
@@ -141,21 +388,24 @@ export const handlers = [
     return HttpResponse.json(detail)
   }),
 
-  http.get(url('/api/v1/notifications'), () => {
-    if (!mockSession) return HttpResponse.json({ items: [], unread: 0 })
-    const items = seedNotifications(mockSession.role)
+  http.get(url('/api/v1/notifications'), ({ request }) => {
+    const profile = profileForSession(request)
+    if (!profile) return HttpResponse.json({ items: [], unread: 0 })
+    const items = seedNotifications(profile.role)
     return HttpResponse.json({
       items, unread: items.filter((n) => !n.read).length,
     })
   }),
 
-  http.post(url('/api/v1/notifications/:id/read'), ({ params }) => {
+  http.post(url('/api/v1/notifications/:id/read'), ({ params, request }) => {
+    if (!hasActiveSession(request)) return sessionUnavailable()
     const n = NOTIFICATIONS.find((x) => x.id === params.id)
     if (n) n.read = true
     return HttpResponse.json({ ok: true })
   }),
 
-  http.post(url('/api/v1/notifications/read-all'), () => {
+  http.post(url('/api/v1/notifications/read-all'), ({ request }) => {
+    if (!hasActiveSession(request)) return sessionUnavailable()
     NOTIFICATIONS.forEach((n) => { n.read = true })
     return HttpResponse.json({ ok: true })
   }),
@@ -163,7 +413,8 @@ export const handlers = [
   /* Report flow — presigned upload, submission, own reports. */
 
   http.post(url('/api/v1/uploads/presign'), async ({ request }) => {
-    if (shouldFail('failPresign')) {
+    if (!hasActiveSession(request)) return sessionUnavailable()
+    if (shouldInject('failPresign')) {
       return HttpResponse.json({ detail: 'Upload service unavailable' }, { status: 503 })
     }
     const body = (await request.json()) as { contentType: string; sizeBytes: number }
@@ -183,10 +434,13 @@ export const handlers = [
   http.put('https://mock-s3.local/*', () => HttpResponse.text('', { status: 200 })),
 
   http.post(url('/api/v1/reports'), async ({ request }) => {
-    if (!mockSession) {
-      return HttpResponse.json({ detail: 'Not authenticated' }, { status: 401 })
+    if (shouldInject('expireSession')) {
+      const token = bearerToken(request)
+      if (token) sessions.delete(token)
+      return HttpResponse.json({ detail: 'API session expired' }, { status: 401 })
     }
-    if (shouldFail('failReport')) {
+    if (!hasActiveSession(request)) return sessionUnavailable()
+    if (shouldInject('failReport')) {
       return HttpResponse.json({ detail: 'Server error' }, { status: 500 })
     }
     const submission = (await request.json()) as ReportSubmission
@@ -202,9 +456,9 @@ export const handlers = [
     return HttpResponse.json(report, { status: 201 })
   }),
 
-  http.get(url('/api/v1/reports/mine'), () => {
-    if (!mockSession) {
-      return HttpResponse.json({ detail: 'Not authenticated' }, { status: 401 })
+  http.get(url('/api/v1/reports/mine'), ({ request }) => {
+    if (!hasActiveSession(request)) {
+      return HttpResponse.json({ detail: 'API session unavailable' }, { status: 401 })
     }
     return HttpResponse.json({ items: mockReports })
   }),
@@ -235,20 +489,20 @@ export const handlers = [
 
   /* Verify queue — coordinator/expert/admin only. */
 
-  http.get(url('/api/v1/verify/queue'), () => {
-    if (!coordAllowed()) return unauth()
+  http.get(url('/api/v1/verify/queue'), ({ request }) => {
+    if (!coordAllowed(request)) return forbidden()
     return HttpResponse.json({ items: verifyQueue() })
   }),
 
-  http.get(url('/api/v1/verify/:id'), ({ params }) => {
-    if (!coordAllowed()) return unauth()
+  http.get(url('/api/v1/verify/:id'), ({ params, request }) => {
+    if (!coordAllowed(request)) return forbidden()
     const item = verifyQueue().find((v) => v.id === params.id)
     if (!item) return HttpResponse.json({ detail: 'Not found' }, { status: 404 })
     return HttpResponse.json(item)
   }),
 
-  http.get(url('/api/v1/verify/:id/merge-candidates'), ({ params }) => {
-    if (!coordAllowed()) return unauth()
+  http.get(url('/api/v1/verify/:id/merge-candidates'), ({ params, request }) => {
+    if (!coordAllowed(request)) return forbidden()
     const item = verifyQueue().find((v) => v.id === params.id)
     if (!item) return HttpResponse.json({ items: [] })
     const candidates: MergeCandidate[] = SIGHTINGS
@@ -267,16 +521,16 @@ export const handlers = [
     return HttpResponse.json({ items: candidates })
   }),
 
-  http.post(url('/api/v1/verify/:id/confirm'), ({ params }) => {
-    if (!coordAllowed()) return unauth()
+  http.post(url('/api/v1/verify/:id/confirm'), ({ params, request }) => {
+    if (!coordAllowed(request)) return forbidden()
     const r = findReport(params.id as string)
     if (!r) return HttpResponse.json({ detail: 'Not found' }, { status: 404 })
     r.status = 'confirmed'
     return HttpResponse.json({ ok: true, status: r.status })
   }),
 
-  http.post(url('/api/v1/verify/:id/reject'), ({ params }) => {
-    if (!coordAllowed()) return unauth()
+  http.post(url('/api/v1/verify/:id/reject'), ({ params, request }) => {
+    if (!coordAllowed(request)) return forbidden()
     const r = findReport(params.id as string)
     if (!r) return HttpResponse.json({ detail: 'Not found' }, { status: 404 })
     r.status = 'rejected'
@@ -284,7 +538,7 @@ export const handlers = [
   }),
 
   http.post(url('/api/v1/verify/:id/merge'), async ({ params, request }) => {
-    if (!coordAllowed()) return unauth()
+    if (!coordAllowed(request)) return forbidden()
     const body = (await request.json()) as { targetId: string }
     const r = findReport(params.id as string)
     const target = SIGHTINGS.find((s) => s.id === body.targetId)
@@ -299,11 +553,29 @@ export const handlers = [
 /* ── Verify helpers ─────────────────────────────────────── */
 
 /** Roles allowed to open the queue. Detector / Volunteer are not. */
-function coordAllowed(): boolean {
-  return !!mockSession && ['Coordinator', 'Expert', 'Admin'].includes(mockSession.role)
+function bearerToken(request: Request): string | null {
+  const authorization = request.headers.get('Authorization')
+  return authorization?.startsWith('Bearer ') ? authorization.slice(7) : null
 }
-function unauth() {
+function sessionForRequest(request: Request) {
+  const token = bearerToken(request)
+  return token ? sessions.get(token) ?? null : null
+}
+function profileForSession(request: Request): PseudonymousProfile | null {
+  return sessionForRequest(request)?.profile ?? null
+}
+function hasActiveSession(request: Request): boolean {
+  return !!profileForSession(request)
+}
+function coordAllowed(request: Request): boolean {
+  const profile = profileForSession(request)
+  return !!profile && ['Coordinator', 'Expert', 'Admin'].includes(profile.role)
+}
+function forbidden() {
   return HttpResponse.json({ detail: 'Forbidden' }, { status: 403 })
+}
+function sessionUnavailable() {
+  return HttpResponse.json({ detail: 'API session unavailable' }, { status: 401 })
 }
 /** Look up a report from either the seeded pool or the session pool. */
 function findReport(id: string): Report | undefined {
