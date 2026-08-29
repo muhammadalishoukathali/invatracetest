@@ -1,0 +1,52 @@
+{
+  "version": "open_set_rejection_calibration_fp16_v4_v1",
+  "created_at_utc": "2026-08-26T05:27:34+00:00",
+  "base_model": "efficientnet_v2_s_oe_v4_31class_web_fp16",
+  "base_model_classes": 31,
+  "image_size": 384,
+  "classification_temperature": 0.5933777093887329,
+  "decision": {
+    "feature_order": [
+      "msp",
+      "margin",
+      "energy",
+      "entropy"
+    ],
+    "scaler_mean": [
+      0.794564814649271,
+      0.7814737468432769,
+      -5.202491891301462,
+      0.22446171943013815
+    ],
+    "scaler_scale": [
+      0.37377825763648354,
+      0.3936882211939241,
+      1.5762545800597876,
+      0.3978669724592079
+    ],
+    "coefficient": [
+      -7.789534497271198,
+      3.804735294628791,
+      2.826560214471379,
+      -3.9036722769533476
+    ],
+    "intercept": -0.9460913596255202,
+    "unknown_probability_threshold": 0.5972920636499581,
+    "accept_rule": "accept_known_if_unknown_probability_lte_threshold",
+    "target_known_acceptance": 0.95,
+    "calibration_unknown_includes_low_quality_validation": true,
+    "calibration_unknown_counts": {
+      "unknown_validation": 6391,
+      "low_quality_validation": 410
+    }
+  },
+  "interpretable_guardrail_rule": {
+    "confidence_threshold": 0.036815202,
+    "margin_threshold": 0.873646872,
+    "energy_threshold": -3.8672498933,
+    "known_acceptance": 0.9522340531396158,
+    "unknown_recall": 0.864184008762322,
+    "rule": "accept_if_msp_gte_and_margin_gte_and_energy_lte"
+  },
+  "required_output": "raw 31-class logits before softmax"
+}

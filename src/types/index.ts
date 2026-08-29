@@ -1,9 +1,9 @@
-/** Arch §8.1 — role is what a person may do. Trust level is what their evidence
- *  is worth, and is deliberately a separate attribute. */
+/** A role controls which actions a profile may perform. Trust level describes
+ *  how much review its evidence needs, so the two values stay separate. */
 export type Role = 'Detector' | 'Volunteer' | 'Coordinator' | 'Expert' | 'Admin'
 export type TrustLevel = 'New' | 'Trusted' | 'Steward'
 
-/** Server-authoritative profile attached to one pseudonymous installation. */
+/** Server-authoritative profile connected to one or more browser installations. */
 export interface PseudonymousProfile {
   id: string
   displayName: string | null
@@ -11,8 +11,8 @@ export interface PseudonymousProfile {
   trustLevel: TrustLevel
 }
 
-/** Long-lived local identity. This is the only identity record stored by the client. */
-export interface AnonymousIdentity {
+/** The only long-lived private-access record stored in this browser. */
+export interface InstallationIdentity {
   schemaVersion: 2
   installationToken: string
   createdAt: string
@@ -58,11 +58,18 @@ export interface AccessOverview {
   installations: AuthorizedInstallation[]
 }
 
-/** Arch §8.2 — the lifecycle spine. Only `confirmed` may trigger action. */
-export type SightingStatus = 'candidate' | 'confirmed' | 'rejected' | 'removed'
+/** Only confirmed sightings are ready for coordinated field action. */
+export type SightingStatus = 'confirmed' | 'removed'
+export type ReportStatus =
+  | 'processing'
+  | 'confirmed'
+  | 'merged'
+  | 'needs_rescan'
+  | 'rejected'
+  | 'validation_unavailable'
 export type Risk = 'high' | 'watch'
 
-/* ── Scan & species ─────────────────────────────────────── */
+// Scan and species data.
 
 export type Outcome = 'target' | 'other_plant' | 'uncertain'
 
@@ -70,13 +77,24 @@ export interface BBox { x: number; y: number; w: number; h: number }
 
 export interface QualityResult { ok: boolean; reason?: string }
 
-export interface DetectResult { box: BBox | null }
-
 export interface IdentifyResult {
   outcome: Outcome
   speciesId?: string
+  speciesName?: string
+  scientificName?: string
+  malaysiaStatus?: string
+  statusSource?: string
+  isInvasive?: boolean
   confidence: number
   modelVersion: string
+  unknownProbability?: number
+  reportable: boolean
+  topPredictions?: Array<{
+    speciesId: string
+    name: string
+    confidence: number
+    isInvasive: boolean
+  }>
 }
 
 export interface Trait { label: string; value: string }
@@ -101,9 +119,23 @@ export interface SpeciesDetail {
   nativeTwin: NativeTwin | null
   removalSteps: RemovalStep[]
   doNotDo: string[]
+  reportable?: boolean
+  actionGuide?: SeasonalActionGuide | null
 }
 
-/* ── Report ─────────────────────────────────────────────── */
+export interface SeasonalActionGuide {
+  actionMode: 'remove' | 'contain' | 'report_only'
+  title: string
+  summary: string
+  validMonths: number[]
+  steps: RemovalStep[]
+  doNotDo: string[]
+  ppe: string[]
+  decontamination: string[]
+  revision: string
+}
+
+// Report data.
 
 export type ExtentSize = 'single' | 'small_patch' | 'large_area'
 
@@ -111,20 +143,23 @@ export interface GeoPoint { lat: number; lng: number }
 
 export interface PresignedUpload {
   uploadId: string
-  uploadUrl: string   // where the client PUTs the image blob
-  photoKey: string    // opaque key echoed back on report create
-  expiresAt: string   // ISO
+  uploadUrl: string   // Temporary URL where the client uploads the image.
+  photoKey: string    // Server-generated key included when creating the report.
+  expiresAt: string   // ISO timestamp for when the upload URL expires.
 }
 
 /** What the client builds locally before submitting. */
 export interface ReportDraft {
-  photoKey: string | null           // set after presigned upload succeeds
-  speciesId: string | null          // may be null when outcome === 'uncertain'
+  photoKey: string | null           // Set after the image upload succeeds.
+  speciesId: string | null          // Null when the model result is uncertain.
   outcome: Outcome
   confidence: number
   modelVersion: string
+  observedAt: string
+  captureId: string
+  captureSource: 'camera'
   location: GeoPoint | null
-  locationAccuracyM: number | null  // GPS accuracy in metres; null = manual
+  locationAccuracyM: number | null  // GPS accuracy in metres; null until a fix is available.
   extent: ExtentSize
   notes: string
   consentAccurate: boolean
@@ -138,6 +173,9 @@ export interface ReportSubmission {
   outcome: Outcome
   confidence: number
   modelVersion: string
+  observedAt: string
+  captureId: string
+  captureSource: 'camera'
   location: GeoPoint
   locationAccuracyM: number | null
   extent: ExtentSize
@@ -147,27 +185,36 @@ export interface ReportSubmission {
 
 export interface Report {
   id: string
-  status: SightingStatus
+  status: ReportStatus
   createdAt: string
   submission: ReportSubmission
   trackingUrl: string
+  validation: {
+    reasonCodes: string[]
+    retryable: boolean
+    policyVersion: string | null
+    modelVersion: string | null
+  }
+  sightingId: string | null
 }
 
 /** Item held in the IndexedDB offline queue when submission fails. */
 export interface QueuedReport {
-  id: string           // local uuid
+  id: string           // Stable idempotency key created before the first network attempt.
+  ownerProfileId: string | null
   createdAt: string
   attempts: number
+  retryable: boolean
   lastError: string | null
   submission: ReportSubmission
-  imageBlob: Blob      // image kept locally until presign + upload succeed
+  imageBlob: Blob      // Image kept locally until upload and report creation succeed.
 }
 
-/* ── Map ────────────────────────────────────────────────── */
+// Map data.
 
-/** Map pin returned by GET /api/v1/sightings. Coordinates have already had
- *  the §11 precision policy applied server-side. `precisionReduced` tells
- *  the client to show a "location approximate" note in the pin sheet. */
+/** Map pin returned by the sightings API. The server reduces coordinate
+ *  precision when needed. `precisionReduced` tells the UI to explain that the
+ *  displayed location is approximate. */
 export interface Sighting {
   id: string
   speciesId: string
@@ -179,67 +226,33 @@ export interface Sighting {
   precisionReduced: boolean
   reportCount: number
   lastReportedAt: string
+  place: PlaceAssociation
+  thumbnailUrl: string | null
 }
 
 export interface SightingDetail extends Sighting {
   recommendedAction: string
-  reporterTrust: TrustLevel  // 'New' means precision policy hides exact spot
+  actionGuide: SeasonalActionGuide | null
+  reporterTrust: TrustLevel  // New profiles receive stronger location privacy.
 }
 
-/* ── Verify queue ───────────────────────────────────────── */
-
-export type VerifyOutcome = 'confirm' | 'reject' | 'merge'
-export type CheckLevel = 'pass' | 'warn' | 'fail'
-
-export interface VerifyCheck {
-  id: 'species' | 'location' | 'quality' | 'trust'
-  label: string
-  level: CheckLevel
-  detail: string
+export interface PlaceAssociation {
+  displayName: string
+  areaName: string | null
+  trailName: string | null
+  source: 'osm' | 'seed' | 'fallback'
 }
 
-/** One row in the coordinator's queue. Enriched candidate report. */
-export interface VerifyItem {
-  id: string                     // report id
-  photoUrl: string               // presigned read URL (mocked)
-  speciesId: string | null
-  speciesName: string
-  latinName: string
-  outcome: Outcome               // model verdict at scan time
-  confidence: number
-  modelVersion: string
-  location: GeoPoint
-  locationAccuracyM: number | null
-  /** Human-readable Malaysian place label — e.g. "Bukit Kiara · West Trail".
-   *  Mock reverse-geocode in Iter 1; real backend will use MapTiler / OSM
-   *  Nominatim with a Malaysia-scoped bias. */
-  place: string
-  extent: ExtentSize
-  notes: string
-  submitterId: string
-  submitterTrust: TrustLevel
-  submittedAt: string
-  checks: VerifyCheck[]
-}
-
-/** Existing sighting the coordinator could merge this report into. */
-export interface MergeCandidate {
-  id: string
-  speciesName: string
-  status: SightingStatus
-  distanceM: number
-  reportCount: number
-  lastReportedAt: string
-}
-
-/* ── Notifications ──────────────────────────────────────── */
+// Notification data.
 
 export type NotificationKind =
-  | 'report_confirmed'   // your report was verified
-  | 'report_rejected'    // your report was rejected
-  | 'queue_new'          // coordinator: new item in verify queue
-  | 'sync_ok'            // offline queue flushed successfully
-  | 'system'             // generic
+  | 'report_confirmed'   // Automated checks published the user's report.
+  | 'report_rejected'    // Automated integrity checks rejected the report.
+  | 'report_needs_rescan'
+  | 'report_merged'
+  | 'validation_unavailable'
+  | 'sync_ok'            // An offline report reached the server after reconnecting.
+  | 'system'             // A general message that does not fit another category.
 
 export interface AppNotification {
   id: string
@@ -248,5 +261,5 @@ export interface AppNotification {
   body: string
   createdAt: string
   read: boolean
-  linkTo?: string        // in-app route to open on click
+  linkTo?: string        // Optional application route opened when selected.
 }

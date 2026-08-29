@@ -1,0 +1,251 @@
+{
+  "architecture": "efficientnet_v2_s",
+  "version": "oe_v4_31class_web_fp16",
+  "input_size": 384,
+  "mean": [
+    0.485,
+    0.456,
+    0.406
+  ],
+  "std": [
+    0.229,
+    0.224,
+    0.225
+  ],
+  "temperature": 0.5933777093887329,
+  "classes": [
+    "mimosa_pudica",
+    "carica_papaya",
+    "clitoria_ternatea",
+    "centella_asiatica",
+    "dicranopteris_linearis",
+    "ageratum_conyzoides",
+    "leucaena_leucocephala",
+    "imperata_cylindrica",
+    "pistia_stratiotes",
+    "macaranga_tanarius",
+    "cocos_nucifera",
+    "colocasia_esculenta",
+    "pteris_vittata",
+    "catharanthus_roseus",
+    "bidens_pilosa",
+    "chromolaena_odorata",
+    "eichhornia_crassipes",
+    "mikania_micrantha",
+    "oxalis_corniculata",
+    "psidium_guajava",
+    "asclepias_curassavica",
+    "megathyrsus_maximus",
+    "mimosa_diplotricha",
+    "mimosa_pigra",
+    "alternanthera_philoxeroides",
+    "parthenium_hysterophorus",
+    "ageratina_adenophora",
+    "sida_acuta",
+    "miconia_crenata",
+    "sphagneticola_trilobata",
+    "lantana_camara"
+  ],
+  "class_metadata": [
+    {
+      "class_index": 0,
+      "class_name": "mimosa_pudica",
+      "scientific_name": "Mimosa pudica",
+      "recognition_category": "common_malaysia"
+    },
+    {
+      "class_index": 1,
+      "class_name": "carica_papaya",
+      "scientific_name": "Carica papaya",
+      "recognition_category": "common_malaysia"
+    },
+    {
+      "class_index": 2,
+      "class_name": "clitoria_ternatea",
+      "scientific_name": "Clitoria ternatea",
+      "recognition_category": "common_malaysia"
+    },
+    {
+      "class_index": 3,
+      "class_name": "centella_asiatica",
+      "scientific_name": "Centella asiatica",
+      "recognition_category": "common_malaysia"
+    },
+    {
+      "class_index": 4,
+      "class_name": "dicranopteris_linearis",
+      "scientific_name": "Dicranopteris linearis",
+      "recognition_category": "common_malaysia"
+    },
+    {
+      "class_index": 5,
+      "class_name": "ageratum_conyzoides",
+      "scientific_name": "Ageratum conyzoides",
+      "recognition_category": "common_malaysia"
+    },
+    {
+      "class_index": 6,
+      "class_name": "leucaena_leucocephala",
+      "scientific_name": "Leucaena leucocephala",
+      "recognition_category": "common_malaysia"
+    },
+    {
+      "class_index": 7,
+      "class_name": "imperata_cylindrica",
+      "scientific_name": "Imperata cylindrica",
+      "recognition_category": "common_malaysia"
+    },
+    {
+      "class_index": 8,
+      "class_name": "pistia_stratiotes",
+      "scientific_name": "Pistia stratiotes",
+      "recognition_category": "common_malaysia"
+    },
+    {
+      "class_index": 9,
+      "class_name": "macaranga_tanarius",
+      "scientific_name": "Macaranga tanarius",
+      "recognition_category": "common_malaysia"
+    },
+    {
+      "class_index": 10,
+      "class_name": "cocos_nucifera",
+      "scientific_name": "Cocos nucifera",
+      "recognition_category": "common_malaysia"
+    },
+    {
+      "class_index": 11,
+      "class_name": "colocasia_esculenta",
+      "scientific_name": "Colocasia esculenta",
+      "recognition_category": "common_malaysia"
+    },
+    {
+      "class_index": 12,
+      "class_name": "pteris_vittata",
+      "scientific_name": "Pteris vittata",
+      "recognition_category": "common_malaysia"
+    },
+    {
+      "class_index": 13,
+      "class_name": "catharanthus_roseus",
+      "scientific_name": "Catharanthus roseus",
+      "recognition_category": "common_malaysia"
+    },
+    {
+      "class_index": 14,
+      "class_name": "bidens_pilosa",
+      "scientific_name": "Bidens pilosa",
+      "recognition_category": "common_invasive"
+    },
+    {
+      "class_index": 15,
+      "class_name": "chromolaena_odorata",
+      "scientific_name": "Chromolaena odorata",
+      "recognition_category": "common_invasive"
+    },
+    {
+      "class_index": 16,
+      "class_name": "eichhornia_crassipes",
+      "scientific_name": "Eichhornia crassipes",
+      "recognition_category": "common_invasive"
+    },
+    {
+      "class_index": 17,
+      "class_name": "mikania_micrantha",
+      "scientific_name": "Mikania micrantha",
+      "recognition_category": "common_invasive"
+    },
+    {
+      "class_index": 18,
+      "class_name": "oxalis_corniculata",
+      "scientific_name": "Oxalis corniculata",
+      "recognition_category": "common_invasive"
+    },
+    {
+      "class_index": 19,
+      "class_name": "psidium_guajava",
+      "scientific_name": "Psidium guajava",
+      "recognition_category": "common_invasive"
+    },
+    {
+      "class_index": 20,
+      "class_name": "asclepias_curassavica",
+      "scientific_name": "Asclepias curassavica",
+      "recognition_category": "common_invasive"
+    },
+    {
+      "class_index": 21,
+      "class_name": "megathyrsus_maximus",
+      "scientific_name": "Megathyrsus maximus",
+      "recognition_category": "common_invasive"
+    },
+    {
+      "class_index": 22,
+      "class_name": "mimosa_diplotricha",
+      "scientific_name": "Mimosa diplotricha",
+      "recognition_category": "common_invasive"
+    },
+    {
+      "class_index": 23,
+      "class_name": "mimosa_pigra",
+      "scientific_name": "Mimosa pigra",
+      "recognition_category": "common_invasive"
+    },
+    {
+      "class_index": 24,
+      "class_name": "alternanthera_philoxeroides",
+      "scientific_name": "Alternanthera philoxeroides",
+      "recognition_category": "uncommon_invasive"
+    },
+    {
+      "class_index": 25,
+      "class_name": "parthenium_hysterophorus",
+      "scientific_name": "Parthenium hysterophorus",
+      "recognition_category": "uncommon_invasive"
+    },
+    {
+      "class_index": 26,
+      "class_name": "ageratina_adenophora",
+      "scientific_name": "Ageratina adenophora",
+      "recognition_category": "uncommon_invasive"
+    },
+    {
+      "class_index": 27,
+      "class_name": "sida_acuta",
+      "scientific_name": "Sida acuta",
+      "recognition_category": "uncommon_invasive"
+    },
+    {
+      "class_index": 28,
+      "class_name": "miconia_crenata",
+      "scientific_name": "Miconia crenata",
+      "recognition_category": "common_invasive"
+    },
+    {
+      "class_index": 29,
+      "class_name": "sphagneticola_trilobata",
+      "scientific_name": "Sphagneticola trilobata",
+      "recognition_category": "common_invasive"
+    },
+    {
+      "class_index": 30,
+      "class_name": "lantana_camara",
+      "scientific_name": "Lantana camara",
+      "recognition_category": "common_invasive"
+    }
+  ],
+  "recognition_categories": [
+    "common_malaysia",
+    "common_invasive",
+    "uncommon_invasive"
+  ],
+  "torchscript_file": null,
+  "onnx_file": "efficientnet_v2_s_oe_v4_31class_web_fp16.onnx",
+  "open_set_config": "open_set_fp16/open_set_rejection_config_v1.json",
+  "deployment_status": "not_deployed",
+  "open_set_metrics": "open_set_fp16/open_set_baseline_metrics.json",
+  "unknown_probability_threshold": 0.5972920636499581,
+  "validation_status": "offline_passed_mobile_pending",
+  "precision": "fp16_internal_fp32_io",
+  "source_model": "efficientnet_v2_s_oe_v4_31class"
+}

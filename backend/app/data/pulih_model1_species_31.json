@@ -1,0 +1,287 @@
+{
+  "schema_version": "pulih.model1.species-catalog.v1",
+  "model_version": "oe_v4_31class_web_fp16",
+  "class_count": 31,
+  "classes": [
+    {
+      "class_index": 0,
+      "machine_label": "mimosa_pudica",
+      "scientific_name": "Mimosa pudica",
+      "display_name": "Mimosa pudica",
+      "recognition_category": "common_malaysia",
+      "malaysia_status": "alien_not_marked_invasive",
+      "status_source": "GRIIS Malaysia v1.3"
+    },
+    {
+      "class_index": 1,
+      "machine_label": "carica_papaya",
+      "scientific_name": "Carica papaya",
+      "display_name": "Carica papaya",
+      "recognition_category": "common_malaysia",
+      "malaysia_status": "common_cultivated_status_not_inferred",
+      "status_source": "Malaysia occurrence audit"
+    },
+    {
+      "class_index": 2,
+      "machine_label": "clitoria_ternatea",
+      "scientific_name": "Clitoria ternatea",
+      "display_name": "Clitoria ternatea",
+      "recognition_category": "common_malaysia",
+      "malaysia_status": "alien_not_marked_invasive",
+      "status_source": "GRIIS Malaysia v1.3"
+    },
+    {
+      "class_index": 3,
+      "machine_label": "centella_asiatica",
+      "scientific_name": "Centella asiatica",
+      "display_name": "Centella asiatica",
+      "recognition_category": "common_malaysia",
+      "malaysia_status": "status_requires_expert_review",
+      "status_source": "Malaysia occurrence audit"
+    },
+    {
+      "class_index": 4,
+      "machine_label": "dicranopteris_linearis",
+      "scientific_name": "Dicranopteris linearis",
+      "display_name": "Dicranopteris linearis",
+      "recognition_category": "common_malaysia",
+      "malaysia_status": "status_requires_expert_review",
+      "status_source": "Malaysia occurrence audit"
+    },
+    {
+      "class_index": 5,
+      "machine_label": "ageratum_conyzoides",
+      "scientific_name": "Ageratum conyzoides",
+      "display_name": "Ageratum conyzoides",
+      "recognition_category": "common_malaysia",
+      "malaysia_status": "alien_not_marked_invasive",
+      "status_source": "GRIIS Malaysia v1.3"
+    },
+    {
+      "class_index": 6,
+      "machine_label": "leucaena_leucocephala",
+      "scientific_name": "Leucaena leucocephala",
+      "display_name": "Leucaena leucocephala",
+      "recognition_category": "common_malaysia",
+      "malaysia_status": "introduced",
+      "status_source": "MyIAS 2025"
+    },
+    {
+      "class_index": 7,
+      "machine_label": "imperata_cylindrica",
+      "scientific_name": "Imperata cylindrica",
+      "display_name": "Imperata cylindrica",
+      "recognition_category": "common_malaysia",
+      "malaysia_status": "alien_not_marked_invasive",
+      "status_source": "GRIIS Malaysia v1.3"
+    },
+    {
+      "class_index": 8,
+      "machine_label": "pistia_stratiotes",
+      "scientific_name": "Pistia stratiotes",
+      "display_name": "Pistia stratiotes",
+      "recognition_category": "common_malaysia",
+      "malaysia_status": "cryptogenic_uncertain",
+      "status_source": "GRIIS Malaysia v1.3"
+    },
+    {
+      "class_index": 9,
+      "machine_label": "macaranga_tanarius",
+      "scientific_name": "Macaranga tanarius",
+      "display_name": "Macaranga tanarius",
+      "recognition_category": "common_malaysia",
+      "malaysia_status": "status_requires_expert_review",
+      "status_source": "Malaysia occurrence audit"
+    },
+    {
+      "class_index": 10,
+      "machine_label": "cocos_nucifera",
+      "scientific_name": "Cocos nucifera",
+      "display_name": "Cocos nucifera",
+      "recognition_category": "common_malaysia",
+      "malaysia_status": "common_cultivated_status_not_inferred",
+      "status_source": "Malaysia occurrence audit"
+    },
+    {
+      "class_index": 11,
+      "machine_label": "colocasia_esculenta",
+      "scientific_name": "Colocasia esculenta",
+      "display_name": "Colocasia esculenta",
+      "recognition_category": "common_malaysia",
+      "malaysia_status": "common_cultivated_status_not_inferred",
+      "status_source": "Malaysia occurrence audit"
+    },
+    {
+      "class_index": 12,
+      "machine_label": "pteris_vittata",
+      "scientific_name": "Pteris vittata",
+      "display_name": "Pteris vittata",
+      "recognition_category": "common_malaysia",
+      "malaysia_status": "status_requires_expert_review",
+      "status_source": "Malaysia occurrence audit"
+    },
+    {
+      "class_index": 13,
+      "machine_label": "catharanthus_roseus",
+      "scientific_name": "Catharanthus roseus",
+      "display_name": "Catharanthus roseus",
+      "recognition_category": "common_malaysia",
+      "malaysia_status": "common_cultivated_status_not_inferred",
+      "status_source": "Malaysia occurrence audit"
+    },
+    {
+      "class_index": 14,
+      "machine_label": "bidens_pilosa",
+      "scientific_name": "Bidens pilosa",
+      "display_name": "Bidens pilosa",
+      "recognition_category": "common_invasive",
+      "malaysia_status": "invasive",
+      "status_source": "GRIIS Malaysia v1.3"
+    },
+    {
+      "class_index": 15,
+      "machine_label": "chromolaena_odorata",
+      "scientific_name": "Chromolaena odorata",
+      "display_name": "Chromolaena odorata",
+      "recognition_category": "common_invasive",
+      "malaysia_status": "invasive",
+      "status_source": "GRIIS Malaysia v1.3"
+    },
+    {
+      "class_index": 16,
+      "machine_label": "eichhornia_crassipes",
+      "scientific_name": "Eichhornia crassipes",
+      "display_name": "Eichhornia crassipes",
+      "recognition_category": "common_invasive",
+      "malaysia_status": "invasive",
+      "status_source": "GRIIS Malaysia v1.3"
+    },
+    {
+      "class_index": 17,
+      "machine_label": "mikania_micrantha",
+      "scientific_name": "Mikania micrantha",
+      "display_name": "Mikania micrantha",
+      "recognition_category": "common_invasive",
+      "malaysia_status": "invasive",
+      "status_source": "MyIAS 2025 and GRIIS Malaysia v1.3"
+    },
+    {
+      "class_index": 18,
+      "machine_label": "oxalis_corniculata",
+      "scientific_name": "Oxalis corniculata",
+      "display_name": "Oxalis corniculata",
+      "recognition_category": "common_invasive",
+      "malaysia_status": "invasive",
+      "status_source": "GRIIS Malaysia v1.3"
+    },
+    {
+      "class_index": 19,
+      "machine_label": "psidium_guajava",
+      "scientific_name": "Psidium guajava",
+      "display_name": "Psidium guajava",
+      "recognition_category": "common_invasive",
+      "malaysia_status": "invasive",
+      "status_source": "GRIIS Malaysia v1.3"
+    },
+    {
+      "class_index": 20,
+      "machine_label": "asclepias_curassavica",
+      "scientific_name": "Asclepias curassavica",
+      "display_name": "Asclepias curassavica",
+      "recognition_category": "common_invasive",
+      "malaysia_status": "invasive",
+      "status_source": "GRIIS Malaysia v1.3"
+    },
+    {
+      "class_index": 21,
+      "machine_label": "megathyrsus_maximus",
+      "scientific_name": "Megathyrsus maximus",
+      "display_name": "Megathyrsus maximus",
+      "recognition_category": "common_invasive",
+      "malaysia_status": "invasive",
+      "status_source": "GRIIS Malaysia v1.3"
+    },
+    {
+      "class_index": 22,
+      "machine_label": "mimosa_diplotricha",
+      "scientific_name": "Mimosa diplotricha",
+      "display_name": "Mimosa diplotricha",
+      "recognition_category": "common_invasive",
+      "malaysia_status": "invasive",
+      "status_source": "GRIIS Malaysia v1.3"
+    },
+    {
+      "class_index": 23,
+      "machine_label": "mimosa_pigra",
+      "scientific_name": "Mimosa pigra",
+      "display_name": "Mimosa pigra",
+      "recognition_category": "common_invasive",
+      "malaysia_status": "invasive",
+      "status_source": "MyIAS 2025 and GRIIS Malaysia v1.3"
+    },
+    {
+      "class_index": 24,
+      "machine_label": "alternanthera_philoxeroides",
+      "scientific_name": "Alternanthera philoxeroides",
+      "display_name": "Alternanthera philoxeroides",
+      "recognition_category": "uncommon_invasive",
+      "malaysia_status": "invasive",
+      "status_source": "MyIAS 2025"
+    },
+    {
+      "class_index": 25,
+      "machine_label": "parthenium_hysterophorus",
+      "scientific_name": "Parthenium hysterophorus",
+      "display_name": "Parthenium hysterophorus",
+      "recognition_category": "uncommon_invasive",
+      "malaysia_status": "invasive",
+      "status_source": "MyIAS 2025"
+    },
+    {
+      "class_index": 26,
+      "machine_label": "ageratina_adenophora",
+      "scientific_name": "Ageratina adenophora",
+      "display_name": "Ageratina adenophora",
+      "recognition_category": "uncommon_invasive",
+      "malaysia_status": "watchlist_not_present",
+      "status_source": "MyIAS 2025"
+    },
+    {
+      "class_index": 27,
+      "machine_label": "sida_acuta",
+      "scientific_name": "Sida acuta",
+      "display_name": "Sida acuta",
+      "recognition_category": "uncommon_invasive",
+      "malaysia_status": "invasive",
+      "status_source": "GRIIS Malaysia v1.3"
+    },
+    {
+      "class_index": 28,
+      "machine_label": "miconia_crenata",
+      "scientific_name": "Miconia crenata",
+      "display_name": "Miconia crenata",
+      "recognition_category": "common_invasive",
+      "malaysia_status": "invasive",
+      "status_source": "PULIH v4 approved recognition category"
+    },
+    {
+      "class_index": 29,
+      "machine_label": "sphagneticola_trilobata",
+      "scientific_name": "Sphagneticola trilobata",
+      "display_name": "Sphagneticola trilobata",
+      "recognition_category": "common_invasive",
+      "malaysia_status": "invasive",
+      "status_source": "PULIH v4 approved recognition category"
+    },
+    {
+      "class_index": 30,
+      "machine_label": "lantana_camara",
+      "scientific_name": "Lantana camara",
+      "display_name": "Lantana camara",
+      "recognition_category": "common_invasive",
+      "malaysia_status": "invasive",
+      "status_source": "PULIH v4 approved recognition category"
+    }
+  ],
+  "content_notice": "Recognition metadata is not removal advice. Add separately reviewed look-alike and safe-action content before public release."
+}

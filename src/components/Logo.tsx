@@ -1,17 +1,11 @@
-/**
- * InvaTrace mark — lens + leaves + tick sighting, sourced from the approved
- * brand kit (claude.ai/design project 633adb90). Two variants:
- *   `Logo`       — full colour, veins + tick marks visible (use ≥ 40px)
- *   `LogoMono`   — one-colour, drops details for small sizes (< 40px)
- */
+/** Full-colour InvaTrace mark made from a search lens, leaves, and sighting
+ *  ticks. The SVG scales without needing separate image files. */
 
-interface Props {
+interface LogoProps {
   size?: number
-  /** Only used by the mono variant. */
-  color?: string
 }
 
-export function Logo({ size = 40 }: Props) {
+export function Logo({ size = 40 }: LogoProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 200 200" aria-hidden="true"
          style={{ display: 'block', flexShrink: 0 }}>
@@ -40,43 +34,8 @@ export function Logo({ size = 40 }: Props) {
   )
 }
 
-export function LogoMono({ size = 32, color = '#FFFFFF' }: Props) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 200 200" aria-hidden="true"
-         style={{ display: 'block', flexShrink: 0, color }}>
-      <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="82" cy="82" r="66" strokeWidth="11" />
-        <line x1="129" y1="129" x2="176" y2="176" strokeWidth="15" />
-        <g strokeWidth="4" opacity="0.5">
-          <line x1="82" y1="16" x2="82" y2="27" />
-          <line x1="148" y1="82" x2="137" y2="82" />
-          <line x1="16" y1="82" x2="27" y2="82" />
-        </g>
-        <path d="M44 116 Q 82 126 120 116" strokeWidth="3.5" opacity="0.5" />
-        <path d="M82 118 V 70" strokeWidth="5.5" />
-        <path d="M82 96 C 68 100, 52 94, 44 78 C 60 70, 76 78, 82 96 Z" strokeWidth="5" />
-        <path d="M82 82 C 98 82, 114 71, 120 52 C 103 47, 88 60, 82 82 Z" strokeWidth="5" />
-        <path d="M82 70 C 82 62, 85 55, 91 50" strokeWidth="4.5" />
-      </g>
-    </svg>
-  )
-}
-
-/** Rounded-square tile with the mono mark inside — for sidebars, headers, avatars. */
-export function LogoBadge({ size = 40, radius = 12, background = 'var(--deep)' }: {
-  size?: number; radius?: number; background?: string
-}) {
-  return (
-    <div style={{
-      width: size, height: size, borderRadius: radius, background,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-    }}>
-      <LogoMono size={size * 0.7} color="#FFFFFF" />
-    </div>
-  )
-}
-
-/** Horizontal wordmark: "inva" (forest 600) + "trace" (ink 400) with the mark. */
+/** Horizontal brand lockup used when there is enough room for both the mark
+ *  and the InvaTrace name. */
 export function LogoWordmark({ size = 20 }: { size?: number }) {
   return (
     <div style={{ display: 'inline-flex', alignItems: 'center', gap: size * 0.5 }}>

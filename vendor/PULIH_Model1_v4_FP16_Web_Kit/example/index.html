@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PULIH Model 1 v4 FP16 Example</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main>
+      <h1>PULIH Model 1 v4 FP16</h1>
+      <p>This example runs the 31-class model locally with WebGPU or WASM.</p>
+      <button id="load-model">Load model</button>
+      <input id="plant-photo" type="file" accept="image/jpeg,image/png,image/webp" disabled />
+      <button id="predict" disabled>Predict</button>
+      <p id="status">Load the model to begin.</p>
+      <img id="preview" alt="Selected plant preview" />
+      <pre id="result">No prediction yet.</pre>
+    </main>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
+

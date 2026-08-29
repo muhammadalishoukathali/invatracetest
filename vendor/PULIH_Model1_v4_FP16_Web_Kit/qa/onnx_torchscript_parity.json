@@ -1,0 +1,12 @@
+{
+  "samples": 512,
+  "reference": "source TorchScript with CUDA autocast FP16",
+  "candidate": "FP16 ONNX with CUDAExecutionProvider",
+  "top1_agreement": 0.998046875,
+  "logit_mean_absolute_error": 0.0017956100637093186,
+  "logit_max_absolute_error": 0.068359375,
+  "probability_mean_absolute_error": 3.5688237232927524e-05,
+  "probability_max_absolute_error": 0.0339694269551607,
+  "source_unknown_probability_mean_absolute_error": 0.0004390405081971437,
+  "source_threshold_decision_agreement": 1.0
+}

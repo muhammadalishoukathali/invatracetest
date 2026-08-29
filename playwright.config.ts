@@ -1,11 +1,14 @@
 import { defineConfig, devices } from '@playwright/test'
 
-/** Playwright config for InvaTrace end-to-end tests.
- *  Vite dev server is started fresh per test run (webServer.reuseExistingServer
- *  keeps local iteration fast). MSW handles all API calls in-process. */
+/** Runs complete browser journeys against the Vite development server. During
+ *  local work, Playwright reuses an existing server; continuous integration
+ *  starts a fresh one. The mock service worker handles API calls in the page. */
 export default defineConfig({
   testDir: './e2e',
-  fullyParallel: false,       // MSW's mock session is process-global — avoid races
+  testIgnore: 'real-backend.spec.ts',
+  // The development API keeps one shared mock session, so parallel tests could
+  // change the same profile or recovery code at the same time.
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   workers: 1,
@@ -22,6 +25,19 @@ export default defineConfig({
     timeout: 60_000,
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    {
+      name: 'chromium',
+      testIgnore: [
+        '**/real-backend.spec.ts',
+        '**/mobile-robustness.spec.ts',
+        '**/model-ui-failure.spec.ts',
+      ],
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'mobile-chromium',
+      testMatch: '**/mobile-robustness.spec.ts',
+      use: { ...devices['Pixel 5'] },
+    },
   ],
 })

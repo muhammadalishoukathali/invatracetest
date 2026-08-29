@@ -1,12 +1,17 @@
 import { http, HttpResponse, passthrough, type JsonBodyType } from 'msw'
 import type {
-  AppNotification, MergeCandidate, Report, ReportSubmission, Sighting,
-  AccessOverview, PseudonymousProfile, SightingDetail, VerifyCheck, VerifyItem,
+  AppNotification, Report, ReportSubmission, Sighting,
+  AccessOverview, PseudonymousProfile, SightingDetail,
 } from '@/types'
 
 const url = (p: string) => `*${p}`
 
 const mockReports: Report[] = []
+const mockReportIdempotency = new Map<string, { request: string; response: Report }>()
+const mockUploadIdempotency = new Map<string, {
+  request: string
+  response: { uploadId: string; uploadUrl: string; photoKey: string; expiresAt: string }
+}>()
 const sessions = new Map<string, { profile: PseudonymousProfile; installationId: string }>()
 const MOCK_SERVER_KEY = 'invatrace-mock-server-v2'
 const MOCK_HASH_PEPPER = 'development-only-invatrace-mock-pepper'
@@ -122,34 +127,9 @@ function recordRestoreFailure(profileId: string) {
 }
 
 /**
- * Mock-only deterministic mapping. It makes page reloads realistic without
- * storing the raw installation token or pretending to be a production data
- * store. The production service must persist a strong server-side token hash.
- */
-export async function createMockProfileForToken(
-  installationToken: string,
-): Promise<PseudonymousProfile> {
-  const digest = await crypto.subtle.digest(
-    'SHA-256',
-    new TextEncoder().encode(installationToken),
-  )
-  const profileKey = Array.from(new Uint8Array(digest).slice(0, 12))
-    .map((byte) => byte.toString(16).padStart(2, '0'))
-    .join('')
-  return {
-    id: `anonymous-${profileKey}`,
-    displayName: null,
-    role: 'Detector',
-    trustLevel: 'New',
-  }
-}
-/**
- * Failure-injection knobs so Playwright / manual tests can exercise the
- * offline queue and retry paths without unplugging the machine.
- *   window.__msw = { failPresign: true }   → next presign returns 503
- *   window.__msw = { failReport: true }    → next POST /reports returns 500
- *   window.__msw = { expireSession: true } → next POST /reports returns 401
- * Cleared automatically after the failing call fires once.
+ * Test controls that force one request to fail. Browser tests use these flags
+ * to check the offline queue and expired-session recovery without changing the
+ * computer's real network connection. Each flag resets after one failure.
  */
 declare global {
   interface Window {
@@ -167,9 +147,8 @@ const shouldInject = (kind: 'failPresign' | 'failReport' | 'expireSession') => {
 }
 
 export const handlers = [
-  /* Explicit passthroughs — MSW's default bypass is unreliable for module
-     workers and cross-origin binary fetches. These paths reach the network
-     unmodified, keeping MapLibre's worker and vector tiles working. */
+  // Do not mock development files, map tiles, fonts, or sample images. These
+  // requests must reach their original host so MapLibre and Vite keep working.
   http.all('http://localhost:5173/node_modules/*', () => passthrough()),
   http.all('http://192.168.0.114:5173/node_modules/*', () => passthrough()),
   http.all('https://tiles.openfreemap.org/*', () => passthrough()),
@@ -273,8 +252,8 @@ export const handlers = [
       return identityJson({ detail: genericError }, 400)
     }
 
-    // No await occurs between this final state read and save: concurrent uses
-    // of one code cannot both observe it as unused in this development mock.
+    // This read and update are synchronous. Two restore requests cannot both
+    // see the same one-time code as unused in the development mock.
     const now = new Date().toISOString()
     code.usedAt = now
     const installation: MockInstallation = {
@@ -391,7 +370,7 @@ export const handlers = [
   http.get(url('/api/v1/notifications'), ({ request }) => {
     const profile = profileForSession(request)
     if (!profile) return HttpResponse.json({ items: [], unread: 0 })
-    const items = seedNotifications(profile.role)
+    const items = seedNotifications()
     return HttpResponse.json({
       items, unread: items.filter((n) => !n.read).length,
     })
@@ -410,7 +389,7 @@ export const handlers = [
     return HttpResponse.json({ ok: true })
   }),
 
-  /* Report flow — presigned upload, submission, own reports. */
+  // Report upload and submission endpoints.
 
   http.post(url('/api/v1/uploads/presign'), async ({ request }) => {
     if (!hasActiveSession(request)) return sessionUnavailable()
@@ -418,19 +397,35 @@ export const handlers = [
       return HttpResponse.json({ detail: 'Upload service unavailable' }, { status: 503 })
     }
     const body = (await request.json()) as { contentType: string; sizeBytes: number }
+    const idempotencyKey = request.headers.get('Idempotency-Key')
+    if (!idempotencyKey) {
+      return HttpResponse.json({ code: 'invalid_idempotency_key', detail: 'A valid Idempotency-Key is required.' }, { status: 400 })
+    }
     if (body.sizeBytes > 8 * 1024 * 1024) {
       return HttpResponse.json({ detail: 'Image exceeds 8MB limit' }, { status: 413 })
     }
-    const photoKey = `photos/${crypto.randomUUID()}.jpg`
-    return HttpResponse.json({
+    const session = sessionForRequest(request)!
+    const scope = `${session.profile.id}:${idempotencyKey}`
+    const serialized = JSON.stringify(body)
+    const existing = mockUploadIdempotency.get(scope)
+    if (existing) {
+      if (existing.request !== serialized) {
+        return HttpResponse.json({ code: 'idempotency_conflict', detail: 'This key was used for a different upload.' }, { status: 409 })
+      }
+      return HttpResponse.json(existing.response)
+    }
+    const photoKey = `uploads/${crypto.randomUUID()}.jpg`
+    const response = {
       uploadId: crypto.randomUUID(),
       uploadUrl: `https://mock-s3.local/${photoKey}`,
       photoKey,
       expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-    })
+    }
+    mockUploadIdempotency.set(scope, { request: serialized, response })
+    return HttpResponse.json(response)
   }),
 
-  /* Simulate the S3 PUT so the client's fetch does not hit the network. */
+  // Accept the temporary upload request without contacting external storage.
   http.put('https://mock-s3.local/*', () => HttpResponse.text('', { status: 200 })),
 
   http.post(url('/api/v1/reports'), async ({ request }) => {
@@ -443,16 +438,47 @@ export const handlers = [
     if (shouldInject('failReport')) {
       return HttpResponse.json({ detail: 'Server error' }, { status: 500 })
     }
+    const session = sessionForRequest(request)!
+    const idempotencyKey = request.headers.get('Idempotency-Key')
+    if (!idempotencyKey) {
+      return HttpResponse.json({ code: 'invalid_idempotency_key', detail: 'A valid Idempotency-Key is required.' }, { status: 400 })
+    }
     const submission = (await request.json()) as ReportSubmission
+    const idempotencyScope = `${session.profile.id}:${idempotencyKey}`
+    const serialized = JSON.stringify(submission)
+    const existing = mockReportIdempotency.get(idempotencyScope)
+    if (existing) {
+      if (existing.request !== serialized) {
+        return HttpResponse.json({ code: 'idempotency_conflict', detail: 'This key was used for a different report.' }, { status: 409 })
+      }
+      return HttpResponse.json(existing.response, { status: 201 })
+    }
     const id = crypto.randomUUID()
+    const storedSubmission = {
+      ...submission,
+      photoKey: `evidence/${session.profile.id}/${id}.jpg`,
+    }
     const report: Report = {
       id,
-      status: 'candidate',
+      status: 'processing',
       createdAt: new Date().toISOString(),
-      submission,
-      trackingUrl: `/verify/${id}`,
+      submission: storedSubmission,
+      trackingUrl: `/reports/${id}`,
+      validation: { reasonCodes: [], retryable: false, policyVersion: null, modelVersion: null },
+      sightingId: null,
     }
     mockReports.unshift(report)
+    mockReportIdempotency.set(idempotencyScope, { request: serialized, response: report })
+    setTimeout(() => {
+      report.status = 'confirmed'
+      report.validation = {
+        reasonCodes: ['automated_checks_passed'],
+        retryable: false,
+        policyVersion: 'automated-v1.0',
+        modelVersion: 'fake-server-v1',
+      }
+      report.sightingId = SIGHTINGS[0].id
+    }, 750)
     return HttpResponse.json(report, { status: 201 })
   }),
 
@@ -463,16 +489,29 @@ export const handlers = [
     return HttpResponse.json({ items: mockReports })
   }),
 
-  /* Threat map — sightings list + detail. Precision policy applied here
-     to simulate what the real API will do server-side (Arch §11). */
+  http.get(url('/api/v1/reports/:id'), ({ params, request }) => {
+    if (!hasActiveSession(request)) return sessionUnavailable()
+    const report = findReport(params.id as string)
+    return report
+      ? HttpResponse.json(report)
+      : HttpResponse.json({ detail: 'Not found' }, { status: 404 })
+  }),
+
+  // Threat-map endpoints. Sensitive coordinates are reduced here because the
+  // production API is also expected to apply this privacy rule on the server.
 
   http.get(url('/api/v1/sightings'), ({ request }) => {
     const params = new URL(request.url).searchParams
     const speciesFilter = params.getAll('species')
     const statusFilter = params.getAll('status')
+    const riskFilter = params.getAll('risk')
+    const search = params.get('q')?.trim().toLowerCase() ?? ''
     let items = SIGHTINGS
     if (speciesFilter.length) items = items.filter((s) => speciesFilter.includes(s.speciesId))
     if (statusFilter.length) items = items.filter((s) => statusFilter.includes(s.status))
+    if (riskFilter.length) items = items.filter((s) => riskFilter.includes(s.risk))
+    if (search) items = items.filter((s) => s.speciesName.toLowerCase().includes(search)
+      || s.latinName.toLowerCase().includes(search))
     return HttpResponse.json({ items })
   }),
 
@@ -482,77 +521,17 @@ export const handlers = [
     const detail: SightingDetail = {
       ...raw,
       recommendedAction: RECOMMENDED_ACTION[raw.status],
-      reporterTrust: raw.status === 'candidate' ? 'New' : 'Trusted',
+      reporterTrust: 'Trusted',
+      actionGuide: raw.speciesId === 'mikania-micrantha' ? MOCK_ACTION_GUIDE : null,
     }
     return HttpResponse.json(detail)
   }),
 
-  /* Verify queue — coordinator/expert/admin only. */
-
-  http.get(url('/api/v1/verify/queue'), ({ request }) => {
-    if (!coordAllowed(request)) return forbidden()
-    return HttpResponse.json({ items: verifyQueue() })
-  }),
-
-  http.get(url('/api/v1/verify/:id'), ({ params, request }) => {
-    if (!coordAllowed(request)) return forbidden()
-    const item = verifyQueue().find((v) => v.id === params.id)
-    if (!item) return HttpResponse.json({ detail: 'Not found' }, { status: 404 })
-    return HttpResponse.json(item)
-  }),
-
-  http.get(url('/api/v1/verify/:id/merge-candidates'), ({ params, request }) => {
-    if (!coordAllowed(request)) return forbidden()
-    const item = verifyQueue().find((v) => v.id === params.id)
-    if (!item) return HttpResponse.json({ items: [] })
-    const candidates: MergeCandidate[] = SIGHTINGS
-      .filter((s) => s.speciesId === item.speciesId && s.status !== 'rejected')
-      .map((s) => ({
-        id: s.id,
-        speciesName: s.speciesName,
-        status: s.status,
-        distanceM: haversine(s.location, item.location),
-        reportCount: s.reportCount,
-        lastReportedAt: s.lastReportedAt,
-      }))
-      .filter((c) => c.distanceM < 500)
-      .sort((a, b) => a.distanceM - b.distanceM)
-      .slice(0, 5)
-    return HttpResponse.json({ items: candidates })
-  }),
-
-  http.post(url('/api/v1/verify/:id/confirm'), ({ params, request }) => {
-    if (!coordAllowed(request)) return forbidden()
-    const r = findReport(params.id as string)
-    if (!r) return HttpResponse.json({ detail: 'Not found' }, { status: 404 })
-    r.status = 'confirmed'
-    return HttpResponse.json({ ok: true, status: r.status })
-  }),
-
-  http.post(url('/api/v1/verify/:id/reject'), ({ params, request }) => {
-    if (!coordAllowed(request)) return forbidden()
-    const r = findReport(params.id as string)
-    if (!r) return HttpResponse.json({ detail: 'Not found' }, { status: 404 })
-    r.status = 'rejected'
-    return HttpResponse.json({ ok: true, status: r.status })
-  }),
-
-  http.post(url('/api/v1/verify/:id/merge'), async ({ params, request }) => {
-    if (!coordAllowed(request)) return forbidden()
-    const body = (await request.json()) as { targetId: string }
-    const r = findReport(params.id as string)
-    const target = SIGHTINGS.find((s) => s.id === body.targetId)
-    if (!r || !target) return HttpResponse.json({ detail: 'Not found' }, { status: 404 })
-    r.status = 'confirmed'
-    target.reportCount += 1
-    target.lastReportedAt = new Date().toISOString()
-    return HttpResponse.json({ ok: true, mergedInto: target.id })
-  }),
 ]
 
-/* ── Verify helpers ─────────────────────────────────────── */
+// Helpers for report tracking responses.
 
-/** Roles allowed to open the queue. Detector / Volunteer are not. */
+/** Read the bearer token used to find the current mock session. */
 function bearerToken(request: Request): string | null {
   const authorization = request.headers.get('Authorization')
   return authorization?.startsWith('Bearer ') ? authorization.slice(7) : null
@@ -567,110 +546,16 @@ function profileForSession(request: Request): PseudonymousProfile | null {
 function hasActiveSession(request: Request): boolean {
   return !!profileForSession(request)
 }
-function coordAllowed(request: Request): boolean {
-  const profile = profileForSession(request)
-  return !!profile && ['Coordinator', 'Expert', 'Admin'].includes(profile.role)
-}
-function forbidden() {
-  return HttpResponse.json({ detail: 'Forbidden' }, { status: 403 })
-}
 function sessionUnavailable() {
   return HttpResponse.json({ detail: 'API session unavailable' }, { status: 401 })
 }
 /** Look up a report from either the seeded pool or the session pool. */
 function findReport(id: string): Report | undefined {
-  return SEEDED_REPORTS.find((r) => r.id === id) ?? mockReports.find((r) => r.id === id)
+  return SEEDED_REPORTS.find((report) => report.id === id)
+    ?? mockReports.find((report) => report.id === id)
 }
 
-/** Turn each `candidate` report into a queue row with derived checks. */
-function verifyQueue(): VerifyItem[] {
-  // Compose: seeded pool + anything users have submitted this session.
-  const all = [...SEEDED_REPORTS, ...mockReports]
-  return all
-    .filter((r) => r.status === 'candidate')
-    .map((r) => {
-      const s = r.submission
-      const speciesName = SPECIES_NAME[s.speciesId ?? ''] ?? 'Unknown species'
-      const latinName = SPECIES_LATIN[s.speciesId ?? ''] ?? '—'
-      const trust: VerifyItem['submitterTrust'] = r.id.startsWith('seed-new-')
-        ? 'New' : r.id.startsWith('seed-trusted-') ? 'Trusted' : 'New'
-      return {
-        id: r.id,
-        photoUrl: `https://picsum.photos/seed/${r.id}/560/360`,
-        speciesId: s.speciesId,
-        speciesName,
-        latinName,
-        outcome: s.outcome,
-        confidence: s.confidence,
-        modelVersion: s.modelVersion,
-        location: s.location,
-        locationAccuracyM: s.locationAccuracyM,
-        place: nearestPlace(s.location),
-        extent: s.extent,
-        notes: s.notes,
-        submitterId: r.id,
-        submitterTrust: trust,
-        submittedAt: r.createdAt,
-        checks: buildChecks(r, trust),
-      }
-    })
-    .sort((a, b) => a.submittedAt < b.submittedAt ? 1 : -1)  // newest first
-}
-
-const SPECIES_NAME: Record<string, string> = {
-  'mikania-micrantha': 'Mikania micrantha',
-  'chromolaena-odorata': 'Siam weed',
-  'eichhornia-crassipes': 'Water hyacinth',
-  'clidemia-hirta': "Koster's curse",
-}
-const SPECIES_LATIN: Record<string, string> = {
-  'mikania-micrantha': 'Mikania micrantha',
-  'chromolaena-odorata': 'Chromolaena odorata',
-  'eichhornia-crassipes': 'Eichhornia crassipes',
-  'clidemia-hirta': 'Clidemia hirta',
-}
-
-function buildChecks(r: Report, trust: 'New' | 'Trusted' | 'Steward'): VerifyCheck[] {
-  const s = r.submission
-  const speciesLevel: VerifyCheck['level'] =
-    s.outcome === 'target' && s.confidence >= 0.8 ? 'pass'
-      : s.outcome === 'uncertain' ? 'warn' : 'warn'
-  const locLevel: VerifyCheck['level'] =
-    s.locationAccuracyM == null ? 'warn'
-      : s.locationAccuracyM < 50 ? 'pass'
-      : s.locationAccuracyM < 200 ? 'warn' : 'fail'
-  const qualityLevel: VerifyCheck['level'] = 'pass'  // stub adapter already gated
-  const trustLevel: VerifyCheck['level'] = trust === 'New' ? 'warn' : 'pass'
-  return [
-    { id: 'species', label: 'Species identification',
-      level: speciesLevel,
-      detail: `Model verdict: ${s.outcome} at ${Math.round(s.confidence * 100)}% (${s.modelVersion})` },
-    { id: 'location', label: 'Location precision',
-      level: locLevel,
-      detail: s.locationAccuracyM != null
-        ? `GPS accurate to ~${s.locationAccuracyM} m`
-        : 'Manual entry — no GPS accuracy recorded' },
-    { id: 'quality', label: 'Photo quality',
-      level: qualityLevel,
-      detail: 'Passed on-device quality gate at scan time' },
-    { id: 'trust', label: 'Submitter trust',
-      level: trustLevel,
-      detail: `Reporter trust level: ${trust}` },
-  ]
-}
-
-/** Great-circle distance in metres. Good enough for merge-distance display. */
-function haversine(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
-  const R = 6371e3, toRad = (d: number) => (d * Math.PI) / 180
-  const dLat = toRad(b.lat - a.lat), dLng = toRad(b.lng - a.lng)
-  const s1 = Math.sin(dLat / 2), s2 = Math.sin(dLng / 2)
-  const c = s1 * s1 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * s2 * s2
-  return Math.round(2 * R * Math.atan2(Math.sqrt(c), Math.sqrt(1 - c)))
-}
-
-/** Simple reverse-geocode stub — nearest Malaysian landmark from a small
- *  hand-curated list. The real API will hit MapTiler / Nominatim scoped to
- *  Malaysia. Iteration 1 is Klang Valley only, so the seed covers that. */
+/** Development landmarks mirror the server's seed fallback for place labels. */
 const PLACES: { name: string; lat: number; lng: number }[] = [
   { name: 'Bukit Kiara · West Trail',        lat: 3.1497, lng: 101.6412 },
   { name: 'Bukit Kiara · Look-out',           lat: 3.1523, lng: 101.6440 },
@@ -684,47 +569,42 @@ const PLACES: { name: string; lat: number; lng: number }[] = [
   { name: 'Bukit Gasing · North gate',        lat: 3.1044, lng: 101.6538 },
 ]
 
-function nearestPlace(loc: { lat: number; lng: number }): string {
-  let best = PLACES[0]
-  let bestD = Number.POSITIVE_INFINITY
-  for (const p of PLACES) {
-    const d = haversine(loc, { lat: p.lat, lng: p.lng })
-    if (d < bestD) { bestD = d; best = p }
-  }
-  return best.name
-}
-
-/** Seed a handful of candidate reports so the queue is not empty on first load. */
+/** Seed report records used by report-status mock responses. */
 const now = Date.now()
 const seedReport = (id: string, speciesId: string, outcome: 'target' | 'uncertain',
                     confidence: number, lat: number, lng: number, acc: number | null,
                     extent: 'single' | 'small_patch' | 'large_area', notes: string,
                     hoursAgo: number): Report => ({
-  id, status: 'candidate',
+  id, status: 'processing',
   createdAt: new Date(now - hoursAgo * 3600 * 1000).toISOString(),
-  trackingUrl: `/verify/${id}`,
+  trackingUrl: `/reports/${id}`,
+  validation: { reasonCodes: [], retryable: false, policyVersion: null, modelVersion: null },
+  sightingId: null,
   submission: {
-    photoKey: `photos/${id}.jpg`,
-    speciesId, outcome, confidence, modelVersion: 'stub-v0.1.0',
+    photoKey: `evidence/seed/${id}.jpg`,
+    speciesId, outcome, confidence, modelVersion: 'development-model-v1',
+    observedAt: new Date(now - hoursAgo * 3600 * 1000).toISOString(),
+    captureId: crypto.randomUUID(),
+    captureSource: 'camera',
     location: { lat, lng },
     locationAccuracyM: acc, extent, notes,
     consent: { accurate: true, noPII: true },
   },
 })
 
-/* ── Notifications seed ─────────────────────────────────── */
+// Sample notifications used by the development API.
 
 const NOTIFICATIONS: AppNotification[] = [
   { id: 'n-1', kind: 'report_confirmed',
     title: 'Report confirmed',
-    body: 'Your Mikania micrantha sighting on the west trail was confirmed by a coordinator.',
+    body: 'Automated checks confirmed your Mikania micrantha sighting on the west trail.',
     createdAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
     read: false, linkTo: '/map' },
-  { id: 'n-2', kind: 'queue_new',
-    title: 'New report in verify queue',
-    body: 'A trusted reporter submitted a Water hyacinth sighting near the pond.',
+  { id: 'n-2', kind: 'report_needs_rescan',
+    title: 'A fresh scan is needed',
+    body: 'Automated checks could not validate a previous Water hyacinth photo.',
     createdAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
-    read: false, linkTo: '/verify' },
+    read: false, linkTo: '/scan' },
   { id: 'n-3', kind: 'sync_ok',
     title: 'Queued report synced',
     body: '1 offline report reached the server after reconnect.',
@@ -737,13 +617,7 @@ const NOTIFICATIONS: AppNotification[] = [
     read: true },
 ]
 
-/** Notifications visible to a given role. Detectors don't see queue events. */
-function seedNotifications(role: string): AppNotification[] {
-  return NOTIFICATIONS.filter((n) => {
-    if (n.kind === 'queue_new') return ['Coordinator', 'Expert', 'Admin'].includes(role)
-    return true
-  })
-}
+function seedNotifications(): AppNotification[] { return NOTIFICATIONS }
 
 const SEEDED_REPORTS: Report[] = [
   seedReport('seed-trusted-01', 'mikania-micrantha', 'target', 0.91,
@@ -763,59 +637,77 @@ const SEEDED_REPORTS: Report[] = [
     'Pond fully covered.', 20),
 ]
 
-/* ── Sightings seed ─────────────────────────────────────── */
+// Sample sightings used by the development API.
 
 const RECOMMENDED_ACTION: Record<string, string> = {
-  candidate: 'Awaiting coordinator verification. Do not act yet.',
+  processing: 'Automated validation is running. Do not act yet.',
   confirmed: 'Approved for removal. Follow safe-removal steps for this species.',
   rejected: 'Marked as misidentified — no action required.',
   removed: 'Removal recorded. Recheck for regrowth in 2–3 weeks.',
 }
 
-/** Bukit Kiara centre. All seed pins are within ~1 km of this. */
+/** Bukit Kiara centre. Sample sightings are placed within about 1 km. */
 const BK = { lat: 3.1497, lng: 101.6412 }
 
-/** Deterministic "jitter" so candidate / new-trust pins render at reduced
- *  precision (§11). ~100 m at the equator. Same input → same output. */
+/** Move private coordinates by about 100 m. The same sighting ID always gets
+ *  the same offset, so its marker does not jump between page loads. */
 function jitter(id: string): { dLat: number; dLng: number } {
-  let h = 0
-  for (let i = 0; i < id.length; i++) h = ((h << 5) - h + id.charCodeAt(i)) | 0
-  const a = ((h & 0xffff) / 0xffff) * Math.PI * 2
-  const r = 0.001  // ~110 m
-  return { dLat: Math.sin(a) * r, dLng: Math.cos(a) * r }
+  let hash = 0
+  for (let index = 0; index < id.length; index++) {
+    hash = ((hash << 5) - hash + id.charCodeAt(index)) | 0
+  }
+  const angle = ((hash & 0xffff) / 0xffff) * Math.PI * 2
+  const distanceInDegrees = 0.001 // About 110 m at the equator.
+  return {
+    dLat: Math.sin(angle) * distanceInDegrees,
+    dLng: Math.cos(angle) * distanceInDegrees,
+  }
 }
 
-const SEED: Omit<Sighting, 'location' | 'precisionReduced' | 'lastReportedAt'>[] = [
+const SEED: Omit<Sighting, 'location' | 'precisionReduced' | 'lastReportedAt' | 'place' | 'thumbnailUrl'>[] = [
   { id: 's-01', speciesId: 'mikania-micrantha', speciesName: 'Mikania micrantha', latinName: 'Mikania micrantha', status: 'confirmed', risk: 'high', reportCount: 4 },
   { id: 's-02', speciesId: 'mikania-micrantha', speciesName: 'Mikania micrantha', latinName: 'Mikania micrantha', status: 'confirmed', risk: 'high', reportCount: 2 },
-  { id: 's-03', speciesId: 'mikania-micrantha', speciesName: 'Mikania micrantha', latinName: 'Mikania micrantha', status: 'candidate', risk: 'high', reportCount: 1 },
+  { id: 's-03', speciesId: 'mikania-micrantha', speciesName: 'Mikania micrantha', latinName: 'Mikania micrantha', status: 'confirmed', risk: 'high', reportCount: 1 },
   { id: 's-04', speciesId: 'chromolaena-odorata', speciesName: 'Siam weed', latinName: 'Chromolaena odorata', status: 'confirmed', risk: 'high', reportCount: 3 },
-  { id: 's-05', speciesId: 'chromolaena-odorata', speciesName: 'Siam weed', latinName: 'Chromolaena odorata', status: 'candidate', risk: 'high', reportCount: 1 },
+  { id: 's-05', speciesId: 'chromolaena-odorata', speciesName: 'Siam weed', latinName: 'Chromolaena odorata', status: 'confirmed', risk: 'high', reportCount: 1 },
   { id: 's-06', speciesId: 'eichhornia-crassipes', speciesName: 'Water hyacinth', latinName: 'Eichhornia crassipes', status: 'confirmed', risk: 'high', reportCount: 5 },
   { id: 's-07', speciesId: 'eichhornia-crassipes', speciesName: 'Water hyacinth', latinName: 'Eichhornia crassipes', status: 'confirmed', risk: 'high', reportCount: 2 },
   { id: 's-08', speciesId: 'clidemia-hirta', speciesName: "Koster's curse", latinName: 'Clidemia hirta', status: 'confirmed', risk: 'watch', reportCount: 3 },
-  { id: 's-09', speciesId: 'clidemia-hirta', speciesName: "Koster's curse", latinName: 'Clidemia hirta', status: 'candidate', risk: 'watch', reportCount: 1 },
+  { id: 's-09', speciesId: 'clidemia-hirta', speciesName: "Koster's curse", latinName: 'Clidemia hirta', status: 'confirmed', risk: 'watch', reportCount: 1 },
   { id: 's-10', speciesId: 'mikania-micrantha', speciesName: 'Mikania micrantha', latinName: 'Mikania micrantha', status: 'removed', risk: 'high', reportCount: 2 },
 ]
 
 /** Angular offsets from the centre so pins fan out around Bukit Kiara. */
 const RADIALS = [
-  { r: 0.0032, θ: 0.2 }, { r: 0.0025, θ: 1.1 }, { r: 0.0041, θ: 2.4 },
-  { r: 0.0018, θ: 3.6 }, { r: 0.0037, θ: 4.7 }, { r: 0.0028, θ: 5.9 },
-  { r: 0.0045, θ: 0.9 }, { r: 0.0022, θ: 2.0 }, { r: 0.0033, θ: 3.1 },
-  { r: 0.0016, θ: 4.2 },
+  { radius: 0.0032, angle: 0.2 }, { radius: 0.0025, angle: 1.1 }, { radius: 0.0041, angle: 2.4 },
+  { radius: 0.0018, angle: 3.6 }, { radius: 0.0037, angle: 4.7 }, { radius: 0.0028, angle: 5.9 },
+  { radius: 0.0045, angle: 0.9 }, { radius: 0.0022, angle: 2.0 }, { radius: 0.0033, angle: 3.1 },
+  { radius: 0.0016, angle: 4.2 },
 ]
 
-const SIGHTINGS: Sighting[] = SEED.map((s, i) => {
-  const { r, θ } = RADIALS[i]
-  const exact = { lat: BK.lat + Math.sin(θ) * r, lng: BK.lng + Math.cos(θ) * r }
-  const reduced = s.status === 'candidate'
-  const j = reduced ? jitter(s.id) : { dLat: 0, dLng: 0 }
+const SIGHTINGS: Sighting[] = SEED.map((sighting, index) => {
+  const { radius, angle } = RADIALS[index]
+  const exactLocation = {
+    lat: BK.lat + Math.sin(angle) * radius,
+    lng: BK.lng + Math.cos(angle) * radius,
+  }
+  const precisionReduced = index < 3
+  const offset = precisionReduced ? jitter(sighting.id) : { dLat: 0, dLng: 0 }
   return {
-    ...s,
-    location: { lat: exact.lat + j.dLat, lng: exact.lng + j.dLng },
-    precisionReduced: reduced,
-    lastReportedAt: new Date(Date.now() - (i + 1) * 3600 * 1000).toISOString(),
+    ...sighting,
+    location: {
+      lat: exactLocation.lat + offset.dLat,
+      lng: exactLocation.lng + offset.dLng,
+    },
+    precisionReduced,
+    place: {
+      displayName: PLACES[index].name,
+      areaName: PLACES[index].name.split(' · ')[0] ?? null,
+      trailName: PLACES[index].name.includes(' · ') ? PLACES[index].name.split(' · ')[1] : null,
+      source: 'seed',
+    },
+    thumbnailUrl: null,
+    lastReportedAt: new Date(Date.now() - (index + 1) * 3600 * 1000).toISOString(),
   }
 })
 
@@ -827,6 +719,7 @@ const SPECIES_DETAIL: Record<string, unknown> = {
     commonNames: ['Mile-a-minute weed', 'Chinese creeper'],
     isInvasive: true,
     risk: 'high',
+    reportable: true,
     traits: [
       { label: 'Leaf shape', value: 'Heart-shaped, opposite, 5–13 cm' },
       { label: 'Flower', value: 'Small white heads in dense clusters' },
@@ -861,6 +754,7 @@ const SPECIES_DETAIL: Record<string, unknown> = {
     commonNames: ['Siam weed', 'Devil weed'],
     isInvasive: true,
     risk: 'high',
+    reportable: false,
     traits: [
       { label: 'Leaf shape', value: 'Opposite, ovate, 5–12 cm with serrated edges' },
       { label: 'Flower', value: 'Pale purple to white, in terminal clusters' },
@@ -878,4 +772,19 @@ const SPECIES_DETAIL: Record<string, unknown> = {
       'Do not burn on-site without permit',
     ],
   },
+}
+
+const MOCK_ACTION_GUIDE = {
+  actionMode: 'remove' as const,
+  title: 'Cut, bag, and prevent re-rooting',
+  summary: 'Cut at ground level and bag every fragment.',
+  validMonths: Array.from({ length: 12 }, (_, index) => index + 1),
+  steps: [
+    { order: 1, action: 'Cut the vine at ground level', safe: true },
+    { order: 2, action: 'Bag every cut fragment', safe: true },
+  ],
+  doNotDo: ['Do not compost or leave fragments on soil'],
+  ppe: ['Gloves', 'Covered footwear'],
+  decontamination: ['Remove fragments from tools and boots before leaving'],
+  revision: 'field-guide-2026-08-automated-v1',
 }

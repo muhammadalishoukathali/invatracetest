@@ -1,0 +1,289 @@
+{
+  "created_at_utc": "2026-08-26T05:27:38+00:00",
+  "model": "efficientnet_v2_s_oe_v4_31class_web_fp16",
+  "all_offline_gates_passed": true,
+  "gates": {
+    "class_count_is_31": true,
+    "known_classification_accuracy_gte_0_97": true,
+    "known_acceptance_rate_gte_0_93": true,
+    "all_three_new_classes_accuracy_gte_0_90": true,
+    "unknown_recall_gte_0_90": true,
+    "hard_lookalike_recall_gte_0_70": true,
+    "regular_unknown_recall_gte_0_90": true,
+    "low_quality_rejection_gte_0_95": true,
+    "open_set_auroc_gte_0_95": true,
+    "torchscript_top1_parity_gte_0_995": true,
+    "source_threshold_decision_parity_gte_0_99": true
+  },
+  "independent_test": {
+    "known_samples": 19774,
+    "unknown_samples": 6429,
+    "known_acceptance_rate": 0.95246282997876,
+    "known_false_rejection_rate": 0.04753717002124001,
+    "unknown_recall": 0.9561362575828278,
+    "unknown_false_acceptance_rate": 0.04386374241717219,
+    "accepted_known_classification_accuracy": 0.9911861527025592,
+    "known_classification_accuracy_before_rejection": 0.9823505613431779,
+    "open_set_balanced_accuracy": 0.954299543780794,
+    "open_set_auroc": 0.9881515771238796,
+    "open_set_average_precision_unknown": 0.9658087258414884,
+    "confusion_matrix_rows_actual_known_unknown": [
+      [
+        18834,
+        940
+      ],
+      [
+        282,
+        6147
+      ]
+    ],
+    "unknown_recall_by_group": {
+      "non_plant": 0.9770773638968482,
+      "unknown_plant_hard": 0.9443166129774505,
+      "unknown_plant_regular": 0.960839518812388
+    },
+    "known_classification_by_class": {
+      "mimosa_pudica": {
+        "class_index": 0,
+        "samples": 750,
+        "classification_accuracy_before_rejection": 0.9813333333333333,
+        "acceptance_rate": 0.9933333333333333,
+        "accepted_classification_accuracy": 0.9825503355704698
+      },
+      "carica_papaya": {
+        "class_index": 1,
+        "samples": 677,
+        "classification_accuracy_before_rejection": 0.9955686853766618,
+        "acceptance_rate": 0.9896602658788775,
+        "accepted_classification_accuracy": 0.9955223880597015
+      },
+      "clitoria_ternatea": {
+        "class_index": 2,
+        "samples": 695,
+        "classification_accuracy_before_rejection": 0.9971223021582734,
+        "acceptance_rate": 0.9856115107913669,
+        "accepted_classification_accuracy": 1.0
+      },
+      "centella_asiatica": {
+        "class_index": 3,
+        "samples": 491,
+        "classification_accuracy_before_rejection": 0.9755600814663951,
+        "acceptance_rate": 0.8635437881873728,
+        "accepted_classification_accuracy": 0.9976415094339622
+      },
+      "dicranopteris_linearis": {
+        "class_index": 4,
+        "samples": 714,
+        "classification_accuracy_before_rejection": 0.9901960784313726,
+        "acceptance_rate": 0.7605042016806722,
+        "accepted_classification_accuracy": 0.998158379373849
+      },
+      "ageratum_conyzoides": {
+        "class_index": 5,
+        "samples": 576,
+        "classification_accuracy_before_rejection": 0.9722222222222222,
+        "acceptance_rate": 0.9288194444444444,
+        "accepted_classification_accuracy": 0.994392523364486
+      },
+      "leucaena_leucocephala": {
+        "class_index": 6,
+        "samples": 695,
+        "classification_accuracy_before_rejection": 0.9769784172661871,
+        "acceptance_rate": 0.9697841726618706,
+        "accepted_classification_accuracy": 0.9881305637982196
+      },
+      "imperata_cylindrica": {
+        "class_index": 7,
+        "samples": 654,
+        "classification_accuracy_before_rejection": 0.981651376146789,
+        "acceptance_rate": 0.9908256880733946,
+        "accepted_classification_accuracy": 0.9845679012345679
+      },
+      "pistia_stratiotes": {
+        "class_index": 8,
+        "samples": 658,
+        "classification_accuracy_before_rejection": 0.9787234042553191,
+        "acceptance_rate": 0.9893617021276596,
+        "accepted_classification_accuracy": 0.9815668202764977
+      },
+      "macaranga_tanarius": {
+        "class_index": 9,
+        "samples": 693,
+        "classification_accuracy_before_rejection": 0.9913419913419913,
+        "acceptance_rate": 0.9711399711399712,
+        "accepted_classification_accuracy": 0.9970282317979198
+      },
+      "cocos_nucifera": {
+        "class_index": 10,
+        "samples": 729,
+        "classification_accuracy_before_rejection": 0.9917695473251029,
+        "acceptance_rate": 0.9862825788751715,
+        "accepted_classification_accuracy": 0.9944367176634215
+      },
+      "colocasia_esculenta": {
+        "class_index": 11,
+        "samples": 697,
+        "classification_accuracy_before_rejection": 0.9913916786226685,
+        "acceptance_rate": 0.9713055954088953,
+        "accepted_classification_accuracy": 0.9970457902511078
+      },
+      "pteris_vittata": {
+        "class_index": 12,
+        "samples": 686,
+        "classification_accuracy_before_rejection": 0.9927113702623906,
+        "acceptance_rate": 0.9868804664723032,
+        "accepted_classification_accuracy": 0.9955686853766618
+      },
+      "catharanthus_roseus": {
+        "class_index": 13,
+        "samples": 679,
+        "classification_accuracy_before_rejection": 0.9941089837997055,
+        "acceptance_rate": 0.9911634756995582,
+        "accepted_classification_accuracy": 0.9970282317979198
+      },
+      "bidens_pilosa": {
+        "class_index": 14,
+        "samples": 691,
+        "classification_accuracy_before_rejection": 0.975397973950796,
+        "acceptance_rate": 0.9059334298118669,
+        "accepted_classification_accuracy": 0.9968051118210862
+      },
+      "chromolaena_odorata": {
+        "class_index": 15,
+        "samples": 674,
+        "classification_accuracy_before_rejection": 0.9688427299703264,
+        "acceptance_rate": 0.9376854599406528,
+        "accepted_classification_accuracy": 0.9873417721518988
+      },
+      "eichhornia_crassipes": {
+        "class_index": 16,
+        "samples": 635,
+        "classification_accuracy_before_rejection": 0.9826771653543307,
+        "acceptance_rate": 0.9826771653543307,
+        "accepted_classification_accuracy": 0.9887820512820513
+      },
+      "mikania_micrantha": {
+        "class_index": 17,
+        "samples": 681,
+        "classification_accuracy_before_rejection": 0.973568281938326,
+        "acceptance_rate": 0.9706314243759178,
+        "accepted_classification_accuracy": 0.9878971255673222
+      },
+      "oxalis_corniculata": {
+        "class_index": 18,
+        "samples": 716,
+        "classification_accuracy_before_rejection": 0.9916201117318436,
+        "acceptance_rate": 0.9832402234636871,
+        "accepted_classification_accuracy": 0.9985795454545454
+      },
+      "psidium_guajava": {
+        "class_index": 19,
+        "samples": 642,
+        "classification_accuracy_before_rejection": 0.9875389408099688,
+        "acceptance_rate": 0.9485981308411215,
+        "accepted_classification_accuracy": 0.9983579638752053
+      },
+      "asclepias_curassavica": {
+        "class_index": 20,
+        "samples": 644,
+        "classification_accuracy_before_rejection": 0.9829192546583851,
+        "acceptance_rate": 0.968944099378882,
+        "accepted_classification_accuracy": 0.9935897435897436
+      },
+      "megathyrsus_maximus": {
+        "class_index": 21,
+        "samples": 690,
+        "classification_accuracy_before_rejection": 0.9565217391304348,
+        "acceptance_rate": 0.981159420289855,
+        "accepted_classification_accuracy": 0.9645494830132939
+      },
+      "mimosa_diplotricha": {
+        "class_index": 22,
+        "samples": 128,
+        "classification_accuracy_before_rejection": 0.984375,
+        "acceptance_rate": 1.0,
+        "accepted_classification_accuracy": 0.984375
+      },
+      "mimosa_pigra": {
+        "class_index": 23,
+        "samples": 283,
+        "classification_accuracy_before_rejection": 0.9717314487632509,
+        "acceptance_rate": 0.9823321554770318,
+        "accepted_classification_accuracy": 0.9748201438848921
+      },
+      "alternanthera_philoxeroides": {
+        "class_index": 24,
+        "samples": 651,
+        "classification_accuracy_before_rejection": 0.9708141321044547,
+        "acceptance_rate": 0.9523809523809523,
+        "accepted_classification_accuracy": 0.9935483870967742
+      },
+      "parthenium_hysterophorus": {
+        "class_index": 25,
+        "samples": 704,
+        "classification_accuracy_before_rejection": 0.9957386363636364,
+        "acceptance_rate": 0.9857954545454546,
+        "accepted_classification_accuracy": 0.9971181556195965
+      },
+      "ageratina_adenophora": {
+        "class_index": 26,
+        "samples": 658,
+        "classification_accuracy_before_rejection": 0.9802431610942249,
+        "acceptance_rate": 0.9665653495440729,
+        "accepted_classification_accuracy": 0.9968553459119497
+      },
+      "sida_acuta": {
+        "class_index": 27,
+        "samples": 190,
+        "classification_accuracy_before_rejection": 0.9947368421052631,
+        "acceptance_rate": 0.968421052631579,
+        "accepted_classification_accuracy": 1.0
+      },
+      "miconia_crenata": {
+        "class_index": 28,
+        "samples": 574,
+        "classification_accuracy_before_rejection": 0.9912891986062717,
+        "acceptance_rate": 0.9686411149825784,
+        "accepted_classification_accuracy": 0.9964028776978417
+      },
+      "sphagneticola_trilobata": {
+        "class_index": 29,
+        "samples": 924,
+        "classification_accuracy_before_rejection": 0.9826839826839827,
+        "acceptance_rate": 0.9307359307359307,
+        "accepted_classification_accuracy": 0.9918604651162791
+      },
+      "lantana_camara": {
+        "class_index": 30,
+        "samples": 895,
+        "classification_accuracy_before_rejection": 0.958659217877095,
+        "acceptance_rate": 0.8122905027932961,
+        "accepted_classification_accuracy": 0.9711141678129298
+      }
+    }
+  },
+  "low_quality_independent_test": {
+    "samples": 422,
+    "rejected_rate": 0.95260663507109,
+    "by_group": {
+      "low_quality_blur": 0.979381443298969,
+      "low_quality_dark": 0.9565217391304348,
+      "low_quality_occluded": 0.9911504424778761,
+      "low_quality_tiny_subject": 0.8762886597938144
+    }
+  },
+  "parity": {
+    "samples": 512,
+    "reference": "source TorchScript with CUDA autocast FP16",
+    "candidate": "FP16 ONNX with CUDAExecutionProvider",
+    "top1_agreement": 0.998046875,
+    "logit_mean_absolute_error": 0.0017956100637093186,
+    "logit_max_absolute_error": 0.068359375,
+    "probability_mean_absolute_error": 3.5688237232927524e-05,
+    "probability_max_absolute_error": 0.0339694269551607,
+    "source_unknown_probability_mean_absolute_error": 0.0004390405081971437,
+    "source_threshold_decision_agreement": 1.0
+  },
+  "mobile_benchmark_complete": false,
+  "deployment_changed": false
+}

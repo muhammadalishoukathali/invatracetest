@@ -1,0 +1,169 @@
+.bottom-tabs-shell {
+  position: fixed;
+  z-index: 50;
+  left: 50%;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  width: min(420px, calc(100vw - 24px));
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.bottom-tabs {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) 66px repeat(2, minmax(0, 1fr));
+  align-items: center;
+  height: 72px;
+  padding: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(244, 255, 249, 0.22);
+  border-radius: 30px;
+  background: var(--nav-glass);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    inset 0 -1px 0 rgba(157, 207, 179, 0.1),
+    var(--shadow-nav);
+  backdrop-filter: saturate(1.45) blur(28px);
+  -webkit-backdrop-filter: saturate(1.45) blur(28px);
+  pointer-events: auto;
+}
+
+.bottom-tabs .bottom-tab {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  min-height: 58px;
+  padding: 7px 2px 6px;
+  border-radius: 22px;
+  color: var(--nav-glass-muted);
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-size: 10.5px;
+  font-weight: 500;
+  line-height: 1;
+  transition:
+    color 180ms ease-out,
+    background-color 180ms ease-out,
+    transform 140ms ease-out;
+}
+
+.bottom-tab__icon {
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  transition: transform 200ms cubic-bezier(.2, .8, .2, 1);
+}
+
+.bottom-tab__label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bottom-tab--active {
+  color: var(--nav-glass-text);
+  background: rgba(223, 249, 235, 0.13);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  font-weight: 600;
+}
+
+.bottom-tab--active .bottom-tab__icon {
+  color: var(--nav-glass-accent);
+  transform: translateY(-1px);
+}
+
+.bottom-tabs .bottom-tab--disabled {
+  color: var(--nav-glass-muted);
+  opacity: 0.6;
+}
+
+.bottom-tabs .bottom-tabs__scan {
+  position: relative;
+  z-index: 2;
+  align-self: center;
+  justify-self: center;
+  width: 60px;
+  height: 60px;
+  min-width: 60px;
+  min-height: 60px;
+  padding: 6px 4px 5px;
+  border: 0;
+  border-radius: 22px;
+  background: var(--green);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 6px 18px rgba(0, 0, 0, 0.3);
+  color: #fff;
+  cursor: pointer;
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  transition:
+    transform 160ms cubic-bezier(.2, .8, .2, 1),
+    background-color 160ms ease-out,
+    box-shadow 160ms ease-out;
+}
+
+.bottom-tabs__scan-icon {
+  display: grid;
+  place-items: center;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .bottom-tabs .bottom-tab:not(.bottom-tab--active):not(.bottom-tab--disabled):hover {
+    color: #e1f3e9;
+    background: rgba(255, 255, 255, 0.07);
+  }
+
+  .bottom-tabs .bottom-tabs__scan:hover {
+    background: #21885a;
+    transform: translateY(-2px);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.34),
+      0 9px 22px rgba(0, 0, 0, 0.34);
+  }
+}
+
+.bottom-tab:not(.bottom-tab--disabled):active,
+.bottom-tabs__scan:active {
+  transform: scale(0.96);
+}
+
+.bottom-tab:focus-visible,
+.bottom-tabs__scan:focus-visible {
+  outline: 2px solid var(--nav-glass-focus);
+  outline-offset: -3px;
+  border-radius: 20px;
+}
+
+@media (max-width: 350px) {
+  .bottom-tabs-shell { width: calc(100vw - 16px); }
+  .bottom-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) 60px repeat(2, minmax(0, 1fr));
+    padding-inline: 4px;
+  }
+  .bottom-tabs .bottom-tabs__scan { width: 56px; min-width: 56px; }
+  .bottom-tabs .bottom-tab { font-size: 10px; }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .bottom-tabs { background: rgba(12, 42, 29, 0.97); }
+}
+
+@media (prefers-contrast: more) {
+  .bottom-tabs { background: rgba(12, 42, 29, 0.97); }
+  .bottom-tabs .bottom-tab--disabled { opacity: 0.74; }
+}

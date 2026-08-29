@@ -1,130 +1,76 @@
-/** Mobile bottom navigation. FAB sits in a notch cut out of the bar; each
- *  tab is a full column tap target with an active pill indicator. Safe-area
- *  padding keeps the FAB clear of the home indicator on modern iPhones. */
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import { Icon } from './Icon'
 import { isEnabled, visibleNav, type NavItem } from '@/app/nav'
 import type { Role } from '@/types'
+import './bottom-tabs.css'
 
 const LATER = 'Available in a later iteration'
-
-/* Height of the visible bar plus the FAB overhang. Kept in a const so the
-   home-indicator safe-area padding can add on top of it consistently. */
-const BAR_HEIGHT = 62
-const FAB_SIZE = 54
-const FAB_LIFT = 20         // how far the FAB sits above the bar's top edge
-const NOTCH_WIDTH = 78      // notch column must clearly exceed FAB_SIZE
 const LEFT_SLOTS = ['map', 'trail'] as const
 
 function Tab({ item, role }: { item: NavItem; role: Role }) {
-  const cell: React.CSSProperties = {
-    flex: 1, display: 'flex', flexDirection: 'column',
-    alignItems: 'center', justifyContent: 'center', gap: 3,
-    minHeight: BAR_HEIGHT, padding: '6px 4px',
-    textDecoration: 'none', fontSize: 10.5, fontWeight: 500,
-    WebkitTapHighlightColor: 'transparent',
-  }
+  const content = (
+    <>
+      <span className="bottom-tab__icon" aria-hidden>
+        <Icon name={item.icon} size={21} strokeWidth={2} />
+      </span>
+      <span className="bottom-tab__label">{item.label}</span>
+    </>
+  )
 
   if (!isEnabled(item, role)) {
     return (
-      <span role="link" aria-disabled="true" title={LATER}
-            style={{ ...cell, color: 'var(--icon)' }}>
-        <Icon name={item.icon} size={22} color="var(--icon)" />
-        <span>{item.label}</span>
+      <span
+        role="link"
+        aria-disabled="true"
+        title={LATER}
+        className="bottom-tab bottom-tab--disabled"
+      >
+        {content}
         <span className="sr-only"> — {LATER}</span>
       </span>
     )
   }
 
   return (
-    <NavLink to={item.path} style={({ isActive }) => ({
-      ...cell, color: isActive ? 'var(--green-dark)' : 'var(--icon)', position: 'relative',
-    })}>
-      {({ isActive }) => (
-        <>
-          {isActive && (
-            <span aria-hidden style={{
-              position: 'absolute', top: 4, left: '50%', transform: 'translateX(-50%)',
-              width: 28, height: 3, borderRadius: 2, background: 'var(--green)',
-            }} />
-          )}
-          <Icon name={item.icon} size={22}
-                color={isActive ? 'var(--green)' : 'var(--icon)'}
-                strokeWidth={isActive ? 2.2 : 1.9} />
-          <span style={{ fontWeight: isActive ? 600 : 500 }}>{item.label}</span>
-        </>
-      )}
+    <NavLink
+      to={item.path}
+      className={({ isActive }) => `bottom-tab${isActive ? ' bottom-tab--active' : ''}`}
+    >
+      {content}
     </NavLink>
   )
 }
 
 export function BottomTabs({ role }: { role: Role }) {
-  const navigate = useNavigate()
-  /* Keep four visible destinations around the centred FAB. Ordinary roles
-     use the four modules shown in the desktop rail; privileged roles replace
-     Impact with their enabled Verify destination. */
-  const items = new Map(
-    visibleNav(role)
-      .map((item) => [item.id, item]),
-  )
+  const items = new Map(visibleNav(role).map((item) => [item.id, item]))
   const rightSlots = items.has('verify')
     ? (['verify', 'sessions'] as const)
     : (['sessions', 'impact'] as const)
 
   return (
-    <nav aria-label="Primary" style={{
-      position: 'relative', flexShrink: 0,
-      paddingBottom: 'env(safe-area-inset-bottom)',
-      background: 'var(--surface)',
-      borderTop: '1px solid var(--border)',
-      boxShadow: '0 -1px 3px rgba(20,40,30,0.04)',
-    }}>
-      <div style={{
-        display: 'grid', alignItems: 'stretch',
-        gridTemplateColumns: `repeat(2, minmax(0, 1fr)) ${NOTCH_WIDTH}px repeat(2, minmax(0, 1fr))`,
-        height: BAR_HEIGHT, position: 'relative',
-      }}>
+    <div className="bottom-tabs-shell">
+      <nav aria-label="Primary" className="bottom-tabs">
         {LEFT_SLOTS.map((id) => {
           const item = items.get(id)
           return item ? <Tab key={id} item={item} role={role} /> : <span key={id} aria-hidden />
         })}
 
-        {/* Central spacer that carves out room for the FAB. The FAB is
-            positioned as an absolutely-placed child so it centres on the
-            notch itself regardless of how tabs split. */}
-        <div style={{
-          width: NOTCH_WIDTH, flexShrink: 0, position: 'relative',
-        }}>
-          {/* Notch: soft white cutout so the FAB sits in an inset. */}
-          <div aria-hidden style={{
-            position: 'absolute', top: -FAB_LIFT, left: 0, right: 0,
-            height: FAB_LIFT + 6, background: 'var(--surface)',
-            borderTopLeftRadius: 34, borderTopRightRadius: 34,
-          }} />
-          {/* FAB — child of the notch so left:50% is 50% of the notch. */}
-          <button
-            type="button"
-            onClick={() => navigate('/scan')}
-            aria-label="Scan a plant"
-            style={{
-              position: 'absolute', left: '50%', top: -FAB_LIFT,
-              transform: 'translateX(-50%)',
-              width: FAB_SIZE, height: FAB_SIZE, borderRadius: '50%',
-              border: 'none', background: 'var(--green)', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 6px 14px rgba(20,40,30,0.28)',
-              WebkitTapHighlightColor: 'transparent',
-            }}
-          >
-            <Icon name="ScanLine" size={24} color="#fff" />
-          </button>
-        </div>
+        <NavLink
+          to="/scan"
+          aria-label="Scan a plant"
+          className="bottom-tabs__scan"
+        >
+          <span className="bottom-tabs__scan-icon" aria-hidden>
+            <Icon name="ScanLine" size={23} color="#fff" strokeWidth={2.15} />
+          </span>
+          <span>Scan</span>
+        </NavLink>
 
         {rightSlots.map((id) => {
           const item = items.get(id)
           return item ? <Tab key={id} item={item} role={role} /> : <span key={id} aria-hidden />
         })}
-      </div>
-    </nav>
+      </nav>
+    </div>
   )
 }

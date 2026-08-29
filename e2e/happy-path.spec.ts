@@ -424,7 +424,7 @@ test('restoration adds an installation, consumes codes once, rotates batches, an
   }, { profileId: started.profile.id, usedCode: started.recoveryCodes[0] })
   expect(indistinguishable[0]).toEqual(indistinguishable[1])
 
-  await page.getByRole('button', { name: 'Generate replacement batch' }).click()
+  await page.getByRole('button', { name: 'Replace codes' }).click()
   await page.getByRole('button', { name: 'Replace codes' }).click()
   await expect(page.locator('.replacement-batch .recovery-code-grid code')).toHaveCount(10)
   const replacementCodes = await page.locator('.replacement-batch .recovery-code-grid code').allTextContents()
@@ -514,7 +514,9 @@ test('a first-ever offline launch explains the network requirement without creat
  * Golden path: private detector → scan → target result → report.
  * A synthetic in-page image keeps the native file picker out of the test.
  */
-test('private detector can scan, analyse, and submit', async ({ page }) => {
+test('private detector can scan, analyse, and submit', async ({ page, context }) => {
+  await context.grantPermissions(['geolocation'], { origin: 'http://localhost:5173' })
+  await context.setGeolocation({ latitude: 3.1497, longitude: 101.6412, accuracy: 15 })
   const reportAuthorizationHeaders: string[] = []
   const accountEndpointCalls: string[] = []
   page.on('request', (request) => {
@@ -529,6 +531,7 @@ test('private detector can scan, analyse, and submit', async ({ page }) => {
 
   await page.getByRole('button', { name: /Scan a plant|New scan/ }).first().click()
   await expect(page).toHaveURL(/\/scan$/)
+  await expect(page.getByRole('heading', { name: 'Photograph a clear plant feature' })).toBeVisible()
 
   await page.evaluate(async () => {
     const canvas = document.createElement('canvas')
@@ -556,14 +559,11 @@ test('private detector can scan, analyse, and submit', async ({ page }) => {
   await page.getByRole('button', { name: /Analyse plant/ }).click()
   await expect(page).toHaveURL(/\/scan\/result$/, { timeout: 5000 })
   await expect(page.getByRole('heading', { name: 'Mikania micrantha' })).toBeVisible()
-  await expect(page.getByText('stub-v0.1.0')).toBeVisible()
+  await expect(page.getByText('development-model-v1')).toBeVisible()
 
   await page.getByRole('button', { name: /Report sighting/ }).click()
   await expect(page).toHaveURL(/\/report$/)
-  await page.getByText('Enter coordinates manually').click()
-  await page.getByLabel('Latitude').fill('3.1497')
-  await page.getByLabel('Longitude').fill('101.6412')
-  await page.getByRole('button', { name: 'Apply coordinates' }).click()
+  await expect(page.getByText(/Accurate to ~15 m/)).toBeVisible()
   await page.getByRole('button', { name: 'Continue' }).click()
   await page.getByRole('button', { name: 'Continue' }).click()
   await page.getByRole('checkbox', { name: /accurate/i }).check()
@@ -580,6 +580,9 @@ test('private detector can scan, analyse, and submit', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Report submitted' }))
     .toBeVisible({ timeout: 8000 })
   await expect(page.getByText('Tracking ID')).toBeVisible()
+  await page.getByRole('button', { name: 'View validation status' }).click()
+  await expect(page.getByRole('heading', { name: 'Confirmed and published' }))
+    .toBeVisible({ timeout: 7000 })
   expect(reportAuthorizationHeaders).toEqual([
     `Bearer ${initialSession.accessToken}`,
     `Bearer ${recoveredSession.accessToken}`,
@@ -587,7 +590,7 @@ test('private detector can scan, analyse, and submit', async ({ page }) => {
   expect(accountEndpointCalls).toEqual([])
 })
 
-test('Detector cannot reach privileged verification', async ({ page }) => {
+test('manual verification route is absent for every profile', async ({ page }) => {
   await startPrivateAccess(page)
   await page.goto('/verify')
   await expect(page).toHaveURL(/\/map$/)
@@ -595,9 +598,9 @@ test('Detector cannot reach privileged verification', async ({ page }) => {
 })
 
 test('offline launch restores locally, then reconnects before flushing reports', async ({ page }) => {
-  await startPrivateAccess(page)
+  const { profile } = await startPrivateAccess(page)
 
-  await page.evaluate(async () => {
+  await page.evaluate(async (ownerProfileId) => {
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
       const request = indexedDB.open('invatrace', 1)
       request.onsuccess = () => resolve(request.result)
@@ -607,17 +610,22 @@ test('offline launch restores locally, then reconnects before flushing reports',
       const transaction = db.transaction('report-queue', 'readwrite')
       transaction.objectStore('report-queue').put({
         id: 'offline-e2e-report',
+        ownerProfileId,
         createdAt: new Date().toISOString(),
         attempts: 1,
+        retryable: true,
         lastError: 'Connection unavailable',
         submission: {
           photoKey: '',
           speciesId: 'mikania-micrantha',
           outcome: 'target',
           confidence: 0.91,
-          modelVersion: 'stub-v0.1.0',
+          modelVersion: 'development-model-v1',
+          observedAt: new Date().toISOString(),
+          captureId: crypto.randomUUID(),
+          captureSource: 'camera',
           location: { lat: 3.1497, lng: 101.6412 },
-          locationAccuracyM: null,
+          locationAccuracyM: 15,
           extent: 'small_patch',
           notes: '',
           consent: { accurate: true, noPII: true },
@@ -628,7 +636,7 @@ test('offline launch restores locally, then reconnects before flushing reports',
       transaction.onerror = () => reject(transaction.error)
     })
     db.close()
-  })
+  }, profile.id)
 
   await page.addInitScript(() => {
     Object.defineProperty(window, '__invatraceOnline', {

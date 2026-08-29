@@ -1,0 +1,12 @@
+{
+  "environment": "Windows desktop CUDA; not a mobile-device measurement",
+  "iterations": 40,
+  "first_inference_ms": 2988.076499896124,
+  "warm_mean_ms": 12.047792505472898,
+  "warm_median_ms": 5.352550069801509,
+  "warm_p95_ms": 46.23480001464486,
+  "warm_min_ms": 5.085799843072891,
+  "warm_max_ms": 48.02210000343621,
+  "session_load_seconds": 0.1976448001805693,
+  "mobile_status": "pending_real_device_measurement"
+}

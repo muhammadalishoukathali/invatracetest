@@ -1,6 +1,8 @@
-# InvaTrace — web client
+# InvaTrace
 
-Iteration 1 (E1–E4) frontend. React 18 + Vite + TypeScript, installable PWA.
+Iteration 1 full stack: React 18 + Vite + TypeScript installable PWA, FastAPI,
+PostgreSQL/PostGIS, Redis, S3-compatible private storage, and a separate
+verification worker.
 InvaTrace uses intentional **Private access**: server-backed pseudonymous
 profiles without email/password registration.
 
@@ -16,6 +18,27 @@ npm run dev
 ```
 
 `npm run build` · `npm run typecheck` · `npm test`
+
+To run the complete backend and real frontend contract locally:
+
+```bash
+docker compose up --build
+npm run dev:real
+```
+
+See [backend setup](backend/README.md) for migrations, seed data, automated
+validation workers, OSM imports, and test commands.
+
+## Project documentation
+
+- [Codebase guide](docs/codebase-guide.md) — directory ownership and module boundaries.
+- [Product overview](docs/product.md) — users, purpose, constraints, and identity model.
+- [Identity architecture](docs/identity-architecture.md) — client/server security contract.
+- [Private access flow](docs/private-access-flow.md) — creation, recovery, and management states.
+- [Backend architecture](docs/backend-architecture.md) — services, ERDs, API sequences, and privacy.
+- [ML integration](docs/ml-integration.md) — honest plant-provider and OVC-VI boundaries.
+- [Deployment](docs/deployment.md) — Cloudflare Pages/R2, Render, and Neon runbook.
+- [Design system](design-system/invatrace/README.md) — tokens, components, and page-specific guidance.
 
 ## Private access
 
@@ -47,27 +70,29 @@ and [private-access flow](docs/private-access-flow.md).
 
 ## Backend boundary
 
-This repository implements the frontend contract and development-only MSW
-model. The production service and database are not present. The mock persists
-only SHA-256-derived secret hashes in a browser-local development store so
-reloads can exercise the flow; it is not a production hashing, rate-limiting,
-transaction, or persistence design.
+The production backend is implemented under `backend/`. The MSW layer remains a
+development-only frontend simulator and mirrors the same endpoint shapes. The
+backend persists pseudonymous identity secrets only as keyed hashes, enforces
+server-side roles/trust, uses transactional recovery and idempotency, validates
+private uploads, and applies PostGIS-backed location privacy and automated
+validation rules.
 
 ## Conventions
 
-- **Design tokens** live in `src/styles/tokens.css`, lifted verbatim from the approved
-  prototype. Do not introduce new colour values; extend that file.
+- **Design tokens** live in `src/styles/tokens.css`. Do not introduce new colour
+  values inside components; extend the token file and update the
+  [design-system guide](design-system/invatrace/README.md).
 - **Navigation** is data-driven from `src/app/nav.ts`. A destination's `iteration`
   field decides whether its tab is live or inert; `roles` decides whether it is
-  visible at all (Arch §11 authorisation).
+  visible to the current profile.
 - **Icons** are listed explicitly in `src/components/Icon.tsx`. Never barrel-import
-  from `lucide-react` — it costs ~790 kB against the Arch §12 payload budget.
-- **API** calls go through `src/lib/api.ts`. The short-lived access token is
-  held in memory only. Production may additionally use a secure httpOnly
-  cookie to refresh the API session.
-- **Mocks** in `src/mocks/handlers.ts` mirror the Arch §7 endpoint table, so screens
-  are built before the backend exists. Mock handlers are loaded only in development;
-  the generated public MSW worker asset is inert in production.
+  from `lucide-react`, because that would add the full icon library to the bundle.
+- **API** calls go through `src/services/api-client.ts`. The short-lived access token is
+  held in memory only. When it expires, the client uses the installation
+  credential from IndexedDB to obtain a replacement token.
+- **Mocks** in `src/mocks/handlers.ts` match the planned production endpoints so
+  screens can be tested before the backend exists. Mock handlers load only in
+  development; the public mock worker is inactive in production.
 
 ## Phase status
 
@@ -75,9 +100,9 @@ transaction, or persistence design.
 |---|---|---|
 | 0 | Scaffold, tokens, app shell, navigation gating, PWA, MSW | Done |
 | 1 | Private access, recovery, installation management and role-gated routes | Done |
-| 2 | Scan flow and model adapter | |
-| 3 | Report flow, upload, offline queue | |
-| 4 | Threat map | |
-| 5 | Verify queue | |
-| 6 | Notifications, offline sync, error states | |
-| 7 | Accessibility audit, end-to-end tests, backend swap-in | |
+| 2 | Supplied PULIH E1 model, local inference, look-alike safety | Done |
+| 3 | Report flow, upload, offline queue, status tracking | Done |
+| 4 | Validated-only live map and OSM-derived place association | Done |
+| 5 | Automated E2 policy and auditable lifecycle | Done; real E2 model pending |
+| 6 | Notifications, offline sync, error states | Done |
+| 7 | Accessibility, end-to-end tests, backend swap-in | Done |

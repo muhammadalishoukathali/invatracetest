@@ -1,5 +1,7 @@
 # Private access — page guidance
 
+Extends `../README.md`.
+
 **Routes:** `/private-access`, `/private-access/restore`,
 `/private-access/recovery`, `/access`
 

@@ -1,0 +1,54 @@
+.scan-flow {
+  min-height: 100dvh;
+  height: 100%;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.scan-flow__header {
+  flex-shrink: 0;
+  padding-top: env(safe-area-inset-top);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.scan-flow__header-inner {
+  width: min(680px, 100%);
+  min-height: 64px;
+  margin: 0 auto;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.scan-flow__back {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.scan-flow__header h1 {
+  color: var(--ink);
+  font-size: 18px;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+.scan-flow__main {
+  min-height: 0;
+  padding-bottom: env(safe-area-inset-bottom);
+  overflow: auto;
+  flex: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .scan-flow__back:hover { background: var(--hover); }
+}

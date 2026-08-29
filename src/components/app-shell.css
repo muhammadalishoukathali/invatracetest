@@ -1,0 +1,88 @@
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 26px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.app-header__heading {
+  min-width: 0;
+}
+
+.app-header__title {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+
+/* Route headings receive focus for screen-reader page-change announcements.
+   They are not interactive, so an action-style focus ring would be misleading. */
+.app-header__title:focus {
+  outline: none;
+}
+
+.app-header__subtitle {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+.app-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.app-header__action {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.app-header__action--active {
+  border-color: var(--green-border);
+  background: var(--green-light);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .app-header__action:not(.app-header__action--active):hover {
+    background: var(--hover);
+  }
+}
+
+@media (max-width: 899.98px) {
+  .app-header {
+    gap: 12px;
+    padding: 11px 12px 10px;
+    border-bottom: 0;
+  }
+
+  .app-header__title {
+    overflow: hidden;
+    font-size: 18px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .app-header__subtitle {
+    margin-top: 2px;
+    font-size: 12px;
+  }
+
+  .app-header__action {
+    border-color: transparent;
+    background: var(--bg-alt);
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "schema_version": "pulih.model1.web-conversion.v1",
+  "created_at_utc": "2026-08-26T05:17:48+00:00",
+  "precision": "fp16_internal_fp32_io",
+  "keep_io_types": true,
+  "source": {
+    "path": "D:\\workspace\\FIT5120\\models\\efficientnet_v2_s_oe_v4_31class\\efficientnet_v2_s_oe_v4_31class.onnx",
+    "bytes": 80716764,
+    "mib": 76.978,
+    "sha256": "4dab9c9934948fb61afe351685f378767eb9d7ffa536b1e3f99ee079d3ff1cc7"
+  },
+  "target": {
+    "path": "D:\\workspace\\FIT5120\\models\\efficientnet_v2_s_oe_v4_31class_web_fp16\\efficientnet_v2_s_oe_v4_31class_web_fp16.onnx",
+    "bytes": 40488343,
+    "mib": 38.613,
+    "sha256": "7c07181c10020d8ec9a74a21684ab08f73b1ec6a6b168c091ecf715803c5fe56"
+  },
+  "size_reduction_fraction": 0.4983899131536046,
+  "conversion_seconds": 0.6899005000013858,
+  "onnx_version": "1.22.0"
+}

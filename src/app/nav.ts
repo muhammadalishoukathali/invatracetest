@@ -3,22 +3,21 @@ import type { Role } from '@/types'
 export interface NavItem {
   id: string
   path: string
-  label: string        // short label, mobile tab bar
-  full: string         // full label, desktop rail
-  icon: string         // lucide icon name
-  /** Iteration that delivers this destination. Anything above 1 renders as a
-   *  visible but inert tab — Arch §14 scope, prototype IA preserved. */
+  label: string        // Short label used in the mobile tab bar.
+  full: string         // Full label used in the desktop sidebar.
+  icon: string         // Name of the matching Lucide icon.
+  /** Version that will enable this destination. Version 1 is available now.
+   *  Later versions stay visible but cannot be opened yet. */
   iteration: 1 | 2 | 3
-  /** Roles permitted to reach it. Undefined means every signed-in role. */
+  /** Roles that may open this destination. No list means every profile role. */
   roles?: Role[]
 }
 
-/** Order matches the approved prototype's information architecture. Later
- *  iteration destinations keep their position so the roadmap reads correctly. */
+/** This order is shared by the mobile tabs and desktop sidebar. Future
+ *  destinations keep their position so navigation does not move between releases. */
 export const NAV: NavItem[] = [
   { id: 'map',      path: '/map',      label: 'Map',      full: 'Threat map',   icon: 'MapPinned',    iteration: 1 },
   { id: 'trail',    path: '/trail',    label: 'Trail',    full: 'My Trail',     icon: 'Route',        iteration: 2 },
-  { id: 'verify',   path: '/verify',   label: 'Verify',   full: 'Verify queue', icon: 'ShieldCheck',  iteration: 1, roles: ['Coordinator', 'Expert', 'Admin'] },
   { id: 'sessions', path: '/sessions', label: 'Sessions', full: 'Sessions',     icon: 'CalendarDays', iteration: 2 },
   { id: 'impact',   path: '/impact',   label: 'Impact',   full: 'Impact',       icon: 'TrendingUp',   iteration: 3 },
 ]
@@ -27,6 +26,6 @@ export const isEnabled = (item: NavItem, role: Role): boolean =>
   item.iteration === 1 && (!item.roles || item.roles.includes(role))
 
 export const visibleNav = (role: Role): NavItem[] =>
-  // A destination the role may never reach is hidden outright. A destination
-  // that simply has not shipped yet stays visible but inert.
+  // Hide destinations that the current role is not allowed to use. Keep future
+  // destinations visible so users can see where they will appear later.
   NAV.filter((i) => i.iteration > 1 || !i.roles || i.roles.includes(role))

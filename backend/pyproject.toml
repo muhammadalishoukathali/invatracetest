@@ -1,0 +1,57 @@
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "invatrace-backend"
+version = "0.1.0"
+description = "FastAPI backend for the InvaTrace field reporting PWA"
+requires-python = ">=3.12"
+dependencies = [
+  "alembic>=1.14,<2",
+  "boto3>=1.35,<2",
+  "fastapi>=0.115,<1",
+  "geoalchemy2>=0.16,<1",
+  "osmium>=4,<5",
+  "pillow>=11,<13",
+  "psycopg[binary]>=3.2,<4",
+  "pydantic-settings>=2.7,<3",
+  "pyjwt>=2.10,<3",
+  "redis>=5.2,<7",
+  "sqlalchemy>=2.0.36,<3",
+  "structlog>=24.4,<26",
+  "uvicorn[standard]>=0.34,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx>=0.28,<1",
+  "httpx2>=2.12,<3",
+  "pip-audit>=2.10,<3",
+  "pytest>=9.0.3,<10",
+  "pytest-cov>=6,<8",
+  "ruff>=0.9,<1",
+]
+
+[project.scripts]
+invatrace = "app.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["integration: requires PostgreSQL/PostGIS, Redis, and object storage"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = [
+  # FastAPI's documented dependency-injection syntax intentionally calls Depends here.
+  "B008",
+  # Ruff's formatter leaves long strings and signatures intact; readability is formatter-owned.
+  "E501",
+]

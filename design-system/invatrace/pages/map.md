@@ -1,9 +1,9 @@
 # Page override — `/map` (Threat map)
 
-Extends `MASTER.md`. Only the deltas below.
+Extends `../README.md`. Only the deltas below.
 
 ## Purpose
-Public-facing situational view of confirmed invasive sightings across Malaysia. Read-only for Detector/Volunteer; entry point for coordinators.
+Public-facing situational view of automatically confirmed invasive sightings across Malaysia.
 
 ## Layout
 - Full-bleed map fills the main region — AppShell's `main` padding is disabled for `/map`.
@@ -20,14 +20,14 @@ Public-facing situational view of confirmed invasive sightings across Malaysia. 
 ## Pin design
 - SVG teardrop, 26 × 34 px, coloured by risk:
   - High risk `#C2412D`, Watch `#D9880F`, Removed `#8B978F` (65 % opacity).
-- Dashed white outline (`stroke-dasharray="3 2.5"`) on candidate sightings — precision reduced, per Arch §11.
+- Removed sightings use the neutral grey pin. Reports never appear until automated validation passes.
 - Filled centre dot for readability at small sizes.
 - `aria-label="{speciesName} — {status}"`.
 
 ## Filters
 - **Search:** species name / latin name substring, debounced 150 ms.
 - **Species chips:** 4 tracked species (Mikania, Siam weed, Water hyacinth, Koster's curse).
-- **Status chips:** Candidate, Confirmed.
+- **Status chips:** Confirmed, Removed.
 - **Mobile:** collapse into a single "Filters" button that opens a bottom sheet with grouped chips + Clear / Apply footer.
 - **Desktop:** inline chip row under the search input.
 - Active count shown in the button label ("Filters · 2").
@@ -47,7 +47,7 @@ Bottom sheet order:
 - Do **not** animate pin re-render on filter change — pins snap to new positions.
 
 ## Anti-patterns
-- No heatmap in Iteration 1 (Arch §7 out-of-scope).
+- The first release does not include a heatmap.
 - No clustering by default (only 10 pins seeded; add clusters when > 50).
-- Never plot candidate sightings at exact coordinates.
+- Never plot processing, rejected, rescan, or unavailable reports.
 - Never allow the map to load a satellite / high-detail base layer without the user opting in (bandwidth + attribution risk).

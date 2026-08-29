@@ -1,9 +1,15 @@
 node_modules
 dist
+public/models/pulih-model1-v4
 .env
 .DS_Store
 tsconfig.tsbuildinfo
 test-results
 playwright-report
-.impeccable/questions/
-.impeccable/review/
+backend/.venv
+backend/.pytest_cache
+backend/.ruff_cache
+.pytest_cache
+.impeccable/review
+**/__pycache__
+*.py[cod]

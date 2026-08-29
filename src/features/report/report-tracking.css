@@ -1,0 +1,84 @@
+.report-tracking {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 32px 20px;
+  background: var(--bg);
+}
+
+.report-tracking__card {
+  width: min(100%, 520px);
+  padding: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.report-tracking__icon {
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--green);
+  background: var(--green-light);
+}
+
+.report-tracking--needs_rescan .report-tracking__icon,
+.report-tracking--validation_unavailable .report-tracking__icon {
+  color: var(--amber-text);
+  background: var(--amber-light);
+}
+
+.report-tracking--rejected .report-tracking__icon {
+  color: var(--red-text);
+  background: var(--red-light);
+}
+
+.report-tracking__eyebrow {
+  margin-top: 20px;
+  color: var(--muted);
+  font: 600 11px/1.4 var(--font-mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.report-tracking h1 { margin-top: 6px; font-size: clamp(24px, 5vw, 34px); }
+.report-tracking h1 + p { margin-top: 10px; color: var(--body); line-height: 1.65; }
+
+.report-tracking__checks {
+  margin-top: 24px;
+  padding: 16px;
+  border-radius: var(--r-input);
+  background: var(--bg);
+}
+
+.report-tracking__checks ul { margin: 8px 0 0; padding-left: 20px; color: var(--body); }
+.report-tracking__actions { margin-top: 24px; display: flex; flex-wrap: wrap; gap: 10px; }
+.report-tracking__actions a,
+.report-tracking button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
+  border: 1px solid var(--green);
+  border-radius: var(--r-button);
+  color: #fff;
+  background: var(--green);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.report-tracking__actions .report-tracking__secondary {
+  color: var(--ink);
+  border-color: var(--control-border);
+  background: var(--surface);
+}
+
+@media (max-width: 560px) {
+  .report-tracking { place-items: start stretch; padding: 18px 14px; }
+  .report-tracking__card { padding: 24px 20px; }
+  .report-tracking__actions { flex-direction: column; }
+}

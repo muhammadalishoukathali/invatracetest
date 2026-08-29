@@ -4,13 +4,21 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "prepare:model": "node scripts/prepare-model-assets.mjs",
+    "predev": "npm run prepare:model",
     "dev": "vite --host",
+    "predev:model-test": "npm run prepare:model",
+    "dev:model-test": "vite --host --mode model-test --port 5174",
+    "dev:real": "VITE_ENABLE_MOCKS=false VITE_ENABLE_FAKE_MODEL=false VITE_API_BASE_URL=http://localhost:8000 vite --host",
+    "prebuild": "npm run prepare:model",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:model-ui": "playwright test --config=playwright.model.config.ts",
+    "test:e2e:real": "playwright test --config=playwright.real.config.ts"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.3.0",
@@ -18,9 +26,10 @@
     "@tanstack/react-query": "^5.62.0",
     "lucide-react": "^0.475.0",
     "maplibre-gl": "^6.5.0",
+    "onnxruntime-web": "1.27.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.28.0",
+    "react-router-dom": "7.18.3",
     "zustand": "^5.0.2"
   },
   "devDependencies": {
@@ -38,7 +47,7 @@
     "typescript-eslint": "^8.68.0",
     "vite": "^6.0.5",
     "vite-plugin-pwa": "^0.21.1",
-    "vitest": "^2.1.8"
+    "vitest": "4.1.11"
   },
   "msw": {
     "workerDirectory": [

@@ -3,8 +3,8 @@ import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { router } from '@/app/router'
-import { installIdentityConnectivity, useIdentity } from '@/lib/identity'
-import { flushQueue } from '@/lib/report-queue'
+import { installPrivateAccessConnectivity, usePrivateAccess } from '@/features/private-access/private-access-store'
+import { flushQueue } from '@/features/report/report-queue'
 import './styles/global.css'
 
 const queryClient = new QueryClient({
@@ -20,14 +20,13 @@ const queryClient = new QueryClient({
 async function start() {
   if (import.meta.env.DEV && import.meta.env.VITE_ENABLE_MOCKS === 'true') {
     const { worker } = await import('@/mocks/browser')
-    /* MSW intercepts everything under `/` in dev, which breaks MapLibre's
-     *  module worker script (it silently returns an empty body). Only route
-     *  /api requests through MSW; let workers, HMR, tiles, fonts, and vendor
-     *  bundles hit the real network unmodified. */
+    // The development mock service worker handles API calls only. Other files,
+    // including MapLibre workers, map tiles, fonts, and Vite updates, must pass
+    // through unchanged or the map can load with an empty worker script.
     await worker.start({
       onUnhandledRequest: 'bypass',
-      // MSW's default logger includes request/response bodies. Bootstrap
-      // bodies contain installation and access tokens, so keep it silent.
+      // Disable request logging because profile requests can contain private
+      // installation or access tokens.
       quiet: true,
       serviceWorker: { url: '/mockServiceWorker.js' },
     })
@@ -41,9 +40,9 @@ async function start() {
     </StrictMode>,
   )
 
-  installIdentityConnectivity(flushQueue)
-  await useIdentity.getState().initialize()
-  if (useIdentity.getState().status === 'ready') void flushQueue()
+  installPrivateAccessConnectivity(flushQueue)
+  await usePrivateAccess.getState().initialize()
+  if (usePrivateAccess.getState().status === 'ready') void flushQueue()
 }
 
 void start()

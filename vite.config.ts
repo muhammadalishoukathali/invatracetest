@@ -1,18 +1,18 @@
-/// <reference types="vitest" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import { fileURLToPath, URL } from 'node:url'
 
 export default defineConfig({
-  // Keep Playwright specs out of the vitest run — they use @playwright/test.
-  test: { exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**'] },
-  // Force Vite to prebundle MapLibre so its module worker's transitive
-  // imports (which reference /@vite/client and HMR helpers) get inlined into
-  // a self-contained worker script. Without this, the worker fetches
-  // Vite-injected modules that require `window`/`document`, breaks silently,
-  // and no tiles ever decode → blank map.
-  optimizeDeps: { include: ['maplibre-gl'] },
+  // Prebundle MapLibre into a self-contained worker. Without this, its worker
+  // can import Vite browser modules that require `window` or `document`, which
+  // makes the worker fail and leaves the map blank during development.
+  optimizeDeps: {
+    include: ['maplibre-gl'],
+    // ONNX Runtime resolves its WASM file relative to its ESM bundle. Vite's
+    // development pre-bundler rewrites that URL into an HTML fallback path.
+    exclude: ['onnxruntime-web/webgpu'],
+  },
   plugins: [
     react(),
     VitePWA({
@@ -27,21 +27,40 @@ export default defineConfig({
         display: 'standalone',
         start_url: '/',
         icons: [
-          // SVG icon covers every raster size Chrome / Safari installers need.
-          // Rasterised PNGs (192, 512, maskable) can be added later without a
-          // manifest change once a designer supplies the exports.
+          // Browsers can scale this SVG for the installed-app icon. PNG versions
+          // can be added later if a platform requires fixed raster sizes.
           { src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
           { src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
         ],
       },
       workbox: {
-        // Arch §12: the offline field pack is large. Raise the precache ceiling
-        // so quantised model files are not silently skipped once they land.
-        maximumFileSizeToCacheInBytes: 30 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         runtimeCaching: [
           {
-            // Identity and recovery traffic contains installation credentials
+            // The validated PULIH ONNX artifact is split into sub-25 MiB chunks
+            // for Cloudflare Pages, then reassembled and checksum-verified by
+            // the browser adapter. Cache each complete response for offline use.
+            urlPattern: ({ url }) => url.pathname.startsWith('/models/pulih-model1-v4/'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'invatrace-pulih-model-v4',
+              expiration: { maxEntries: 12, maxAgeSeconds: 365 * 24 * 60 * 60 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+          {
+            // The hashed runtime is large, so cache it after first inference
+            // instead of slowing service-worker installation with a precache.
+            urlPattern: ({ url }) => /\/assets\/ort-wasm-.+\.wasm$/.test(url.pathname),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'invatrace-onnx-runtime',
+              expiration: { maxEntries: 2, maxAgeSeconds: 365 * 24 * 60 * 60 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+          {
+            // Private-access and recovery traffic contains installation credentials
             // or one-time secrets and must never enter Cache Storage.
             urlPattern: ({ url }) => url.pathname.startsWith('/api/v1/profiles'),
             handler: 'NetworkOnly',
@@ -62,5 +81,16 @@ export default defineConfig({
     }),
   ],
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
+  build: {
+    // MapLibre ships as one self-contained module. It is loaded only with the
+    // map route, so keep it in a clearly named chunk and set the warning limit
+    // just above its measured size. Other unexpectedly large chunks still warn.
+    chunkSizeWarningLimit: 1050,
+    rollupOptions: {
+      output: {
+        manualChunks: { 'map-engine': ['maplibre-gl'] },
+      },
+    },
+  },
   server: { port: 5173 },
 })

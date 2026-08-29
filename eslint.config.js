@@ -11,14 +11,15 @@ export default tseslint.config(
       'coverage/**',
       'test-results/**',
       'playwright-report/**',
+      'backend/.venv/**',
+      'backend/.pytest_cache/**',
       'public/mockServiceWorker.js',
-      '.impeccable/**',
     ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ['**/*.{js,ts,tsx}'],
+    files: ['**/*.{js,mjs,ts,tsx}'],
     languageOptions: {
       globals: {
         ...globals.browser,

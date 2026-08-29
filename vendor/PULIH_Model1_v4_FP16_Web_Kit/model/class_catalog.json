@@ -1,0 +1,129 @@
+{
+  "class_count": 31,
+  "classes": [
+    {
+      "class_index": 0,
+      "machine_label": "mimosa_pudica"
+    },
+    {
+      "class_index": 1,
+      "machine_label": "carica_papaya"
+    },
+    {
+      "class_index": 2,
+      "machine_label": "clitoria_ternatea"
+    },
+    {
+      "class_index": 3,
+      "machine_label": "centella_asiatica"
+    },
+    {
+      "class_index": 4,
+      "machine_label": "dicranopteris_linearis"
+    },
+    {
+      "class_index": 5,
+      "machine_label": "ageratum_conyzoides"
+    },
+    {
+      "class_index": 6,
+      "machine_label": "leucaena_leucocephala"
+    },
+    {
+      "class_index": 7,
+      "machine_label": "imperata_cylindrica"
+    },
+    {
+      "class_index": 8,
+      "machine_label": "pistia_stratiotes"
+    },
+    {
+      "class_index": 9,
+      "machine_label": "macaranga_tanarius"
+    },
+    {
+      "class_index": 10,
+      "machine_label": "cocos_nucifera"
+    },
+    {
+      "class_index": 11,
+      "machine_label": "colocasia_esculenta"
+    },
+    {
+      "class_index": 12,
+      "machine_label": "pteris_vittata"
+    },
+    {
+      "class_index": 13,
+      "machine_label": "catharanthus_roseus"
+    },
+    {
+      "class_index": 14,
+      "machine_label": "bidens_pilosa"
+    },
+    {
+      "class_index": 15,
+      "machine_label": "chromolaena_odorata"
+    },
+    {
+      "class_index": 16,
+      "machine_label": "eichhornia_crassipes"
+    },
+    {
+      "class_index": 17,
+      "machine_label": "mikania_micrantha"
+    },
+    {
+      "class_index": 18,
+      "machine_label": "oxalis_corniculata"
+    },
+    {
+      "class_index": 19,
+      "machine_label": "psidium_guajava"
+    },
+    {
+      "class_index": 20,
+      "machine_label": "asclepias_curassavica"
+    },
+    {
+      "class_index": 21,
+      "machine_label": "megathyrsus_maximus"
+    },
+    {
+      "class_index": 22,
+      "machine_label": "mimosa_diplotricha"
+    },
+    {
+      "class_index": 23,
+      "machine_label": "mimosa_pigra"
+    },
+    {
+      "class_index": 24,
+      "machine_label": "alternanthera_philoxeroides"
+    },
+    {
+      "class_index": 25,
+      "machine_label": "parthenium_hysterophorus"
+    },
+    {
+      "class_index": 26,
+      "machine_label": "ageratina_adenophora"
+    },
+    {
+      "class_index": 27,
+      "machine_label": "sida_acuta"
+    },
+    {
+      "class_index": 28,
+      "machine_label": "miconia_crenata"
+    },
+    {
+      "class_index": 29,
+      "machine_label": "sphagneticola_trilobata"
+    },
+    {
+      "class_index": 30,
+      "machine_label": "lantana_camara"
+    }
+  ]
+}

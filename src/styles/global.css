@@ -6,9 +6,10 @@
 @import '@fontsource/ibm-plex-mono/latin-500.css';
 @import '@fontsource/ibm-plex-mono/latin-600.css';
 @import './tokens.css';
-@import './private-access.css';
+@import './sheets.css';
 
 :root {
+  --mobile-nav-clearance: calc(104px + env(safe-area-inset-bottom));
   --map-mobile-bottom-clearance: 32px;
   --map-legend-bottom: 40px;
 }
@@ -38,8 +39,8 @@ button:disabled, input:disabled { opacity: 0.6; cursor: not-allowed; }
   border-radius: 4px;
 }
 
-/* Arch §11: a disabled later-iteration tab must be visible but inert —
-   not focusable, not clickable, and announced as disabled. */
+/* Future navigation items remain visible, but they cannot receive focus or
+   clicks. The aria-disabled attribute also explains the state to screen readers. */
 [aria-disabled='true'] {
   opacity: 0.45;
   cursor: not-allowed;
@@ -83,72 +84,28 @@ button:not(:disabled):active, a[href]:active { filter: brightness(0.96); }
 }
 input[type='search']::-webkit-search-cancel-button { display: none; }
 
-.pin-sheet {
-  position: fixed;
-  max-height: 70dvh;
-  border: 0;
+/* Lazy route bundles keep the current application shell visible while the next
+   page downloads. The indicator gives both visual users and screen readers a
+   clear loading state without changing the page layout. */
+.route-loading {
+  min-height: min(50vh, 360px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
 }
-.pin-sheet::before {
-  content: '';
-  position: absolute;
-  inset: 6px 0 0;
-  z-index: 0;
-  pointer-events: none;
-  background: var(--surface);
-  border-radius: calc(var(--r-sheet) - 6px) calc(var(--r-sheet) - 6px) 0 0;
+.route-loading__indicator {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--green-border);
+  border-top-color: var(--green);
+  border-radius: 50%;
+  animation: route-loading-spin 700ms linear infinite;
 }
-.pin-sheet > * { position: relative; z-index: 1; }
-.pin-sheet__content { padding: 4px 20px 16px; }
-.pin-sheet__meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.pin-sheet__footer { padding: 12px 18px 14px; }
-
-/* Each responsive mode owns its complete sheet geometry. This prevents a
-   desktop positioning fix from leaking into the mobile bottom sheet. */
-@media (max-width: 599.98px) {
-  .pin-sheet {
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: auto;
-    margin-inline: 0;
-    transform: none;
-    border-radius: var(--r-sheet) var(--r-sheet) 0 0;
-  }
-}
-
-@media (min-width: 600px) and (max-width: 899.98px) {
-  .pin-sheet {
-    left: 50%;
-    right: auto;
-    bottom: max(12px, env(safe-area-inset-bottom));
-    width: min(560px, calc(100vw - 32px));
-    margin-inline: 0;
-    max-height: min(70dvh, 680px);
-    transform: translateX(-50%);
-    border-radius: var(--r-sheet);
-  }
-}
-
-@media (min-width: 900px) {
-  .pin-sheet {
-    left: var(--sidebar-w);
-    right: 0;
-    bottom: 24px;
-    width: min(520px, calc(100vw - var(--sidebar-w) - 48px));
-    margin-inline: auto;
-    max-height: min(70dvh, 720px);
-    transform: none;
-    border-radius: var(--r-sheet);
-  }
-  .pin-sheet__handle { display: none; }
-  .pin-sheet__content { padding-top: 20px; }
-}
-
-@media (max-width: 359px) {
-  .pin-sheet__content { padding-left: 14px; padding-right: 14px; }
-  .pin-sheet__meta { grid-template-columns: 1fr; }
-  .pin-sheet__footer { padding-left: 12px; padding-right: 12px; }
-}
+@keyframes route-loading-spin { to { transform: rotate(360deg); } }
 
 .sr-only {
   position: absolute; width: 1px; height: 1px;
@@ -156,7 +113,7 @@ input[type='search']::-webkit-search-cancel-button { display: none; }
   clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
 
-/* Keyboard-only jump link — hidden until focused, then top-left of viewport. */
+/* The skip link stays outside the viewport until a keyboard user focuses it. */
 .skip-link {
   position: absolute; top: 8px; left: 8px;
   padding: 8px 14px; background: var(--green); color: #fff;
@@ -167,29 +124,29 @@ input[type='search']::-webkit-search-cancel-button { display: none; }
 }
 .skip-link:focus { transform: translateY(0); outline: none; }
 
-/* Prevent iOS Safari from auto-zooming primary inputs (min font-size 16px
-   avoids the zoom, but a defensive `text-size-adjust` keeps large-print
-   readers honest too). */
+/* Keep text scaling enabled. Mobile form controls use 16px text below so iOS
+   Safari does not zoom the whole page when an input receives focus. */
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
-/* Native tap highlight is jarring on green surfaces — kill it and let each
-   pressable component supply its own :active / :hover feedback. */
+/* Components provide their own pressed state, so the browser's extra tap flash
+   is disabled to avoid showing two feedback effects at the same time. */
 a, button, [role='button'], [role='link'] {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Respect the reduced-motion OS setting (MASTER §5). Skeleton shimmer and
-   spinners keep animating (they signal work in progress) but page and
-   sheet transitions collapse to opacity for vestibular safety. */
-/* MapLibre control polish — the default zoom buttons and attribution bubble
-   are a bit clinical; nudge them onto the design system's radius / shadow.
-   Also lift the bottom controls clear of the FAB notch on mobile. */
+/* Match MapLibre controls to the application's border and corner styles. The
+   mobile rules also keep bottom controls above the raised scan button. */
 .maplibregl-ctrl-group {
-  border-radius: 10px !important;
-  box-shadow: 0 2px 6px rgba(20,40,30,0.14) !important;
-  border: 1px solid var(--border) !important;
+  border-radius: 14px !important;
+  border: 1px solid rgba(255, 255, 255, 0.72) !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+  box-shadow: 0 10px 28px rgba(20,40,30,0.16) !important;
+  backdrop-filter: saturate(1.2) blur(14px);
+  -webkit-backdrop-filter: saturate(1.2) blur(14px);
   overflow: hidden;
 }
+.maplibregl-ctrl-group button { background-color: transparent !important; }
+.maplibregl-ctrl-group button:hover { background-color: rgba(241, 244, 240, 0.9) !important; }
 .maplibregl-ctrl-group button + button { border-top: 1px solid var(--border) !important; }
 .maplibregl-ctrl-attrib.maplibregl-compact {
   min-height: 24px !important;
@@ -204,7 +161,10 @@ a, button, [role='button'], [role='link'] {
   bottom: 8px !important;
 }
 @media (max-width: 899.98px) {
-  :root { --map-legend-bottom: 68px; }
+  :root {
+    --map-mobile-bottom-clearance: var(--mobile-nav-clearance);
+    --map-legend-bottom: var(--mobile-nav-clearance);
+  }
   .maplibregl-ctrl-bottom-right,
   .maplibregl-ctrl-bottom-left { bottom: var(--map-mobile-bottom-clearance) !important; }
   .maplibregl-ctrl-bottom-right { right: 10px !important; }
@@ -212,7 +172,10 @@ a, button, [role='button'], [role='link'] {
     max-width: min(44vw, 220px);
     padding: 3px 5px !important;
     border-radius: 6px;
-    background: rgba(255, 255, 255, 0.9) !important;
+    background: rgba(255, 255, 255, 0.88) !important;
+    box-shadow: 0 6px 18px rgba(20, 40, 30, 0.1);
+    backdrop-filter: saturate(1.1) blur(10px);
+    -webkit-backdrop-filter: saturate(1.1) blur(10px);
     font-size: 12px !important;
     line-height: 1.25 !important;
     text-align: right;
@@ -228,6 +191,7 @@ a, button, [role='button'], [role='link'] {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* Remove movement for users who enable reduced motion in their system settings. */
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
