@@ -45,7 +45,7 @@ export function ReportSubmissionResult() {
         </h1>
         <p style={{ fontSize: 14, color: 'var(--body)', marginTop: 10, lineHeight: 1.6 }}>
           {submitted
-            ? 'Automated validation is checking the photo, identity, location, and duplicates. It stays off the public map until those checks pass.'
+            ? 'Automated rules are checking image quality, duplicates, location, and submission patterns. The report stays off the public map until screening finishes.'
             : "You're offline or the server is unavailable. We'll retry automatically when connectivity returns."}
         </p>
 
@@ -72,7 +72,7 @@ export function ReportSubmissionResult() {
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             }}>
               <Icon name="ShieldCheck" size={16} color="#fff" />
-              View validation status
+              View screening status
             </button>
           )}
           <button type="button" onClick={() => done('/map')} style={{

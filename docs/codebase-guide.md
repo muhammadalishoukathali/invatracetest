@@ -40,7 +40,7 @@ excluded through `.gitignore` and are not source code.
 | `src/features/map/` | Threat-map screen, filters, selection state, legend, and sighting details. |
 | `src/features/scan/` | Image capture, image preparation, model adapter, and scan state. |
 | `src/features/report/` | Report wizard, draft state, offline queue, and queue status UI. |
-| `src/features/report/ReportTrackingPage.tsx` | Private automated-validation status and rescan guidance. |
+| `src/features/report/ReportTrackingPage.tsx` | Private automated-screening status, scope disclosure, and rescan guidance. |
 | `src/features/notifications/` | Notification polling and notification-panel UI. |
 
 ## Module boundaries

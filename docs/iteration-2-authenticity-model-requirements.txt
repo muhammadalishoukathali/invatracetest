@@ -1,0 +1,44 @@
+INVATRACE — DEFERRED PHOTO-AUTHENTICITY MODEL RESEARCH
+Target: Iteration 2 or later
+
+Scope
+-----
+Iteration 1 E2 uses deterministic automated rules. It does not claim to detect
+screen recaptures, printed photographs, edited composites, or other sophisticated
+fake evidence. No human coordinator reviews ordinary reports.
+
+A future authenticity model may supplement the rules only after an evaluated
+production artifact exists. Until then, the public API must continue returning
+authenticityAssessed=false for rule-screened records.
+
+Desired future output
+---------------------
+- authenticity risk calibrated for genuine field-camera photos versus screen
+  recaptures, printed-photo recaptures, edited composites, and non-camera images;
+- reason categories suitable for a private audit record;
+- immutable model and preprocessing versions; and
+- an explicit unavailable/error outcome that never publishes a report.
+
+Evidence required before implementation
+---------------------------------------
+- Malaysian field-phone evaluation data separated by device, location,
+  contributor, and plant instance from training data;
+- screen and print recaptures covering multiple displays, printers, lighting
+  conditions, viewing angles, moire patterns, glare, and camera devices;
+- precision, recall, AUROC/AUPRC, false-accept, and genuine-photo false-reject
+  rates at the proposed operating threshold;
+- breakdowns by device, image resolution, habitat, and lighting;
+- training-data provenance, licences, privacy/consent handling, limitations, and
+  representative failure cases; and
+- CPU runtime, memory, timeout, and deterministic golden-test results in the
+  production Python container.
+
+Integration constraints
+-----------------------
+- No external inference API.
+- The supplied browser E1 model and its class order remain unchanged.
+- Deterministic replay, quality, GPS, rate-limit, and time/location rules remain
+  independent hard gates and cannot be bypassed by a model score.
+- Model failure, timeout, invalid output, or missing artifacts remain fail-closed.
+- Do not enable or advertise authenticity assessment until the evaluation and
+  operational acceptance criteria are satisfied.

@@ -38,15 +38,16 @@ class Settings(BaseSettings):
     upload_active_grants_per_profile: int = Field(default=10, ge=1, le=100)
     upload_cleanup_interval_seconds: int = Field(default=3600, ge=60, le=86_400)
 
-    plant_model_provider: Literal["fake", "unavailable"] = "fake"
-    plant_model_version: str = "fake-dev-v1"
-    plant_model_device: Literal["cpu", "cuda", "mps"] = "cpu"
-    plant_model_timeout_seconds: float = Field(default=20, gt=0, le=120)
+    e1_model_versions: Annotated[list[str], NoDecode] = ["oe_v4_31class_web_fp16"]
+    screening_minimum_image_dimension: int = Field(default=320, ge=128, le=2048)
+    screening_perceptual_hamming_threshold: int = Field(default=6, ge=0, le=16)
+    screening_duplicate_radius_max_m: int = Field(default=50, ge=10, le=100)
+    screening_duplicate_window_hours: int = Field(default=24, ge=1, le=168)
     worker_poll_seconds: float = Field(default=2, ge=0.1, le=60)
     worker_max_attempts: int = Field(default=5, ge=1, le=20)
     worker_job_lease_seconds: int = Field(default=300, ge=30, le=3600)
 
-    @field_validator("cors_origins", mode="before")
+    @field_validator("cors_origins", "e1_model_versions", mode="before")
     @classmethod
     def split_origins(cls, value: object) -> object:
         if isinstance(value, str):
@@ -70,10 +71,10 @@ class Settings(BaseSettings):
             for value in weak_values
         ):
             raise ValueError("production secrets must be supplied through the environment")
-        if self.plant_model_provider == "fake":
-            raise ValueError("the fake plant provider cannot run in production")
         if not self.cors_origins or "*" in self.cors_origins:
             raise ValueError("production CORS origins must be explicit")
+        if not self.e1_model_versions:
+            raise ValueError("at least one supported E1 model version is required")
         return self
 
 

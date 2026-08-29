@@ -14,11 +14,11 @@ InvaTrace helps people identify, record, and coordinate action on invasive plant
 
 ## Positioning
 
-InvaTrace combines on-device plant identification, offline-capable field reporting, and automated validation before sightings become trusted records on a shared map.
+InvaTrace combines on-device plant identification, offline-capable field reporting, and automated rule screening before sightings become shared map records.
 
 ## Operating Context
 
-The product is used in the field, including on trails and in areas with unreliable connectivity. A contributor scans a plant, reviews the identification result, supplies location and extent evidence, consents to the report's accuracy, and submits it. The automated trust pipeline checks the photo, server identity, location, replay/spoof/OOD signals, and same-plant duplicates before publishing or requesting a rescan.
+The product is used in the field, including on trails and in areas with unreliable connectivity. A contributor scans a plant, reviews the E1 identification result, supplies location and extent evidence, consents to the report's accuracy, and submits it. The Iteration 1 trust pipeline applies deterministic image-quality, replay, supported-E1-version, location, rate-limit, and recent-nearby-same-species rules before publishing, merging, rejecting, or requesting a rescan. It does not assess photo authenticity.
 
 ## Capabilities and Constraints
 
@@ -63,7 +63,7 @@ Preserve the InvaTrace name, its existing role model, factual product copy, Mala
 ## Product Principles
 
 - Make field reporting dependable in poor connectivity.
-- Turn uncertain observations into verified shared evidence.
+- Turn uncertain observations into clearly labelled, rule-screened shared evidence.
 - Keep contributor tasks fast, clear, and usable outdoors.
 - Make automated decisions inspectable through versioned reason codes, inference records, and audit events.
 - Protect role boundaries, privacy expectations, and factual trust.

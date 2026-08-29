@@ -46,6 +46,7 @@ GENERIC_RESTORE_ERROR = (
     "We couldn’t restore this access. Check the profile ID and recovery code, then try again."
 )
 
+
 def profile_response(profile: Profile) -> ProfileResponse:
     return ProfileResponse(
         id=profile.public_id,

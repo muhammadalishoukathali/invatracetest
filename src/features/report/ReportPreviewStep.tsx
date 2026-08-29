@@ -61,7 +61,7 @@ export function ReportPreviewStep() {
       <Card>
         <Row icon="Leaf"
              label="Species"
-             value={draft.speciesId ?? 'Unknown — automated validation will request a rescan if needed'} />
+             value={draft.speciesId ?? 'Unknown — automated screening will request a rescan if needed'} />
         <Divider />
         <Row icon="AlertTriangle"
              label="Outcome"

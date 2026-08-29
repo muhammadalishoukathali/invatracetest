@@ -71,12 +71,12 @@ Upload-cleanup settings:
   background-service restart policy.
 
 Set identical database, Redis, object-storage, credential-hash, location-privacy,
-and model variables on both services. Use separate random values of at least 32
+and screening variables on both services. Use separate random values of at least 32
 bytes for `JWT_SECRET`, `CREDENTIAL_HASH_KEY`, and `LOCATION_PRIVACY_KEY`. Set
-`APP_ENV=production`, explicit `CORS_ORIGINS`, and
-`PLANT_MODEL_PROVIDER=unavailable` until the E2 bundle described in
-`e2-validator-model-requirements.txt` is deployed. Production readiness
-intentionally fails while it is unavailable. Never copy the Compose secrets.
+`APP_ENV=production`, explicit `CORS_ORIGINS`, and the supported
+`E1_MODEL_VERSIONS`. The E2 worker uses deterministic rules and requires no
+second model artifact. Configure its image, perceptual-hash, distance, and time
+thresholds from `backend/.env.example`. Never copy the Compose secrets.
 
 Redis is required for production rate limiting. Production is fail-closed for
 rate-limited operations when Redis is unavailable.
@@ -117,7 +117,8 @@ disabled to prove the WASM fallback, retry, and single-session behaviour.
 
 For production, exercise private access start/acknowledge/bootstrap, restore with
 a one-time recovery code, upload/report replay with the same idempotency key,
-automated confirm/rescan/reject/merge states, report-status polling,
-validated-only public map visibility, place association, location reduction,
+automated screened/rescan/reject/merge states, report-status polling,
+rule-screened public map visibility, place association, location reduction,
 and notification read flows. Confirm identity responses are never cached and
-that R2 objects cannot be fetched without a signed URL.
+that R2 objects cannot be fetched without a signed URL. Confirm report and
+sighting responses return `authenticityAssessed: false`.

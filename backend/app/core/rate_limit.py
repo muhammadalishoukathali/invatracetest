@@ -24,7 +24,8 @@ LIMITS = {
     "recovery_rotate": Limit(5, 60 * 60),
     "installation_revoke": Limit(20, 60 * 60),
     "upload_presign": Limit(30, 60),
-    "report_create": Limit(30, 60),
+    "report_create_burst": Limit(10, 10 * 60),
+    "report_create_daily": Limit(50, 24 * 60 * 60),
     "sightings_read": Limit(120, 60),
 }
 

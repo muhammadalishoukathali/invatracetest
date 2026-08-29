@@ -9,12 +9,12 @@ import type { SightingDetail, SightingStatus } from '@/types'
 import './sighting-details.css'
 
 const STATUS_LABEL: Record<SightingStatus, string> = {
-  confirmed: 'Confirmed',
+  screened: 'Rule screened',
   removed: 'Removed',
 }
 
 const STATUS_COLOR: Record<SightingStatus, string> = {
-  confirmed: 'var(--green)',
+  screened: 'var(--green)',
   removed: 'var(--icon)',
 }
 
@@ -78,7 +78,7 @@ export function SightingDetailsSheet() {
             <>
               {data.thumbnailUrl && (
                 <img className="pin-sheet__photo" src={data.thumbnailUrl}
-                  alt={`Validated ${data.speciesName} sighting`} />
+                  alt={`Rule-screened ${data.speciesName} sighting`} />
               )}
               <header className="pin-sheet__heading">
                 <h2 tabIndex={-1} data-dialog-initial>{data.speciesName}</h2>
@@ -95,6 +95,13 @@ export function SightingDetailsSheet() {
                   </span>
                 </div>
               </header>
+
+              {!isRemoved && (
+                <p className="pin-sheet__screening-note">
+                  <Icon name="Info" size={14} color="var(--green-dark)" />
+                  <span>Automated rules checked image quality, duplicates, location, and submission patterns. Photo authenticity was not assessed.</span>
+                </p>
+              )}
 
               <section className="pin-sheet__recommendation" aria-labelledby="recommended-action-heading">
                 <Icon name="ShieldCheck" size={19} color="var(--green-dark)" />
@@ -167,7 +174,7 @@ function MetaRow({ icon, label, value, sub, mono }: {
 }
 
 function statusIcon(status: SightingStatus): string {
-  if (status === 'confirmed') return 'CircleCheck'
+  if (status === 'screened') return 'CircleCheck'
   return 'Check'
 }
 

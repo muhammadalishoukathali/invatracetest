@@ -24,24 +24,30 @@ same photo can be retried. Browser performance entries named
 `invatrace:model-inference` expose the latest timings without collecting image
 or identity data.
 
-## Server verification provider
+## Iteration 1 E2 deterministic screening
 
-`app.ml.plant.provider.PlantModelProvider` separates detection, quality checks,
-identification, embeddings, and health. The durable worker reads a private photo,
-runs those operations with a timeout, and stores the provider/model/device and
-outputs in normalized inference tables.
+E2 does not run a second plant or authenticity model in Iteration 1. The durable
+worker reads the private JPEG and applies versioned, inspectable rules:
 
-Two providers ship:
+- exact SHA-256 and capture-ID replay rejection;
+- multi-view difference hashes for resized and common cropped-photo replays;
+- minimum dimensions plus brightness, contrast, and edge-detail checks;
+- GPS accuracy within 100 metres;
+- a supported E1 model version and a reportable E1 target result;
+- same-species spatial and time-window merging; and
+- Redis limits of 10 reports per profile per ten minutes and 50 per day.
 
-- `fake`: deterministic development/test contract fake, marked `fake=true` in
-  health and inference metadata.
-- `unavailable`: production-safe boundary that keeps the report private as
-  `validation_unavailable` when no server model artifact has been supplied.
+Passing reports use API status `screened`, policy version
+`deterministic-rules-v1.0`, and reason `automated_rule_screened`. The API returns
+`screeningMethod: deterministic_rules`, `authenticityAssessed: false`, and no
+server validation model version. The E1 result is client-supplied evidence and
+is not described as an independent server identification.
 
-Production startup rejects `PLANT_MODEL_PROVIDER=fake`, and `/health/ready`
-returns 503 when the automated validator is unavailable. The required E2 model
-handoff is specified in `docs/e2-validator-model-requirements.txt`. Adding that
-provider does not change the report contract or introduce a human coordinator.
+Database, Redis, or private-storage failure remains fail-closed: the report stays
+private and the job retries before moving to `validation_unavailable`. Screen
+recapture, printed-photo, and sophisticated edit detection are explicitly
+outside this rule set and are documented as later-iteration research in
+`docs/iteration-2-authenticity-model-requirements.txt`.
 
 ## OVC-VI connector status
 

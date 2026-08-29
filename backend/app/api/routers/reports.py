@@ -49,7 +49,8 @@ def create_report(
     auth: AuthContext = Depends(require_auth),
     session: Session = Depends(get_session),
 ) -> ReportResponse:
-    rate_limiter.check("report_create", str(auth.profile.id))
+    rate_limiter.check("report_create_burst", str(auth.profile.id))
+    rate_limiter.check("report_create_daily", str(auth.profile.id))
     if not IDEMPOTENCY_PATTERN.fullmatch(idempotency_key):
         raise ApiProblem(400, "invalid_idempotency_key", "A valid Idempotency-Key is required.")
     digest = request_digest(body)

@@ -9,7 +9,7 @@ from io import BytesIO
 
 import httpx
 import pytest
-from PIL import Image
+from PIL import Image, ImageDraw
 
 pytestmark = pytest.mark.integration
 
@@ -24,11 +24,36 @@ BASE_URL = os.getenv("INVATRACE_INTEGRATION_BASE_URL", "http://localhost:8000")
 
 def test_jpeg() -> bytes:
     output = BytesIO()
-    Image.new("RGB", (640, 480), color=(20, 122, 80)).save(output, format="JPEG")
+    image = Image.new("RGB", (640, 480), color=(20, 122, 80))
+    draw = ImageDraw.Draw(image)
+    for index in range(0, 640, 24):
+        draw.line((0, index, 640, max(0, index - 160)), fill=(210, 230, 120), width=8)
+        draw.ellipse((index, 90, index + 70, 210), fill=(18, 65, 30))
+    image.save(output, format="JPEG", quality=90)
     return output.getvalue()
 
 
 JPEG = test_jpeg()
+
+
+def alternate_jpeg(*, crop: bool = False) -> bytes:
+    output = BytesIO()
+    image = Image.new("RGB", (640, 480), color=(66, 104, 44))
+    draw = ImageDraw.Draw(image)
+    for index in range(0, 640, 80):
+        draw.rectangle((index, 0, index + 35, 480), fill=(180, 208, 90))
+        draw.polygon(
+            [(index, 400), (index + 75, 100), (index + 40, 30)],
+            fill=(22, 58, 35),
+        )
+    if crop:
+        image = image.crop((64, 48, 576, 432))
+    image.save(output, format="JPEG", quality=90)
+    return output.getvalue()
+
+
+ALTERNATE_JPEG = alternate_jpeg()
+ALTERNATE_CROP_JPEG = alternate_jpeg(crop=True)
 
 
 def installation_token() -> str:
@@ -47,8 +72,8 @@ def assert_ok(response: httpx.Response) -> httpx.Response:
     return response
 
 
-def upload_photo(client: httpx.Client, token: str, key: str) -> str:
-    request_body = {"contentType": "image/jpeg", "sizeBytes": len(JPEG)}
+def upload_photo(client: httpx.Client, token: str, key: str, photo: bytes) -> str:
+    request_body = {"contentType": "image/jpeg", "sizeBytes": len(photo)}
     first = assert_ok(
         client.post(
             "/api/v1/uploads/presign",
@@ -67,14 +92,14 @@ def upload_photo(client: httpx.Client, token: str, key: str) -> str:
     conflict = client.post(
         "/api/v1/uploads/presign",
         headers=auth(token, f"{key}:upload"),
-        json={"contentType": "image/jpeg", "sizeBytes": len(JPEG) + 1},
+        json={"contentType": "image/jpeg", "sizeBytes": len(photo) + 1},
     )
     assert conflict.status_code == 409
     assert_ok(
         httpx.put(
             first["uploadUrl"],
             headers={"Content-Type": "image/jpeg"},
-            content=JPEG,
+            content=photo,
             timeout=10,
         )
     )
@@ -88,13 +113,15 @@ def create_report(
     key: str,
     lat: float,
     lng: float,
+    photo: bytes = JPEG,
+    verify_idempotency: bool = False,
 ) -> dict[str, object]:
     payload = {
-        "photoKey": upload_photo(client, token, key),
+        "photoKey": upload_photo(client, token, key, photo),
         "speciesId": "mikania-micrantha",
         "outcome": "target",
         "confidence": 0.91,
-        "modelVersion": "integration-client-v1",
+        "modelVersion": "oe_v4_31class_web_fp16",
         "observedAt": datetime.now(UTC).isoformat(),
         "captureId": str(uuid.uuid4()),
         "captureSource": "camera",
@@ -106,12 +133,13 @@ def create_report(
     }
     first = client.post("/api/v1/reports", headers=auth(token, key), json=payload)
     assert first.status_code == 201, first.text
-    replay = client.post("/api/v1/reports", headers=auth(token, key), json=payload)
-    assert replay.status_code == 201, replay.text
-    assert replay.json()["id"] == first.json()["id"]
-    changed = {**payload, "notes": "Different request"}
-    conflict = client.post("/api/v1/reports", headers=auth(token, key), json=changed)
-    assert conflict.status_code == 409
+    if verify_idempotency:
+        replay = client.post("/api/v1/reports", headers=auth(token, key), json=payload)
+        assert replay.status_code == 201, replay.text
+        assert replay.json()["id"] == first.json()["id"]
+        changed = {**payload, "notes": "Different request"}
+        conflict = client.post("/api/v1/reports", headers=auth(token, key), json=changed)
+        assert conflict.status_code == 409
     return first.json()
 
 
@@ -131,7 +159,7 @@ def test_private_access_and_automated_validation_end_to_end() -> None:
         assert readiness["database"] == "ok"
         assert readiness["redis"] == "ok"
         assert readiness["storage"] == "ok"
-        assert readiness["model"] == "ready"
+        assert readiness["screening"] == "ready"
 
         first_installation_token = installation_token()
         started_response = client.post(
@@ -167,13 +195,16 @@ def test_private_access_and_automated_validation_end_to_end() -> None:
             key=f"integration-{uuid.uuid4()}",
             lat=3.13900,
             lng=101.68690,
+            verify_idempotency=True,
         )
         assert report_one["status"] == "processing"
         assert (
             client.get("/api/v1/verify/queue", headers=auth(first_access_token)).status_code == 404
         )
         resolved_one = wait_for_resolution(client, first_access_token, report_one["id"])
-        assert resolved_one["status"] == "confirmed"
+        assert resolved_one["status"] == "screened"
+        assert resolved_one["validation"]["screeningMethod"] == "deterministic_rules"
+        assert resolved_one["validation"]["authenticityAssessed"] is False
         assert resolved_one["sightingId"]
         public_sightings = assert_ok(client.get("/api/v1/sightings?limit=100")).json()["items"]
         published = next(
@@ -215,12 +246,39 @@ def test_private_access_and_automated_validation_end_to_end() -> None:
         assert resolved_two["status"] == "rejected"
         assert "exact_photo_replay" in resolved_two["validation"]["reasonCodes"]
 
+        report_three = create_report(
+            client,
+            restored_access_token,
+            key=f"integration-{uuid.uuid4()}",
+            lat=3.13904,
+            lng=101.68694,
+            photo=ALTERNATE_JPEG,
+        )
+        resolved_three = wait_for_resolution(client, restored_access_token, report_three["id"])
+        assert resolved_three["status"] == "merged"
+        assert "same_species_nearby_recent" in resolved_three["validation"]["reasonCodes"]
+        assert resolved_three["sightingId"] == resolved_one["sightingId"]
+
+        report_four = create_report(
+            client,
+            restored_access_token,
+            key=f"integration-{uuid.uuid4()}",
+            lat=3.14500,
+            lng=101.69200,
+            photo=ALTERNATE_CROP_JPEG,
+        )
+        resolved_four = wait_for_resolution(client, restored_access_token, report_four["id"])
+        assert resolved_four["status"] == "rejected"
+        assert "perceptual_photo_replay" in resolved_four["validation"]["reasonCodes"]
+
         mine = assert_ok(
             client.get("/api/v1/reports/mine", headers=auth(restored_access_token))
         ).json()["items"]
         states = {item["id"]: item["status"] for item in mine}
-        assert states[report_one["id"]] == "confirmed"
+        assert states[report_one["id"]] == "screened"
         assert states[report_two["id"]] == "rejected"
+        assert states[report_three["id"]] == "merged"
+        assert states[report_four["id"]] == "rejected"
 
         notifications = assert_ok(
             client.get("/api/v1/notifications", headers=auth(restored_access_token))

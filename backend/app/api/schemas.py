@@ -35,13 +35,13 @@ Outcome = Literal["target", "other_plant", "uncertain"]
 Extent = Literal["single", "small_patch", "large_area"]
 ReportStatus = Literal[
     "processing",
-    "confirmed",
+    "screened",
     "merged",
     "needs_rescan",
     "rejected",
     "validation_unavailable",
 ]
-SightingStatus = Literal["confirmed", "removed"]
+SightingStatus = Literal["screened", "removed"]
 Risk = Literal["high", "watch"]
 
 InstallationSecret = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9_-]{43}$")]
@@ -267,6 +267,8 @@ class ReportValidation(ApiModel):
     retryable: bool
     policy_version: str | None
     model_version: str | None
+    screening_method: Literal["deterministic_rules"] | None = None
+    authenticity_assessed: Literal[False] = False
 
 
 class ReportResponse(ApiModel):
@@ -304,6 +306,8 @@ class SightingResponse(ApiModel):
     last_reported_at: datetime
     place: PlaceAssociation
     thumbnail_url: str | None
+    screening_method: Literal["deterministic_rules"] = "deterministic_rules"
+    authenticity_assessed: Literal[False] = False
 
 
 class SightingDetailResponse(SightingResponse):
@@ -320,7 +324,7 @@ class SightingListResponse(ApiModel):
 class NotificationResponse(ApiModel):
     id: str
     kind: Literal[
-        "report_confirmed",
+        "report_screened",
         "report_rejected",
         "report_needs_rescan",
         "report_merged",
@@ -356,7 +360,7 @@ class HealthResponse(ApiModel):
     database: str
     redis: str | None = None
     storage: str | None = None
-    model: str | None = None
+    screening: str | None = None
     verification_backlog: int | None = None
 
 

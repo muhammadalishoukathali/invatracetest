@@ -17,7 +17,7 @@ const SPECIES = [
 ] as const
 
 const STATUSES: { id: SightingStatus; label: string; dot?: string }[] = [
-  { id: 'confirmed', label: 'Confirmed' },
+  { id: 'screened', label: 'Rule screened' },
   { id: 'removed', label: 'Removed', dot: '#8B978F' },
 ]
 
@@ -191,7 +191,7 @@ function FiltersSheet({
             ))}
             </div>
           </FilterGroup>
-          <FilterGroup title="Status" description="Show validated or already removed plants.">
+          <FilterGroup title="Status" description="Show rule-screened or already removed plants.">
             <div className="filter-option-grid filter-option-grid--status">
             {STATUSES.map((s) => (
                 <FilterOption key={s.id} label={s.label} on={selectedStatuses.includes(s.id)} dot={s.dot}

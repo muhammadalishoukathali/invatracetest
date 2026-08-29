@@ -2,7 +2,7 @@
 
 Iteration 1 full stack: React 18 + Vite + TypeScript installable PWA, FastAPI,
 PostgreSQL/PostGIS, Redis, S3-compatible private storage, and a separate
-verification worker.
+deterministic screening worker.
 InvaTrace uses intentional **Private access**: server-backed pseudonymous
 profiles without email/password registration.
 
@@ -27,7 +27,7 @@ npm run dev:real
 ```
 
 See [backend setup](backend/README.md) for migrations, seed data, automated
-validation workers, OSM imports, and test commands.
+screening workers, OSM imports, and test commands.
 
 ## Project documentation
 
@@ -36,7 +36,7 @@ validation workers, OSM imports, and test commands.
 - [Identity architecture](docs/identity-architecture.md) — client/server security contract.
 - [Private access flow](docs/private-access-flow.md) — creation, recovery, and management states.
 - [Backend architecture](docs/backend-architecture.md) — services, ERDs, API sequences, and privacy.
-- [ML integration](docs/ml-integration.md) — honest plant-provider and OVC-VI boundaries.
+- [ML integration](docs/ml-integration.md) — browser E1 and deferred research boundaries.
 - [Deployment](docs/deployment.md) — Cloudflare Pages/R2, Render, and Neon runbook.
 - [Design system](design-system/invatrace/README.md) — tokens, components, and page-specific guidance.
 
@@ -74,8 +74,9 @@ The production backend is implemented under `backend/`. The MSW layer remains a
 development-only frontend simulator and mirrors the same endpoint shapes. The
 backend persists pseudonymous identity secrets only as keyed hashes, enforces
 server-side roles/trust, uses transactional recovery and idempotency, validates
-private uploads, and applies PostGIS-backed location privacy and automated
-validation rules.
+private uploads, and applies PostGIS-backed location privacy and deterministic
+automated screening rules. Rule-screened map records have not undergone
+photo-authenticity assessment; that capability is deferred beyond Iteration 1.
 
 ## Conventions
 
@@ -102,7 +103,7 @@ validation rules.
 | 1 | Private access, recovery, installation management and role-gated routes | Done |
 | 2 | Supplied PULIH E1 model, local inference, look-alike safety | Done |
 | 3 | Report flow, upload, offline queue, status tracking | Done |
-| 4 | Validated-only live map and OSM-derived place association | Done |
-| 5 | Automated E2 policy and auditable lifecycle | Done; real E2 model pending |
+| 4 | Rule-screened live map and OSM-derived place association | Done |
+| 5 | Deterministic E2 screening and auditable lifecycle | Done; authenticity detection deferred |
 | 6 | Notifications, offline sync, error states | Done |
 | 7 | Accessibility, end-to-end tests, backend swap-in | Done |

@@ -2,13 +2,13 @@
 
 FastAPI service for the InvaTrace React/Vite PWA. It implements pseudonymous
 private access, S3-compatible photo uploads, idempotent reporting, PostGIS
-sightings, automated validation, notifications, model-provider boundaries,
-and a durable verification worker.
+sightings, deterministic automated screening, notifications, and a durable
+screening worker.
 
 ## Local stack
 
 The repository Compose stack provides PostgreSQL 16 with PostGIS, Redis, MinIO,
-the migration and seed jobs, the API, a verification worker, and an hourly
+the migration and seed jobs, the API, a screening worker, and an hourly
 expired-upload cleanup worker.
 
 ```bash
@@ -121,12 +121,17 @@ whose keys match the `uploads/<profile>/<uuid>.jpg` staging namespace. Submitted
   single-use. Submitted photos are copied to an immutable evidence key.
 - Upload and report idempotency keys are serialized with PostgreSQL transaction
   advisory locks to make concurrent retries safe.
-- Public endpoints expose only automatically confirmed and removed sightings.
-  Confirmed sightings from `New` reporters use a stable 100 metre keyed displacement.
+- Public endpoints expose only rule-screened and removed sightings. Screened
+  sightings from `New` reporters use a stable 100 metre keyed displacement.
 - Automated decisions are row-locked, append immutable decision/audit records,
-  reject exact replays, and merge only matching same-plant evidence.
-- The fake plant provider is rejected by production configuration. The
-  unavailable provider keeps reports private and makes readiness fail closed.
+  reject exact and perceptual photo replays, and merge recent nearby reports of
+  the same E1 species.
+- The worker performs transparent JPEG size, exposure, contrast, edge-detail,
+  duplicate, location, and E1-version checks. It does not assess whether a
+  photo depicts a screen, print, or edited composite.
+- Redis-backed report limits allow at most 10 submissions per profile in ten
+  minutes and 50 per day. Production fails closed when Redis, storage, or the
+  database required by screening is unavailable.
 
 See [backend architecture](../docs/backend-architecture.md),
 [ML integration](../docs/ml-integration.md), and

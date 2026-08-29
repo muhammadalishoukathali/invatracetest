@@ -58,11 +58,11 @@ export interface AccessOverview {
   installations: AuthorizedInstallation[]
 }
 
-/** Only confirmed sightings are ready for coordinated field action. */
-export type SightingStatus = 'confirmed' | 'removed'
+/** Screened means deterministic rules passed; it is not a photo-authenticity verdict. */
+export type SightingStatus = 'screened' | 'removed'
 export type ReportStatus =
   | 'processing'
-  | 'confirmed'
+  | 'screened'
   | 'merged'
   | 'needs_rescan'
   | 'rejected'
@@ -194,6 +194,8 @@ export interface Report {
     retryable: boolean
     policyVersion: string | null
     modelVersion: string | null
+    screeningMethod: 'deterministic_rules' | null
+    authenticityAssessed: false
   }
   sightingId: string | null
 }
@@ -228,6 +230,8 @@ export interface Sighting {
   lastReportedAt: string
   place: PlaceAssociation
   thumbnailUrl: string | null
+  screeningMethod: 'deterministic_rules'
+  authenticityAssessed: false
 }
 
 export interface SightingDetail extends Sighting {
@@ -246,7 +250,7 @@ export interface PlaceAssociation {
 // Notification data.
 
 export type NotificationKind =
-  | 'report_confirmed'   // Automated checks published the user's report.
+  | 'report_screened'    // Deterministic rules published the user's report.
   | 'report_rejected'    // Automated integrity checks rejected the report.
   | 'report_needs_rescan'
   | 'report_merged'

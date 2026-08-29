@@ -207,7 +207,7 @@ class Report(Base):
     __tablename__ = "reports"
     __table_args__ = (
         CheckConstraint(
-            "status IN ('processing','confirmed','merged','needs_rescan','rejected',"
+            "status IN ('processing','screened','merged','needs_rescan','rejected',"
             "'validation_unavailable')",
             name="status",
         ),
@@ -241,7 +241,7 @@ class Report(Base):
     capture_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True, nullable=False)
     capture_source: Mapped[str] = mapped_column(String(20), nullable=False)
     content_sha256: Mapped[bytes | None] = mapped_column(LargeBinary(32), index=True)
-    perceptual_hash: Mapped[str | None] = mapped_column(String(32), index=True)
+    perceptual_hash: Mapped[str | None] = mapped_column(String(160), index=True)
     latitude: Mapped[Decimal] = mapped_column(Numeric(8, 5), nullable=False)
     longitude: Mapped[Decimal] = mapped_column(Numeric(8, 5), nullable=False)
     location: Mapped[Any] = mapped_column(
@@ -270,7 +270,7 @@ class Sighting(Base):
     __tablename__ = "sightings"
     __table_args__ = (
         CheckConstraint(
-            "status IN ('candidate','confirmed','rejected','removed','merged')", name="status"
+            "status IN ('candidate','screened','rejected','removed','merged')", name="status"
         ),
         CheckConstraint("reporter_trust IN ('New','Trusted','Steward')", name="reporter_trust"),
         CheckConstraint("latitude BETWEEN 0.8 AND 7.5", name="malaysia_latitude"),
@@ -395,7 +395,7 @@ class Notification(Base):
     __tablename__ = "notifications"
     __table_args__ = (
         CheckConstraint(
-            "kind IN ('report_confirmed','report_rejected','report_needs_rescan',"
+            "kind IN ('report_screened','report_rejected','report_needs_rescan',"
             "'report_merged','validation_unavailable','sync_ok','system')",
             name="kind",
         ),

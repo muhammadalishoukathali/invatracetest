@@ -102,14 +102,14 @@ def list_sightings(
         .outerjoin(Trail, Trail.id == Sighting.trail_id)
         .outerjoin(ReportSightingLink, ReportSightingLink.sighting_id == Sighting.id)
         .outerjoin(Report, Report.id == ReportSightingLink.report_id)
-        .where(Sighting.status.in_(["confirmed", "removed"]))
+        .where(Sighting.status.in_(["screened", "removed"]))
         .group_by(Sighting.id, Species.id, MonitoredArea.name, Trail.name)
         .order_by(Sighting.updated_at.desc(), Sighting.id.desc())
     )
     if species:
         statement = statement.where(Sighting.species_id.in_(species))
     if status:
-        allowed = {"confirmed", "removed"}
+        allowed = {"screened", "removed"}
         if not set(status).issubset(allowed):
             raise ApiProblem(400, "invalid_filter", "The status filter is invalid.")
         statement = statement.where(Sighting.status.in_(status))
@@ -132,8 +132,7 @@ def list_sightings(
     rows = session.execute(statement.offset(offset).limit(limit)).all()
     return SightingListResponse(
         items=[
-            serialize_sighting(row[0], row[1], int(row[2]), row[3], row[4], row[5])
-            for row in rows
+            serialize_sighting(row[0], row[1], int(row[2]), row[3], row[4], row[5]) for row in rows
         ],
         next_cursor=encode_cursor(offset, len(rows), limit),
     )
@@ -168,7 +167,7 @@ def sighting_detail(
         .outerjoin(Report, Report.id == ReportSightingLink.report_id)
         .where(
             Sighting.id == parsed_id,
-            Sighting.status.in_(["confirmed", "removed"]),
+            Sighting.status.in_(["screened", "removed"]),
         )
         .group_by(Sighting.id, Species.id, MonitoredArea.name, Trail.name)
     ).first()

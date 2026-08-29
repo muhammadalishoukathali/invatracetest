@@ -76,8 +76,7 @@ services:
       S3_ACCESS_KEY_ID: minioadmin
       S3_SECRET_ACCESS_KEY: minioadmin
       S3_FORCE_PATH_STYLE: "true"
-      PLANT_MODEL_PROVIDER: fake
-      PLANT_MODEL_VERSION: fake-dev-v1
+      E1_MODEL_VERSIONS: oe_v4_31class_web_fp16
     command: ["alembic", "upgrade", "head"]
     depends_on:
       db:

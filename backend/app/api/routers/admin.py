@@ -30,7 +30,7 @@ def repair_report(
         raise ApiProblem(
             409, "state_conflict", "The report state changed; refresh before retrying."
         )
-    if report.status in {"confirmed", "merged"}:
+    if report.status in {"screened", "merged"}:
         raise ApiProblem(
             409, "published_report_immutable", "Published reports cannot be repaired here."
         )
@@ -76,7 +76,7 @@ def repair_report(
             profile_id=report.profile_id,
             kind="system",
             title="Report status updated",
-            body="An administrator repaired an exceptional validation state.",
+            body="An administrator repaired an exceptional screening state.",
             link_to=f"/reports/{report.id}",
         )
     )

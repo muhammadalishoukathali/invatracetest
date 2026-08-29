@@ -55,6 +55,12 @@ def report_response(
             or (report.status == "validation_unavailable" and validation_retryable),
             policy_version=report.validation_policy_version,
             model_version=report.validation_model_version,
+            screening_method=(
+                "deterministic_rules"
+                if report.validation_policy_version == "deterministic-rules-v1.0"
+                else None
+            ),
+            authenticity_assessed=False,
         ),
         sighting_id=str(sighting_id) if sighting_id else None,
     )

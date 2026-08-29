@@ -62,9 +62,7 @@ def presign_upload(
     if existing:
         session.execute(delete(IdempotencyRecord).where(IdempotencyRecord.id == existing.id))
 
-    session.execute(
-        select(Profile.id).where(Profile.id == auth.profile.id).with_for_update()
-    )
+    session.execute(select(Profile.id).where(Profile.id == auth.profile.id).with_for_update())
     active_grants = session.scalar(
         select(func.count(UploadGrant.id)).where(
             UploadGrant.profile_id == auth.profile.id,

@@ -3,7 +3,7 @@
 Extends `../README.md`. Only the deltas below.
 
 ## Purpose
-Public-facing situational view of automatically confirmed invasive sightings across Malaysia.
+Public-facing situational view of rule-screened invasive-plant reports across Malaysia.
 
 ## Layout
 - Full-bleed map fills the main region — AppShell's `main` padding is disabled for `/map`.
@@ -20,14 +20,14 @@ Public-facing situational view of automatically confirmed invasive sightings acr
 ## Pin design
 - SVG teardrop, 26 × 34 px, coloured by risk:
   - High risk `#C2412D`, Watch `#D9880F`, Removed `#8B978F` (65 % opacity).
-- Removed sightings use the neutral grey pin. Reports never appear until automated validation passes.
+- Removed sightings use the neutral grey pin. Reports never appear until automated rule screening passes.
 - Filled centre dot for readability at small sizes.
 - `aria-label="{speciesName} — {status}"`.
 
 ## Filters
 - **Search:** species name / latin name substring, debounced 150 ms.
 - **Species chips:** 4 tracked species (Mikania, Siam weed, Water hyacinth, Koster's curse).
-- **Status chips:** Confirmed, Removed.
+- **Status chips:** Rule screened, Removed.
 - **Mobile:** collapse into a single "Filters" button that opens a bottom sheet with grouped chips + Clear / Apply footer.
 - **Desktop:** inline chip row under the search input.
 - Active count shown in the button label ("Filters · 2").
@@ -36,10 +36,11 @@ Public-facing situational view of automatically confirmed invasive sightings acr
 Bottom sheet order:
 1. Species common name (h2) + latin (italic muted).
 2. Risk / status / report-count pills.
-3. Recommended action card (green surface).
-4. Coordinates (mono) — with "Location approximated — precision policy §11" note when reduced.
-5. Last reported (relative time).
-6. Reporter trust level.
+3. Screening-scope note stating that photo authenticity was not assessed.
+4. Recommended action card (green surface).
+5. Coordinates (mono) — with "Location approximated — precision policy §11" note when reduced.
+6. Last reported (relative time).
+7. Reporter trust level.
 
 ## Motion
 - Sheet slide-up 300 ms `cubic-bezier(.2,.8,.2,1)`; slide-down 220 ms `ease-in`.

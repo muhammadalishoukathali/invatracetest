@@ -12,7 +12,7 @@ import type { AppNotification, NotificationKind } from '@/types'
 import './notifications.css'
 
 const KIND_ICON: Record<NotificationKind, string> = {
-  report_confirmed: 'CircleCheck',
+  report_screened: 'CircleCheck',
   report_rejected: 'AlertTriangle',
   report_needs_rescan: 'ScanLine',
   report_merged: 'GitMerge',
@@ -21,7 +21,7 @@ const KIND_ICON: Record<NotificationKind, string> = {
   system: 'Bell',
 }
 const KIND_TINT: Record<NotificationKind, string> = {
-  report_confirmed: 'var(--green)',
+  report_screened: 'var(--green)',
   report_rejected: 'var(--red)',
   report_needs_rescan: 'var(--amber-text)',
   report_merged: 'var(--green)',

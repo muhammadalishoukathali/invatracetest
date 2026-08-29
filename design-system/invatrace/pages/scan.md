@@ -26,7 +26,7 @@ Field capture: user photographs a plant, on-device model classifies it into `tar
 ## Result step
 Three outcome branches:
 
-### `target` (confirmed invasive)
+### `target` (E1 target result)
 - Red **OutcomeBadge**: `AlertTriangle` + "Invasive species detected".
 - Photo (max-height 220 px, cover).
 - Species block: common name h2, latin italic muted, common aliases, **HIGH RISK** chip.
@@ -49,7 +49,7 @@ Three outcome branches:
 - Photo.
 - Card: "Could not determine species" + retake tips + confidence band (red because <50 %).
 - CTAs: "Scan again" + primary "Report sighting". If submitted, the automated
-  validation pipeline decides whether a rescan is required; there is no manual
+  rule-screening pipeline decides whether a rescan is required; there is no manual
   approval queue.
 
 ## Motion

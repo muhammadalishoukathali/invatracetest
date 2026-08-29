@@ -133,6 +133,24 @@
   align-items: start;
 }
 
+.pin-sheet__screening-note {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: var(--r-input);
+  color: var(--green-dark);
+  background: var(--green-light);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.pin-sheet__screening-note svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
 .pin-sheet__recommendation h3 {
   font-size: 13.5px;
   line-height: 1.35;

@@ -464,18 +464,23 @@ export const handlers = [
       createdAt: new Date().toISOString(),
       submission: storedSubmission,
       trackingUrl: `/reports/${id}`,
-      validation: { reasonCodes: [], retryable: false, policyVersion: null, modelVersion: null },
+      validation: {
+        reasonCodes: [], retryable: false, policyVersion: null, modelVersion: null,
+        screeningMethod: null, authenticityAssessed: false,
+      },
       sightingId: null,
     }
     mockReports.unshift(report)
     mockReportIdempotency.set(idempotencyScope, { request: serialized, response: report })
     setTimeout(() => {
-      report.status = 'confirmed'
+      report.status = 'screened'
       report.validation = {
-        reasonCodes: ['automated_checks_passed'],
+        reasonCodes: ['automated_rule_screened'],
         retryable: false,
-        policyVersion: 'automated-v1.0',
-        modelVersion: 'fake-server-v1',
+        policyVersion: 'deterministic-rules-v1.0',
+        modelVersion: null,
+        screeningMethod: 'deterministic_rules',
+        authenticityAssessed: false,
       }
       report.sightingId = SIGHTINGS[0].id
     }, 750)
@@ -578,7 +583,10 @@ const seedReport = (id: string, speciesId: string, outcome: 'target' | 'uncertai
   id, status: 'processing',
   createdAt: new Date(now - hoursAgo * 3600 * 1000).toISOString(),
   trackingUrl: `/reports/${id}`,
-  validation: { reasonCodes: [], retryable: false, policyVersion: null, modelVersion: null },
+  validation: {
+    reasonCodes: [], retryable: false, policyVersion: null, modelVersion: null,
+    screeningMethod: null, authenticityAssessed: false,
+  },
   sightingId: null,
   submission: {
     photoKey: `evidence/seed/${id}.jpg`,
@@ -595,14 +603,14 @@ const seedReport = (id: string, speciesId: string, outcome: 'target' | 'uncertai
 // Sample notifications used by the development API.
 
 const NOTIFICATIONS: AppNotification[] = [
-  { id: 'n-1', kind: 'report_confirmed',
-    title: 'Report confirmed',
-    body: 'Automated checks confirmed your Mikania micrantha sighting on the west trail.',
+  { id: 'n-1', kind: 'report_screened',
+    title: 'Report rule-screened',
+    body: 'Automated rules published your Mikania micrantha report on the west trail.',
     createdAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
     read: false, linkTo: '/map' },
   { id: 'n-2', kind: 'report_needs_rescan',
     title: 'A fresh scan is needed',
-    body: 'Automated checks could not validate a previous Water hyacinth photo.',
+    body: 'Automated rules requested a new Water hyacinth photo.',
     createdAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
     read: false, linkTo: '/scan' },
   { id: 'n-3', kind: 'sync_ok',
@@ -640,9 +648,9 @@ const SEEDED_REPORTS: Report[] = [
 // Sample sightings used by the development API.
 
 const RECOMMENDED_ACTION: Record<string, string> = {
-  processing: 'Automated validation is running. Do not act yet.',
-  confirmed: 'Approved for removal. Follow safe-removal steps for this species.',
-  rejected: 'Marked as misidentified — no action required.',
+  processing: 'Automated rule screening is running. Do not act yet.',
+  screened: 'Rule-screened report. Follow the reviewed guidance for this species.',
+  rejected: 'Duplicate evidence was rejected. No new map record was created.',
   removed: 'Removal recorded. Recheck for regrowth in 2–3 weeks.',
 }
 
@@ -664,16 +672,16 @@ function jitter(id: string): { dLat: number; dLng: number } {
   }
 }
 
-const SEED: Omit<Sighting, 'location' | 'precisionReduced' | 'lastReportedAt' | 'place' | 'thumbnailUrl'>[] = [
-  { id: 's-01', speciesId: 'mikania-micrantha', speciesName: 'Mikania micrantha', latinName: 'Mikania micrantha', status: 'confirmed', risk: 'high', reportCount: 4 },
-  { id: 's-02', speciesId: 'mikania-micrantha', speciesName: 'Mikania micrantha', latinName: 'Mikania micrantha', status: 'confirmed', risk: 'high', reportCount: 2 },
-  { id: 's-03', speciesId: 'mikania-micrantha', speciesName: 'Mikania micrantha', latinName: 'Mikania micrantha', status: 'confirmed', risk: 'high', reportCount: 1 },
-  { id: 's-04', speciesId: 'chromolaena-odorata', speciesName: 'Siam weed', latinName: 'Chromolaena odorata', status: 'confirmed', risk: 'high', reportCount: 3 },
-  { id: 's-05', speciesId: 'chromolaena-odorata', speciesName: 'Siam weed', latinName: 'Chromolaena odorata', status: 'confirmed', risk: 'high', reportCount: 1 },
-  { id: 's-06', speciesId: 'eichhornia-crassipes', speciesName: 'Water hyacinth', latinName: 'Eichhornia crassipes', status: 'confirmed', risk: 'high', reportCount: 5 },
-  { id: 's-07', speciesId: 'eichhornia-crassipes', speciesName: 'Water hyacinth', latinName: 'Eichhornia crassipes', status: 'confirmed', risk: 'high', reportCount: 2 },
-  { id: 's-08', speciesId: 'clidemia-hirta', speciesName: "Koster's curse", latinName: 'Clidemia hirta', status: 'confirmed', risk: 'watch', reportCount: 3 },
-  { id: 's-09', speciesId: 'clidemia-hirta', speciesName: "Koster's curse", latinName: 'Clidemia hirta', status: 'confirmed', risk: 'watch', reportCount: 1 },
+const SEED: Omit<Sighting, 'location' | 'precisionReduced' | 'lastReportedAt' | 'place' | 'thumbnailUrl' | 'screeningMethod' | 'authenticityAssessed'>[] = [
+  { id: 's-01', speciesId: 'mikania-micrantha', speciesName: 'Mikania micrantha', latinName: 'Mikania micrantha', status: 'screened', risk: 'high', reportCount: 4 },
+  { id: 's-02', speciesId: 'mikania-micrantha', speciesName: 'Mikania micrantha', latinName: 'Mikania micrantha', status: 'screened', risk: 'high', reportCount: 2 },
+  { id: 's-03', speciesId: 'mikania-micrantha', speciesName: 'Mikania micrantha', latinName: 'Mikania micrantha', status: 'screened', risk: 'high', reportCount: 1 },
+  { id: 's-04', speciesId: 'chromolaena-odorata', speciesName: 'Siam weed', latinName: 'Chromolaena odorata', status: 'screened', risk: 'high', reportCount: 3 },
+  { id: 's-05', speciesId: 'chromolaena-odorata', speciesName: 'Siam weed', latinName: 'Chromolaena odorata', status: 'screened', risk: 'high', reportCount: 1 },
+  { id: 's-06', speciesId: 'eichhornia-crassipes', speciesName: 'Water hyacinth', latinName: 'Eichhornia crassipes', status: 'screened', risk: 'high', reportCount: 5 },
+  { id: 's-07', speciesId: 'eichhornia-crassipes', speciesName: 'Water hyacinth', latinName: 'Eichhornia crassipes', status: 'screened', risk: 'high', reportCount: 2 },
+  { id: 's-08', speciesId: 'clidemia-hirta', speciesName: "Koster's curse", latinName: 'Clidemia hirta', status: 'screened', risk: 'watch', reportCount: 3 },
+  { id: 's-09', speciesId: 'clidemia-hirta', speciesName: "Koster's curse", latinName: 'Clidemia hirta', status: 'screened', risk: 'watch', reportCount: 1 },
   { id: 's-10', speciesId: 'mikania-micrantha', speciesName: 'Mikania micrantha', latinName: 'Mikania micrantha', status: 'removed', risk: 'high', reportCount: 2 },
 ]
 
@@ -707,6 +715,8 @@ const SIGHTINGS: Sighting[] = SEED.map((sighting, index) => {
       source: 'seed',
     },
     thumbnailUrl: null,
+    screeningMethod: 'deterministic_rules',
+    authenticityAssessed: false,
     lastReportedAt: new Date(Date.now() - (index + 1) * 3600 * 1000).toISOString(),
   }
 })

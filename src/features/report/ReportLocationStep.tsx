@@ -72,7 +72,7 @@ export function ReportLocationStep() {
         {status === 'denied' && (
           <Row icon="AlertTriangle" tint="var(--amber)"
                title="Location access denied"
-               body="Enable location in your browser settings before continuing. Automated validation requires a GPS fix." />
+               body="Enable location in your browser settings before continuing. Automated screening requires a GPS fix." />
         )}
 
         {status === 'unavailable' && (

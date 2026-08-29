@@ -28,18 +28,18 @@ def test_new_reporter_location_stays_reduced_after_confirmation() -> None:
         sighting_id="new-reporter",
         latitude=3.139,
         longitude=101.6869,
-        status="confirmed",
+        status="screened",
         reporter_trust="New",
     )
     assert reduced is True
 
 
-def test_trusted_confirmed_location_preserves_server_precision() -> None:
+def test_trusted_screened_location_preserves_server_precision() -> None:
     lat, lng, reduced = public_coordinates(
         sighting_id="trusted-reporter",
         latitude=3.13901,
         longitude=101.68691,
-        status="confirmed",
+        status="screened",
         reporter_trust="Trusted",
     )
     assert (lat, lng, reduced) == (3.13901, 101.68691, False)

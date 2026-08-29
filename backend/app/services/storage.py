@@ -102,7 +102,9 @@ class ObjectStorage:
                 or finalized.content_type != expected.content_type
             ):
                 self.internal.delete_object(Bucket=self.bucket, Key=destination_key)
-                raise ApiProblem(409, "upload_changed", "The uploaded image changed during submission.")
+                raise ApiProblem(
+                    409, "upload_changed", "The uploaded image changed during submission."
+                )
             self.internal.delete_object(Bucket=self.bucket, Key=source_key)
         except ApiProblem:
             raise

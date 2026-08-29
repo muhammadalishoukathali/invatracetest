@@ -53,7 +53,7 @@ export function MapLegend() {
       <div style={{
         marginTop: 4, paddingTop: 6, borderTop: '1px solid var(--border)',
         fontSize: 11, color: 'var(--muted)', lineHeight: 1.5,
-      }}>Only automatically validated records appear here.</div>
+      }}>Records appear after automated rule screening. Photo authenticity is not assessed.</div>
     </div>
   )
 }

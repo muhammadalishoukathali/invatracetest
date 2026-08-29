@@ -52,7 +52,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(prog="invatrace")
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("seed", help="seed factual development species and public map data")
-    worker = commands.add_parser("worker", help="run the report verification worker")
+    worker = commands.add_parser("worker", help="run the deterministic report-screening worker")
     worker.add_argument("--once", action="store_true")
     access = commands.add_parser(
         "set-profile-access", help="set a server-authoritative role/trust pair"

@@ -20,7 +20,7 @@ The colour ramp is not up for a re-vote. It matches the InvaTrace brand kit and 
 | **Forest dark** (active text) | `#166341` | `--green-dark` | |
 | **Deep** (reversed surfaces, logo badge) | `#12402C` | `--deep` | |
 | **Sprout** (watch risk, secondary highlight) | `#D9880F` | `--amber` | The one warm accent — use sparingly |
-| **High-risk red** | `#C2412D` | `--red` | Confirmed invasive, destructive actions |
+| **High-risk red** | `#C2412D` | `--red` | E1 target result, destructive-action warnings |
 | **Ink** (body text) | `#16201B` | `--ink` | |
 | **Body** | `#4B5A52` | `--body` | Muted body copy |
 | **Muted** | `#77857E` | `--muted` | Metadata, timestamps |

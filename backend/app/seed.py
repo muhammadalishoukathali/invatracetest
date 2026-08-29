@@ -191,15 +191,15 @@ PLACES = [
 ]
 
 SIGHTING_SEED = [
-    ("mikania-micrantha", "confirmed", "high", 0.0032, 0.2),
-    ("mikania-micrantha", "confirmed", "high", 0.0025, 1.1),
-    ("mikania-micrantha", "confirmed", "high", 0.0041, 2.4),
-    ("chromolaena-odorata", "confirmed", "high", 0.0018, 3.6),
-    ("chromolaena-odorata", "confirmed", "high", 0.0037, 4.7),
-    ("eichhornia-crassipes", "confirmed", "high", 0.0028, 5.9),
-    ("eichhornia-crassipes", "confirmed", "high", 0.0045, 0.9),
-    ("clidemia-hirta", "confirmed", "watch", 0.0022, 2.0),
-    ("clidemia-hirta", "confirmed", "watch", 0.0033, 3.1),
+    ("mikania-micrantha", "screened", "high", 0.0032, 0.2),
+    ("mikania-micrantha", "screened", "high", 0.0025, 1.1),
+    ("mikania-micrantha", "screened", "high", 0.0041, 2.4),
+    ("chromolaena-odorata", "screened", "high", 0.0018, 3.6),
+    ("chromolaena-odorata", "screened", "high", 0.0037, 4.7),
+    ("eichhornia-crassipes", "screened", "high", 0.0028, 5.9),
+    ("eichhornia-crassipes", "screened", "high", 0.0045, 0.9),
+    ("clidemia-hirta", "screened", "watch", 0.0022, 2.0),
+    ("clidemia-hirta", "screened", "watch", 0.0033, 3.1),
     ("mikania-micrantha", "removed", "high", 0.0016, 4.2),
 ]
 
@@ -249,7 +249,7 @@ def seed_development_data(session: Session) -> None:
     if not session.scalar(select(Sighting.id).limit(1)):
         centre_lat, centre_lng = 3.1497, 101.6412
         actions = {
-            "confirmed": "Approved for removal. Follow safe-removal steps for this species.",
+            "screened": "Rule-screened report. Follow the reviewed guidance for this species.",
             "removed": "Removal recorded. Recheck for regrowth in 2–3 weeks.",
         }
         for index, (species_id, status, risk, radius, angle) in enumerate(SIGHTING_SEED):
