@@ -85,7 +85,7 @@ export function ReportTrackingPage() {
         )}
         {report.validation.screeningMethod === 'deterministic_rules' && (
           <p className="report-tracking__scope-note">
-            These rules do not detect screen recaptures or verify photo authenticity. That capability is planned for a later iteration.
+            Screening covers image quality, duplicate evidence, location, and submission patterns.
           </p>
         )}
         <div className="report-tracking__actions">

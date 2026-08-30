@@ -47,7 +47,6 @@ def _mark_report_unavailable(
     report.status = "validation_unavailable"
     report.validation_reasons = [reason]
     report.validation_policy_version = POLICY_VERSION
-    report.validation_model_version = None
     if first_unavailable:
         session.add(
             Notification(
@@ -223,7 +222,6 @@ def process_job(job_id: str) -> None:
             report.status = decision.status
             report.validation_reasons = list(decision.reason_codes)
             report.validation_policy_version = POLICY_VERSION
-            report.validation_model_version = None
 
             thumbnail_bytes = _make_thumbnail(image) if decision.status == "screened" else None
             published_sighting = _publish_decision(
@@ -268,7 +266,6 @@ def process_job(job_id: str) -> None:
             report.status = decision.status
             report.validation_reasons = list(decision.reason_codes)
             report.validation_policy_version = POLICY_VERSION
-            report.validation_model_version = None
             report.content_sha256 = content_sha256
             _record_decision(
                 session,
@@ -277,7 +274,6 @@ def process_job(job_id: str) -> None:
                 previous_state=previous_state,
                 checks={
                     "imageDecodable": False,
-                    "authenticityAssessment": "not_performed",
                     "durationMs": round((time.perf_counter() - started) * 1000),
                 },
                 merge_target=None,
@@ -457,7 +453,6 @@ def _checks_json(
 ) -> dict[str, object]:
     return {
         "screeningMethod": "deterministic_rules",
-        "authenticityAssessment": "not_performed",
         "exactReplay": exact_replay,
         "perceptualReplayReportId": perceptual_match_id,
         "perceptualHashDistance": perceptual_match_distance,
@@ -499,7 +494,6 @@ def _record_decision(
             previous_state=previous_state,
             resulting_state=decision.status,
             policy_version=POLICY_VERSION,
-            model_version=None,
             reason_codes=list(decision.reason_codes),
             checks_json=checks,
             merge_target_id=merge_target.id if merge_target else None,
@@ -516,7 +510,6 @@ def _record_decision(
                 "sightingId": str(published_sighting.id) if published_sighting else None,
                 "policyVersion": POLICY_VERSION,
                 "screeningMethod": "deterministic_rules",
-                "authenticityAssessment": "not_performed",
             },
         )
     )
@@ -526,7 +519,7 @@ def _notify_resolution(session, report: Report) -> None:
     copy = {
         "screened": (
             "Report rule-screened",
-            "Automated rules passed. The observation is now on the shared map; photo authenticity was not assessed.",
+            "Automated rules passed. The observation is now on the shared map.",
         ),
         "merged": (
             "Report matched a recent nearby plant",

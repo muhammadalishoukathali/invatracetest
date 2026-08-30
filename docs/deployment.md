@@ -120,5 +120,4 @@ a one-time recovery code, upload/report replay with the same idempotency key,
 automated screened/rescan/reject/merge states, report-status polling,
 rule-screened public map visibility, place association, location reduction,
 and notification read flows. Confirm identity responses are never cached and
-that R2 objects cannot be fetched without a signed URL. Confirm report and
-sighting responses return `authenticityAssessed: false`.
+that R2 objects cannot be fetched without a signed URL.

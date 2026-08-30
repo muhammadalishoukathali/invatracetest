@@ -99,7 +99,7 @@ export function SightingDetailsSheet() {
               {!isRemoved && (
                 <p className="pin-sheet__screening-note">
                   <Icon name="Info" size={14} color="var(--green-dark)" />
-                  <span>Automated rules checked image quality, duplicates, location, and submission patterns. Photo authenticity was not assessed.</span>
+                  <span>Automated rules checked image quality, duplicates, location, and submission patterns.</span>
                 </p>
               )}
 

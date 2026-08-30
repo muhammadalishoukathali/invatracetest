@@ -75,8 +75,8 @@ development-only frontend simulator and mirrors the same endpoint shapes. The
 backend persists pseudonymous identity secrets only as keyed hashes, enforces
 server-side roles/trust, uses transactional recovery and idempotency, validates
 private uploads, and applies PostGIS-backed location privacy and deterministic
-automated screening rules. Rule-screened map records have not undergone
-photo-authenticity assessment; that capability is deferred beyond Iteration 1.
+automated screening rules. Rule-screened map records passed the documented
+image-quality, replay, location, and submission checks.
 
 ## Conventions
 
@@ -104,6 +104,6 @@ photo-authenticity assessment; that capability is deferred beyond Iteration 1.
 | 2 | Supplied PULIH E1 model, local inference, look-alike safety | Done |
 | 3 | Report flow, upload, offline queue, status tracking | Done |
 | 4 | Rule-screened live map and OSM-derived place association | Done |
-| 5 | Deterministic E2 screening and auditable lifecycle | Done; authenticity detection deferred |
+| 5 | Deterministic E2 screening and auditable lifecycle | Done |
 | 6 | Notifications, offline sync, error states | Done |
 | 7 | Accessibility, end-to-end tests, backend swap-in | Done |

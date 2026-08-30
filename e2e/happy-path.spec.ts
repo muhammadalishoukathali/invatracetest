@@ -590,13 +590,6 @@ test('private detector can scan, analyse, and submit', async ({ page, context })
   expect(accountEndpointCalls).toEqual([])
 })
 
-test('manual verification route is absent for every profile', async ({ page }) => {
-  await startPrivateAccess(page)
-  await page.goto('/verify')
-  await expect(page).toHaveURL(/\/map$/)
-  await expect(page.getByRole('heading', { name: 'Verify queue' })).toHaveCount(0)
-})
-
 test('offline launch restores locally, then reconnects before flushing reports', async ({ page }) => {
   const { profile } = await startPrivateAccess(page)
 

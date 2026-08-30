@@ -80,13 +80,12 @@ public sightings used by the frontend mock so mock and real-backend views have
 the same starting content.
 
 To grant a pseudonymous profile an operational role in development, use the
-audited admin command rather than changing client storage. Roles do not create
-a manual Iteration 1 validation queue:
+audited admin command rather than changing client storage:
 
 ```bash
 docker compose exec api python -m app.cli set-profile-access \
   --profile-id IVT-XXXX-XXXX \
-  --role Coordinator \
+  --role Volunteer \
   --trust Trusted
 ```
 
@@ -127,8 +126,7 @@ whose keys match the `uploads/<profile>/<uuid>.jpg` staging namespace. Submitted
   reject exact and perceptual photo replays, and merge recent nearby reports of
   the same E1 species.
 - The worker performs transparent JPEG size, exposure, contrast, edge-detail,
-  duplicate, location, and E1-version checks. It does not assess whether a
-  photo depicts a screen, print, or edited composite.
+  duplicate, location, and E1-version checks.
 - Redis-backed report limits allow at most 10 submissions per profile in ten
   minutes and 50 per day. Production fails closed when Redis, storage, or the
   database required by screening is unavailable.

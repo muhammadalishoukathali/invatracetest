@@ -17,11 +17,9 @@ depends_on = None
 
 DROP_ORDER = [
     "verification_jobs",
-    "verification_decisions",
     "upload_grants",
     "report_sighting_links",
     "recovery_codes",
-    "inference_records",
     "sightings",
     "reports",
     "recovery_code_batches",
@@ -32,11 +30,8 @@ DROP_ORDER = [
     "trails",
     "species",
     "profiles",
-    "ovcvi_stream_events",
-    "ovcvi_checkpoints",
     "monitored_places",
     "monitored_areas",
-    "model_versions",
 ]
 
 

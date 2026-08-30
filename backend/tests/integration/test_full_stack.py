@@ -204,7 +204,6 @@ def test_private_access_and_automated_validation_end_to_end() -> None:
         resolved_one = wait_for_resolution(client, first_access_token, report_one["id"])
         assert resolved_one["status"] == "screened"
         assert resolved_one["validation"]["screeningMethod"] == "deterministic_rules"
-        assert resolved_one["validation"]["authenticityAssessed"] is False
         assert resolved_one["sightingId"]
         public_sightings = assert_ok(client.get("/api/v1/sightings?limit=100")).json()["items"]
         published = next(

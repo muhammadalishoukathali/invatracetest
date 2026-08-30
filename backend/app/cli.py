@@ -16,7 +16,7 @@ from app.seed import seed_development_data
 from app.services.upload_cleanup import remove_expired_uploads
 from app.workers.verification import run_worker
 
-ROLES = ["Detector", "Volunteer", "Coordinator", "Expert", "Admin"]
+ROLES = ["Detector", "Volunteer", "Expert", "Admin"]
 TRUST_LEVELS = ["New", "Trusted", "Steward"]
 log = structlog.get_logger("invatrace.cli")
 

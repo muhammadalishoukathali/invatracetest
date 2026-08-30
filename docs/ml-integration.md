@@ -26,8 +26,8 @@ or identity data.
 
 ## Iteration 1 E2 deterministic screening
 
-E2 does not run a second plant or authenticity model in Iteration 1. The durable
-worker reads the private JPEG and applies versioned, inspectable rules:
+E2 uses a durable worker that reads the private JPEG and applies versioned,
+inspectable deterministic rules:
 
 - exact SHA-256 and capture-ID replay rejection;
 - multi-view difference hashes for resized and common cropped-photo replays;
@@ -39,40 +39,8 @@ worker reads the private JPEG and applies versioned, inspectable rules:
 
 Passing reports use API status `screened`, policy version
 `deterministic-rules-v1.0`, and reason `automated_rule_screened`. The API returns
-`screeningMethod: deterministic_rules`, `authenticityAssessed: false`, and no
-server validation model version. The E1 result is client-supplied evidence and
-is not described as an independent server identification.
+`screeningMethod: deterministic_rules`. The E1 result is client-supplied
+evidence and is not described as an independent server identification.
 
 Database, Redis, or private-storage failure remains fail-closed: the report stays
-private and the job retries before moving to `validation_unavailable`. Screen
-recapture, printed-photo, and sophisticated edit detection are explicitly
-outside this rule set and are documented as later-iteration research in
-`docs/iteration-2-authenticity-model-requirements.txt`.
-
-## OVC-VI connector status
-
-The supplied Section 3 material describes model behavior but does not include a
-complete runnable implementation, trained artifacts, evaluation data, or an
-approved runtime dependency. The backend therefore implements only the
-framework-neutral connector, durable schema boundaries, checkpoint contract,
-and deterministic contract fake. It makes no calibrated uncertainty or CRPS
-claim.
-
-The connector enforces these invariants:
-
-- Prediction accepts timestamped features and prior state only. A current label
-  is not part of the prediction input.
-- A delayed label can be applied only after that event has a stored prediction.
-- Repeated ingestion of the same stream/event returns the existing prediction.
-- Predictive samples, intervals, optional CRPS outputs, drift metadata, feature
-  schema version, model version, and state version have explicit storage fields.
-- Checkpoint and restore are provider operations, while persistence is delegated
-  to a state store.
-
-To integrate a real implementation, supply an `OvcviProvider` that implements
-`health`, `predict`, `apply_label`, `checkpoint`, and `restore`; then implement
-the PostgreSQL-backed `OvcviStateStore` using `ovcvi_stream_events` and
-`ovcvi_checkpoints`. Run predict-before-update replay tests, delayed-label
-ordering tests, restart/checkpoint tests, and offline CRPS/calibration evaluation
-before enabling it. Until those artifacts exist, keep the provider unavailable
-in production and do not advertise live uncertainty forecasts.
+private and the job retries before moving to `validation_unavailable`.

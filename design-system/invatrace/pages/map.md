@@ -36,7 +36,7 @@ Public-facing situational view of rule-screened invasive-plant reports across Ma
 Bottom sheet order:
 1. Species common name (h2) + latin (italic muted).
 2. Risk / status / report-count pills.
-3. Screening-scope note stating that photo authenticity was not assessed.
+3. Screening-scope note listing the deterministic checks applied.
 4. Recommended action card (green surface).
 5. Coordinates (mono) — with "Location approximated — precision policy §11" note when reduced.
 6. Last reported (relative time).

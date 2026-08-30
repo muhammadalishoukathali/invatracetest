@@ -1,14 +1,3 @@
-CREATE TABLE model_versions (
-	id UUID NOT NULL, 
-	provider VARCHAR(80) NOT NULL, 
-	version VARCHAR(120) NOT NULL, 
-	device VARCHAR(30) NOT NULL, 
-	fake BOOLEAN NOT NULL, 
-	metadata_json JSONB NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL, 
-	CONSTRAINT pk_model_versions PRIMARY KEY (id), 
-	CONSTRAINT uq_model_provider_version UNIQUE (provider, version)
-);
 CREATE TABLE monitored_areas (
 	id UUID NOT NULL, 
 	name VARCHAR(180) NOT NULL, 
@@ -26,37 +15,6 @@ CREATE TABLE monitored_places (
 	CONSTRAINT pk_monitored_places PRIMARY KEY (id), 
 	CONSTRAINT uq_monitored_places_name UNIQUE (name)
 );
-CREATE TABLE ovcvi_checkpoints (
-	id UUID NOT NULL, 
-	stream_id VARCHAR(160) NOT NULL, 
-	state_version VARCHAR(120) NOT NULL, 
-	model_version VARCHAR(120) NOT NULL, 
-	object_key VARCHAR(500) NOT NULL, 
-	checksum BYTEA NOT NULL, 
-	metadata_json JSONB NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL, 
-	CONSTRAINT pk_ovcvi_checkpoints PRIMARY KEY (id), 
-	CONSTRAINT uq_ovcvi_stream_state UNIQUE (stream_id, state_version)
-);
-CREATE TABLE ovcvi_stream_events (
-	id UUID NOT NULL, 
-	stream_id VARCHAR(160) NOT NULL, 
-	event_id VARCHAR(160) NOT NULL, 
-	observed_at TIMESTAMP WITH TIME ZONE NOT NULL, 
-	feature_schema_version VARCHAR(80) NOT NULL, 
-	payload_hash BYTEA NOT NULL, 
-	features_json JSONB NOT NULL, 
-	prediction_json JSONB, 
-	label_json JSONB, 
-	state_version_before VARCHAR(120), 
-	state_version_after VARCHAR(120), 
-	status VARCHAR(20) NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL, 
-	labeled_at TIMESTAMP WITH TIME ZONE, 
-	CONSTRAINT pk_ovcvi_stream_events PRIMARY KEY (id), 
-	CONSTRAINT uq_ovcvi_stream_event UNIQUE (stream_id, event_id), 
-	CONSTRAINT ck_ovcvi_stream_events_status CHECK (status IN ('received','predicted','labeled','failed'))
-);
 CREATE TABLE profiles (
 	id UUID NOT NULL, 
 	public_id VARCHAR(80) NOT NULL, 
@@ -67,7 +25,7 @@ CREATE TABLE profiles (
 	created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL, 
 	updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL, 
 	CONSTRAINT pk_profiles PRIMARY KEY (id), 
-	CONSTRAINT ck_profiles_role CHECK (role IN ('Detector','Volunteer','Coordinator','Expert','Admin')), 
+	CONSTRAINT ck_profiles_role CHECK (role IN ('Detector','Volunteer','Expert','Admin')),
 	CONSTRAINT ck_profiles_trust_level CHECK (trust_level IN ('New','Trusted','Steward')), 
 	CONSTRAINT ck_profiles_display_name CHECK (display_name IS NULL OR char_length(display_name) <= 80)
 );
@@ -214,22 +172,6 @@ CREATE TABLE sightings (
 	CONSTRAINT fk_sightings_source_profile_id_profiles FOREIGN KEY(source_profile_id) REFERENCES profiles (id) ON DELETE SET NULL, 
 	CONSTRAINT fk_sightings_merged_into_sighting_id_sightings FOREIGN KEY(merged_into_sighting_id) REFERENCES sightings (id) ON DELETE SET NULL
 );
-CREATE TABLE inference_records (
-	id UUID NOT NULL, 
-	report_id UUID NOT NULL, 
-	model_version_id UUID, 
-	status VARCHAR(30) NOT NULL, 
-	quality_json JSONB, 
-	detection_json JSONB, 
-	identification_json JSONB, 
-	embedding_json JSONB, 
-	duration_ms INTEGER, 
-	error_code VARCHAR(80), 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL, 
-	CONSTRAINT pk_inference_records PRIMARY KEY (id), 
-	CONSTRAINT fk_inference_records_report_id_reports FOREIGN KEY(report_id) REFERENCES reports (id) ON DELETE CASCADE, 
-	CONSTRAINT fk_inference_records_model_version_id_model_versions FOREIGN KEY(model_version_id) REFERENCES model_versions (id) ON DELETE SET NULL
-);
 CREATE TABLE recovery_codes (
 	id UUID NOT NULL, 
 	batch_id UUID NOT NULL, 
@@ -270,21 +212,6 @@ CREATE TABLE upload_grants (
 	CONSTRAINT fk_upload_grants_profile_id_profiles FOREIGN KEY(profile_id) REFERENCES profiles (id) ON DELETE CASCADE, 
 	CONSTRAINT fk_upload_grants_consumed_by_report_id_reports FOREIGN KEY(consumed_by_report_id) REFERENCES reports (id) ON DELETE SET NULL
 );
-CREATE TABLE verification_decisions (
-	id UUID NOT NULL, 
-	report_id UUID NOT NULL, 
-	acting_profile_id UUID NOT NULL, 
-	decision VARCHAR(20) NOT NULL, 
-	previous_state VARCHAR(20) NOT NULL, 
-	resulting_state VARCHAR(20) NOT NULL, 
-	merge_target_id UUID, 
-	metadata_json JSONB NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL, 
-	CONSTRAINT pk_verification_decisions PRIMARY KEY (id), 
-	CONSTRAINT fk_verification_decisions_report_id_reports FOREIGN KEY(report_id) REFERENCES reports (id) ON DELETE RESTRICT, 
-	CONSTRAINT fk_verification_decisions_acting_profile_id_profiles FOREIGN KEY(acting_profile_id) REFERENCES profiles (id) ON DELETE RESTRICT, 
-	CONSTRAINT fk_verification_decisions_merge_target_id_sightings FOREIGN KEY(merge_target_id) REFERENCES sightings (id) ON DELETE RESTRICT
-);
 CREATE TABLE verification_jobs (
 	id UUID NOT NULL, 
 	report_id UUID NOT NULL, 
@@ -302,8 +229,6 @@ CREATE TABLE verification_jobs (
 );
 CREATE INDEX ix_areas_geometry_gist ON monitored_areas USING gist (geometry);
 CREATE INDEX ix_places_location_gist ON monitored_places USING gist (location);
-CREATE INDEX ix_ovcvi_checkpoints_stream_id ON ovcvi_checkpoints (stream_id);
-CREATE INDEX ix_ovcvi_stream_events_stream_id ON ovcvi_stream_events (stream_id);
 CREATE UNIQUE INDEX ix_profiles_public_id ON profiles (public_id);
 CREATE INDEX ix_trails_geometry_gist ON trails USING gist (geometry);
 CREATE INDEX ix_audit_events_acting_profile_id ON audit_events (acting_profile_id);
@@ -325,8 +250,6 @@ CREATE INDEX ix_sightings_location_gist ON sightings USING gist (location);
 CREATE INDEX ix_sightings_source_profile_id ON sightings (source_profile_id);
 CREATE INDEX ix_sightings_species_id ON sightings (species_id);
 CREATE INDEX ix_sightings_status ON sightings (status);
-CREATE INDEX ix_inference_records_created_at ON inference_records (created_at);
-CREATE INDEX ix_inference_records_report_id ON inference_records (report_id);
 CREATE INDEX ix_recovery_codes_batch_id ON recovery_codes (batch_id);
 CREATE INDEX ix_recovery_codes_profile_id ON recovery_codes (profile_id);
 CREATE INDEX ix_report_sighting_links_report_id ON report_sighting_links (report_id);
@@ -334,9 +257,6 @@ CREATE INDEX ix_report_sighting_links_sighting_id ON report_sighting_links (sigh
 CREATE UNIQUE INDEX uq_report_sighting_active ON report_sighting_links (report_id) WHERE active IS true;
 CREATE INDEX ix_upload_grants_expires_at ON upload_grants (expires_at);
 CREATE INDEX ix_upload_grants_profile_id ON upload_grants (profile_id);
-CREATE INDEX ix_verification_decisions_acting_profile_id ON verification_decisions (acting_profile_id);
-CREATE INDEX ix_verification_decisions_report_id ON verification_decisions (report_id);
 CREATE INDEX ix_verification_jobs_available_at ON verification_jobs (available_at);
 CREATE INDEX ix_verification_jobs_report_id ON verification_jobs (report_id);
 CREATE INDEX ix_verification_jobs_status ON verification_jobs (status);
-

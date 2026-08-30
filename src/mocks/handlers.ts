@@ -465,8 +465,7 @@ export const handlers = [
       submission: storedSubmission,
       trackingUrl: `/reports/${id}`,
       validation: {
-        reasonCodes: [], retryable: false, policyVersion: null, modelVersion: null,
-        screeningMethod: null, authenticityAssessed: false,
+        reasonCodes: [], retryable: false, policyVersion: null, screeningMethod: null,
       },
       sightingId: null,
     }
@@ -478,9 +477,7 @@ export const handlers = [
         reasonCodes: ['automated_rule_screened'],
         retryable: false,
         policyVersion: 'deterministic-rules-v1.0',
-        modelVersion: null,
         screeningMethod: 'deterministic_rules',
-        authenticityAssessed: false,
       }
       report.sightingId = SIGHTINGS[0].id
     }, 750)
@@ -584,8 +581,7 @@ const seedReport = (id: string, speciesId: string, outcome: 'target' | 'uncertai
   createdAt: new Date(now - hoursAgo * 3600 * 1000).toISOString(),
   trackingUrl: `/reports/${id}`,
   validation: {
-    reasonCodes: [], retryable: false, policyVersion: null, modelVersion: null,
-    screeningMethod: null, authenticityAssessed: false,
+    reasonCodes: [], retryable: false, policyVersion: null, screeningMethod: null,
   },
   sightingId: null,
   submission: {
@@ -672,7 +668,7 @@ function jitter(id: string): { dLat: number; dLng: number } {
   }
 }
 
-const SEED: Omit<Sighting, 'location' | 'precisionReduced' | 'lastReportedAt' | 'place' | 'thumbnailUrl' | 'screeningMethod' | 'authenticityAssessed'>[] = [
+const SEED: Omit<Sighting, 'location' | 'precisionReduced' | 'lastReportedAt' | 'place' | 'thumbnailUrl' | 'screeningMethod'>[] = [
   { id: 's-01', speciesId: 'mikania-micrantha', speciesName: 'Mikania micrantha', latinName: 'Mikania micrantha', status: 'screened', risk: 'high', reportCount: 4 },
   { id: 's-02', speciesId: 'mikania-micrantha', speciesName: 'Mikania micrantha', latinName: 'Mikania micrantha', status: 'screened', risk: 'high', reportCount: 2 },
   { id: 's-03', speciesId: 'mikania-micrantha', speciesName: 'Mikania micrantha', latinName: 'Mikania micrantha', status: 'screened', risk: 'high', reportCount: 1 },
@@ -716,7 +712,6 @@ const SIGHTINGS: Sighting[] = SEED.map((sighting, index) => {
     },
     thumbnailUrl: null,
     screeningMethod: 'deterministic_rules',
-    authenticityAssessed: false,
     lastReportedAt: new Date(Date.now() - (index + 1) * 3600 * 1000).toISOString(),
   }
 })

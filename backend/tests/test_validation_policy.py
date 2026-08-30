@@ -40,7 +40,14 @@ def test_image_location_and_e1_metadata_failures_request_a_rescan() -> None:
     )
 
 
-def test_rules_do_not_claim_photo_authenticity() -> None:
-    fields = ValidationInput.__dataclass_fields__
-    assert "spoof_probability" not in fields
-    assert "authenticity" not in fields
+def test_policy_inputs_are_strictly_deterministic() -> None:
+    assert set(ValidationInput.__dataclass_fields__) == {
+        "image_failure_reasons",
+        "client_outcome",
+        "client_species_id",
+        "client_model_supported",
+        "location_accuracy_m",
+        "exact_replay",
+        "perceptual_replay",
+        "merge_target_id",
+    }

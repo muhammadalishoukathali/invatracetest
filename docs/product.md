@@ -18,12 +18,12 @@ InvaTrace combines on-device plant identification, offline-capable field reporti
 
 ## Operating Context
 
-The product is used in the field, including on trails and in areas with unreliable connectivity. A contributor scans a plant, reviews the E1 identification result, supplies location and extent evidence, consents to the report's accuracy, and submits it. The Iteration 1 trust pipeline applies deterministic image-quality, replay, supported-E1-version, location, rate-limit, and recent-nearby-same-species rules before publishing, merging, rejecting, or requesting a rescan. It does not assess photo authenticity.
+The product is used in the field, including on trails and in areas with unreliable connectivity. A contributor scans a plant, reviews the E1 identification result, supplies location and extent evidence, consents to the report's accuracy, and submits it. The Iteration 1 trust pipeline applies deterministic image-quality, replay, supported-E1-version, location, rate-limit, and recent-nearby-same-species rules before publishing, merging, rejecting, or requesting a rescan.
 
 ## Capabilities and Constraints
 
 - The current pilot scope is Malaysia.
-- The identity schema retains Detector, Volunteer, Coordinator, Expert, and Admin roles, but Iteration 1 has no manual verification route or coordinator queue.
+- The identity schema supports Detector, Volunteer, Expert, and Admin roles. All report-screening decisions are automated.
 - Field reporting must continue to work offline and retry automatically after connectivity returns.
 - Every authorized installation belongs to a pseudonymous profile; reported coordinates may be stored at up to five decimal places.
 - The frontend is a React, Vite, and TypeScript installable PWA. Development currently uses mocked API responses while preserving the production API boundary.

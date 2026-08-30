@@ -29,7 +29,7 @@ class ImageScreeningResult:
 
 
 def screen_image(image_bytes: bytes, *, minimum_dimension: int) -> ImageScreeningResult:
-    """Run transparent, deterministic image checks without assessing authenticity."""
+    """Run the transparent, deterministic Iteration 1 image checks."""
 
     with warnings.catch_warnings():
         warnings.simplefilter("error", Image.DecompressionBombWarning)

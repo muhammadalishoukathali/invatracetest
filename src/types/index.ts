@@ -1,6 +1,6 @@
 /** A role controls which actions a profile may perform. Trust level describes
  *  how much review its evidence needs, so the two values stay separate. */
-export type Role = 'Detector' | 'Volunteer' | 'Coordinator' | 'Expert' | 'Admin'
+export type Role = 'Detector' | 'Volunteer' | 'Expert' | 'Admin'
 export type TrustLevel = 'New' | 'Trusted' | 'Steward'
 
 /** Server-authoritative profile connected to one or more browser installations. */
@@ -58,7 +58,7 @@ export interface AccessOverview {
   installations: AuthorizedInstallation[]
 }
 
-/** Screened means deterministic rules passed; it is not a photo-authenticity verdict. */
+/** Screened means the current deterministic rules passed. */
 export type SightingStatus = 'screened' | 'removed'
 export type ReportStatus =
   | 'processing'
@@ -193,9 +193,7 @@ export interface Report {
     reasonCodes: string[]
     retryable: boolean
     policyVersion: string | null
-    modelVersion: string | null
     screeningMethod: 'deterministic_rules' | null
-    authenticityAssessed: false
   }
   sightingId: string | null
 }
@@ -231,7 +229,6 @@ export interface Sighting {
   place: PlaceAssociation
   thumbnailUrl: string | null
   screeningMethod: 'deterministic_rules'
-  authenticityAssessed: false
 }
 
 export interface SightingDetail extends Sighting {

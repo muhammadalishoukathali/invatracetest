@@ -15,7 +15,7 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Results produced by the superseded development validator must not be
+    # Results produced by the superseded development policy must not be
     # relabelled as deterministic-rule results. Keep the historical decision
     # rows, but make their derived map records private and requeue the evidence.
     op.execute(
@@ -31,7 +31,7 @@ def upgrade() -> None:
         )
         SELECT gen_random_uuid(), 'report.screening_policy_migrated', 'report', id::text,
                jsonb_build_object(
-                   'fromPolicy', 'superseded_validator',
+                   'fromPolicy', 'superseded_policy',
                    'toPolicy', 'deterministic-rules-v1.0',
                    'result', 'requeued_private'
                ),
@@ -56,8 +56,7 @@ def upgrade() -> None:
             content_sha256 = NULL,
             perceptual_hash = NULL,
             validation_reasons = '[]'::jsonb,
-            validation_policy_version = NULL,
-            validation_model_version = NULL
+            validation_policy_version = NULL
         WHERE id IN (SELECT id FROM e2_reports_to_rescreen)
         """
     )

@@ -141,8 +141,8 @@ erDiagram
     }
 ```
 
-The migration contains the complete normalized schema, including monitored
-areas/trails, legacy research tables, OVC-VI stream events/checkpoints, and spatial GiST
+The migration contains the complete normalized Iteration 1 schema, including
+monitored areas/trails, deterministic decisions, audit events, and spatial GiST
 indexes. The diagrams intentionally show the central bounded contexts rather
 than every column.
 
@@ -216,11 +216,6 @@ species has a rule-screened sighting within the configured distance and time
 window. The worker serializes matching content hashes, capture IDs, species,
 and the bounded cross-species perceptual replay comparison before accepting a
 candidate, so relabelling or racing a reused photo does not bypass the rule.
-
-These rules do not determine whether a photo was taken from a screen or print,
-and they do not detect sophisticated edits. The API explicitly returns
-`authenticityAssessed: false`; authenticity classification is deferred to a
-later iteration.
 
 ## API error and cache contract
 

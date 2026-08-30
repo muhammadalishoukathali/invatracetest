@@ -43,9 +43,7 @@ class TimestampMixin:
 class Profile(TimestampMixin, Base):
     __tablename__ = "profiles"
     __table_args__ = (
-        CheckConstraint(
-            "role IN ('Detector','Volunteer','Coordinator','Expert','Admin')", name="role"
-        ),
+        CheckConstraint("role IN ('Detector','Volunteer','Expert','Admin')", name="role"),
         CheckConstraint("trust_level IN ('New','Trusted','Steward')", name="trust_level"),
         CheckConstraint(
             "display_name IS NULL OR char_length(display_name) <= 80", name="display_name"
@@ -257,7 +255,6 @@ class Report(Base):
     idempotency_key: Mapped[str] = mapped_column(String(128), nullable=False)
     validation_reasons: Mapped[list[str]] = mapped_column(JSON_TYPE, default=list, nullable=False)
     validation_policy_version: Mapped[str | None] = mapped_column(String(120))
-    validation_model_version: Mapped[str | None] = mapped_column(String(120))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True, nullable=False
     )
@@ -338,28 +335,6 @@ Index(
     unique=True,
     postgresql_where=ReportSightingLink.active.is_(True),
 )
-
-
-class VerificationDecision(Base):
-    __tablename__ = "verification_decisions"
-
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    report_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("reports.id", ondelete="RESTRICT"), index=True, nullable=False
-    )
-    acting_profile_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("profiles.id", ondelete="RESTRICT"), index=True, nullable=False
-    )
-    decision: Mapped[str] = mapped_column(String(20), nullable=False)
-    previous_state: Mapped[str] = mapped_column(String(20), nullable=False)
-    resulting_state: Mapped[str] = mapped_column(String(20), nullable=False)
-    merge_target_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("sightings.id", ondelete="RESTRICT")
-    )
-    metadata_json: Mapped[dict[str, Any]] = mapped_column(JSON_TYPE, default=dict, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
 
 
 class VerificationJob(Base):
@@ -455,43 +430,6 @@ class IdempotencyRecord(Base):
     )
 
 
-class ModelVersion(Base):
-    __tablename__ = "model_versions"
-    __table_args__ = (UniqueConstraint("provider", "version", name="uq_model_provider_version"),)
-
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    provider: Mapped[str] = mapped_column(String(80), nullable=False)
-    version: Mapped[str] = mapped_column(String(120), nullable=False)
-    device: Mapped[str] = mapped_column(String(30), nullable=False)
-    fake: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    metadata_json: Mapped[dict[str, Any]] = mapped_column(JSON_TYPE, default=dict, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-
-
-class InferenceRecord(Base):
-    __tablename__ = "inference_records"
-
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    report_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("reports.id", ondelete="CASCADE"), index=True, nullable=False
-    )
-    model_version_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("model_versions.id", ondelete="SET NULL")
-    )
-    status: Mapped[str] = mapped_column(String(30), nullable=False)
-    quality_json: Mapped[dict[str, Any] | None] = mapped_column(JSON_TYPE)
-    detection_json: Mapped[dict[str, Any] | None] = mapped_column(JSON_TYPE)
-    identification_json: Mapped[dict[str, Any] | None] = mapped_column(JSON_TYPE)
-    embedding_json: Mapped[list[float] | None] = mapped_column(JSON_TYPE)
-    duration_ms: Mapped[int | None] = mapped_column(Integer)
-    error_code: Mapped[str | None] = mapped_column(String(80))
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), index=True, nullable=False
-    )
-
-
 class AutomatedValidationDecision(Base):
     __tablename__ = "automated_validation_decisions"
 
@@ -503,7 +441,6 @@ class AutomatedValidationDecision(Base):
     previous_state: Mapped[str] = mapped_column(String(30), nullable=False)
     resulting_state: Mapped[str] = mapped_column(String(30), nullable=False)
     policy_version: Mapped[str] = mapped_column(String(120), nullable=False)
-    model_version: Mapped[str | None] = mapped_column(String(120))
     reason_codes: Mapped[list[str]] = mapped_column(JSON_TYPE, default=list, nullable=False)
     checks_json: Mapped[dict[str, Any]] = mapped_column(JSON_TYPE, default=dict, nullable=False)
     merge_target_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -523,47 +460,6 @@ class OsmImport(Base):
     sha256: Mapped[bytes] = mapped_column(LargeBinary(32), unique=True, nullable=False)
     area_count: Mapped[int] = mapped_column(Integer, nullable=False)
     trail_count: Mapped[int] = mapped_column(Integer, nullable=False)
-    metadata_json: Mapped[dict[str, Any]] = mapped_column(JSON_TYPE, default=dict, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-
-
-class OvcviStreamEvent(Base):
-    __tablename__ = "ovcvi_stream_events"
-    __table_args__ = (
-        UniqueConstraint("stream_id", "event_id", name="uq_ovcvi_stream_event"),
-        CheckConstraint("status IN ('received','predicted','labeled','failed')", name="status"),
-    )
-
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    stream_id: Mapped[str] = mapped_column(String(160), index=True, nullable=False)
-    event_id: Mapped[str] = mapped_column(String(160), nullable=False)
-    observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    feature_schema_version: Mapped[str] = mapped_column(String(80), nullable=False)
-    payload_hash: Mapped[bytes] = mapped_column(LargeBinary(32), nullable=False)
-    features_json: Mapped[dict[str, Any]] = mapped_column(JSON_TYPE, nullable=False)
-    prediction_json: Mapped[dict[str, Any] | None] = mapped_column(JSON_TYPE)
-    label_json: Mapped[dict[str, Any] | None] = mapped_column(JSON_TYPE)
-    state_version_before: Mapped[str | None] = mapped_column(String(120))
-    state_version_after: Mapped[str | None] = mapped_column(String(120))
-    status: Mapped[str] = mapped_column(String(20), default="received", nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-    labeled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-
-
-class OvcviCheckpoint(Base):
-    __tablename__ = "ovcvi_checkpoints"
-    __table_args__ = (UniqueConstraint("stream_id", "state_version", name="uq_ovcvi_stream_state"),)
-
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    stream_id: Mapped[str] = mapped_column(String(160), index=True, nullable=False)
-    state_version: Mapped[str] = mapped_column(String(120), nullable=False)
-    model_version: Mapped[str] = mapped_column(String(120), nullable=False)
-    object_key: Mapped[str] = mapped_column(String(500), nullable=False)
-    checksum: Mapped[bytes] = mapped_column(LargeBinary(32), nullable=False)
     metadata_json: Mapped[dict[str, Any]] = mapped_column(JSON_TYPE, default=dict, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

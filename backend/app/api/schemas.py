@@ -29,7 +29,7 @@ class ApiModel(BaseModel):
     )
 
 
-Role = Literal["Detector", "Volunteer", "Coordinator", "Expert", "Admin"]
+Role = Literal["Detector", "Volunteer", "Expert", "Admin"]
 TrustLevel = Literal["New", "Trusted", "Steward"]
 Outcome = Literal["target", "other_plant", "uncertain"]
 Extent = Literal["single", "small_patch", "large_area"]
@@ -266,9 +266,7 @@ class ReportValidation(ApiModel):
     reason_codes: list[str]
     retryable: bool
     policy_version: str | None
-    model_version: str | None
     screening_method: Literal["deterministic_rules"] | None = None
-    authenticity_assessed: Literal[False] = False
 
 
 class ReportResponse(ApiModel):
@@ -307,7 +305,6 @@ class SightingResponse(ApiModel):
     place: PlaceAssociation
     thumbnail_url: str | None
     screening_method: Literal["deterministic_rules"] = "deterministic_rules"
-    authenticity_assessed: Literal[False] = False
 
 
 class SightingDetailResponse(SightingResponse):

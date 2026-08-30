@@ -33,7 +33,6 @@ def upgrade() -> None:
         "ALTER TABLE reports ADD COLUMN validation_reasons JSONB DEFAULT '[]'::jsonb NOT NULL"
     )
     op.execute("ALTER TABLE reports ADD COLUMN validation_policy_version VARCHAR(120)")
-    op.execute("ALTER TABLE reports ADD COLUMN validation_model_version VARCHAR(120)")
     op.execute(
         "UPDATE reports SET observed_at = created_at, capture_id = id, capture_source = 'camera'"
     )
@@ -111,7 +110,6 @@ def upgrade() -> None:
             previous_state VARCHAR(30) NOT NULL,
             resulting_state VARCHAR(30) NOT NULL,
             policy_version VARCHAR(120) NOT NULL,
-            model_version VARCHAR(120),
             reason_codes JSONB DEFAULT '[]'::jsonb NOT NULL,
             checks_json JSONB DEFAULT '{}'::jsonb NOT NULL,
             merge_target_id UUID,
@@ -189,7 +187,6 @@ def downgrade() -> None:
     op.execute("DROP INDEX IF EXISTS ix_reports_content_sha256")
     op.execute("DROP INDEX IF EXISTS ix_reports_capture_id")
     op.execute("DROP INDEX IF EXISTS ix_reports_observed_at")
-    op.execute("ALTER TABLE reports DROP COLUMN validation_model_version")
     op.execute("ALTER TABLE reports DROP COLUMN validation_policy_version")
     op.execute("ALTER TABLE reports DROP COLUMN validation_reasons")
     op.execute("ALTER TABLE reports DROP COLUMN perceptual_hash")
