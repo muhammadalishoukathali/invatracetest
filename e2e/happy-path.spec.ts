@@ -679,6 +679,6 @@ test('offline launch restores locally, then reconnects before flushing reports',
 test('threat map shows pins and ODbL attribution', async ({ page }) => {
   await startPrivateAccess(page)
   await expect(page.locator('.maplibregl-canvas')).toBeVisible()
-  await expect(page.locator('.maplibregl-ctrl-attrib')).toContainText('OpenStreetMap')
+  await expect(page.locator('.map-attribution')).toContainText('OpenStreetMap')
   await expect(page.locator('.map-pin').first()).toBeVisible({ timeout: 5000 })
 })

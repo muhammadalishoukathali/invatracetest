@@ -1,73 +1,103 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Icon } from '@/components/Icon'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
 import './map-controls.css'
 
+/**
+ * Map legend. Desktop shows the card inline in the bottom-left corner.
+ * Mobile shows a small "Legend" pill that expands into a centered card
+ * anchored above the scan button, so the reveal reads as a proper popover
+ * rather than a small tooltip crammed against the map edge.
+ */
 export function MapLegend() {
   const isDesktop = useIsDesktop()
   const [open, setOpen] = useState(isDesktop)
 
-  /* Mobile starts with a small Legend button so the card does not cover the
-     map. Desktop starts with the full legend because there is more room. */
+  // If the viewport crosses the desktop breakpoint, keep the legend visible on
+  // desktop and collapsed on mobile so the state matches what the layout expects.
+  useEffect(() => { setOpen(isDesktop) }, [isDesktop])
+
+  // Close the mobile popover when the user presses Escape.
+  useEffect(() => {
+    if (isDesktop || !open) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isDesktop, open])
+
   if (!isDesktop && !open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} aria-label="Show legend"
-        className="map-legend-toggle" style={{
-        position: 'absolute', bottom: 'var(--map-legend-bottom)', left: 12, zIndex: 5,
-        padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8,
-        borderRadius: 'var(--r-chip)',
-        fontSize: 12, fontWeight: 500, color: 'var(--body)', cursor: 'pointer',
-      }}>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label="Show map legend"
+        aria-expanded="false"
+        className="map-legend-toggle"
+      >
         <Icon name="Info" size={14} color="var(--body)" />
         Legend
       </button>
     )
   }
 
-  return (
-    <div className="map-legend-card" style={{
-      position: 'absolute', bottom: 'var(--map-legend-bottom)', left: 12, zIndex: 5,
-      padding: '10px 12px', borderRadius: 'var(--r-card)', fontSize: 12,
-      display: 'flex', flexDirection: 'column', gap: 6, minWidth: 152,
-    }}>
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      }}>
-        <span style={{
-          fontSize: 11, fontWeight: 600, color: 'var(--muted)',
-          textTransform: 'uppercase', letterSpacing: '0.06em',
-        }}>Legend</span>
+  const card = (
+    <div
+      role={isDesktop ? undefined : 'dialog'}
+      aria-label={isDesktop ? undefined : 'Map legend'}
+      aria-modal={isDesktop ? undefined : 'false'}
+      className={`map-legend-card${isDesktop ? '' : ' map-legend-card--popover'}`}
+    >
+      <div className="map-legend-card__header">
+        <span className="map-legend-card__title">Legend</span>
         {!isDesktop && (
-          <button type="button" onClick={() => setOpen(false)} aria-label="Hide legend" style={{
-            width: 44, height: 44, borderRadius: '50%', border: 'none',
-            background: 'transparent', cursor: 'pointer', padding: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <Icon name="X" size={12} color="var(--muted)" />
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label="Hide legend"
+            className="map-legend-card__close"
+          >
+            <Icon name="X" size={14} color="var(--muted)" />
           </button>
         )}
       </div>
-      <Row colour="#C2412D" label="High risk" />
-      <Row colour="#D9880F" label="Watch" />
+      <Row colour="#C2412D" label="Hotspot (5+ reports)" />
+      <Row colour="#D9880F" label="Spreading (2–4 reports)" />
+      <Row colour="#2E7D3F" label="Isolated (1 report)" />
       <Row colour="#8B978F" label="Removed" muted />
-      <div style={{
-        marginTop: 4, paddingTop: 6, borderTop: '1px solid var(--border)',
-        fontSize: 11, color: 'var(--muted)', lineHeight: 1.5,
-      }}>Reports appear on the map once they pass automated checks.</div>
+      <p className="map-legend-card__note">
+        Colour reflects how many community reports share the same spot.
+        Reports appear once they pass automated checks.
+      </p>
     </div>
   )
+
+  // On mobile the popover overlays the map with a light scrim so the tap-outside
+  // gesture is discoverable. Clicking the scrim closes the popover.
+  if (!isDesktop) {
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          aria-hidden
+          tabIndex={-1}
+          className="map-legend-scrim"
+        />
+        {card}
+      </>
+    )
+  }
+
+  return card
 }
 
 function Row({ colour, label, muted }: { colour: string; label: string; muted?: boolean }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span aria-hidden style={{
-        width: 12, height: 12, borderRadius: '50%',
-        background: colour, border: '1.5px solid #fff',
-        boxShadow: '0 0 0 1px var(--border)',
-        opacity: muted ? 0.65 : 1,
-      }} />
-      <span style={{ color: 'var(--body)' }}>{label}</span>
+    <div className="map-legend-card__row">
+      <span aria-hidden className="map-legend-card__dot" style={{ background: colour, opacity: muted ? 0.65 : 1 }} />
+      <span>{label}</span>
     </div>
   )
 }

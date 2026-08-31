@@ -6,7 +6,7 @@
   "scripts": {
     "prepare:model": "node scripts/prepare-model-assets.mjs",
     "predev": "npm run prepare:model",
-    "dev": "vite --host",
+    "dev": "NODE_OPTIONS=--max-http-header-size=65536 vite --host",
     "predev:model-test": "npm run prepare:model",
     "dev:model-test": "vite --host --mode model-test --port 5174",
     "dev:real": "VITE_ENABLE_MOCKS=false VITE_ENABLE_FAKE_MODEL=false VITE_API_BASE_URL=http://localhost:8000 vite --host",

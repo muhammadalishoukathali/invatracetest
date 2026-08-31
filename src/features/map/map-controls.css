@@ -203,20 +203,174 @@
   color: #fff;
 }
 
-.map-legend-toggle {
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  background: rgba(255, 255, 255, 0.86);
-  box-shadow: 0 8px 24px rgba(20, 40, 30, 0.15);
-  backdrop-filter: saturate(1.2) blur(14px);
-  -webkit-backdrop-filter: saturate(1.2) blur(14px);
+.map-attribution {
+  position: absolute;
+  right: 12px;
+  bottom: var(--map-legend-bottom);
+  z-index: 5;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(226, 231, 225, 0.9);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.2;
+  text-decoration: none;
+  box-shadow: 0 6px 16px rgba(20, 40, 30, 0.1);
+  backdrop-filter: saturate(1.1) blur(10px);
+  -webkit-backdrop-filter: saturate(1.1) blur(10px);
 }
 
+.map-attribution:hover,
+.map-attribution:focus-visible {
+  color: var(--body);
+  text-decoration: underline;
+}
+
+.map-legend-toggle {
+  position: absolute;
+  left: 12px;
+  bottom: var(--map-legend-bottom);
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 8px 24px rgba(20, 40, 30, 0.15);
+  color: var(--body);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: saturate(1.2) blur(14px);
+  -webkit-backdrop-filter: saturate(1.2) blur(14px);
+  transition: transform 140ms ease-out, box-shadow 140ms ease-out, background-color 140ms ease-out;
+}
+.map-legend-toggle:hover,
+.map-legend-toggle:focus-visible {
+  background: rgba(255, 255, 255, 1);
+  box-shadow: 0 10px 28px rgba(20, 40, 30, 0.2);
+  outline: none;
+}
+.map-legend-toggle:active { transform: translateY(1px); }
+
 .map-legend-card {
+  position: absolute;
+  left: 12px;
+  bottom: var(--map-legend-bottom);
+  z-index: 5;
+  width: 200px;
+  padding: 12px 14px;
+  border-radius: var(--r-card);
   border: 1px solid rgba(226, 231, 225, 0.9);
-  background: rgba(255, 255, 255, 0.94);
+  background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 10px 28px rgba(20, 40, 30, 0.14);
   backdrop-filter: saturate(1.1) blur(14px);
   -webkit-backdrop-filter: saturate(1.1) blur(14px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--body);
+}
+
+.map-legend-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.map-legend-card__title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.map-legend-card__close {
+  width: 28px;
+  height: 28px;
+  margin: -6px -6px -6px 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+.map-legend-card__close:hover,
+.map-legend-card__close:focus-visible {
+  background: var(--hover);
+  outline: none;
+}
+
+.map-legend-card__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.map-legend-card__dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1.5px solid #fff;
+  box-shadow: 0 0 0 1px var(--border);
+}
+.map-legend-card__note {
+  margin-top: 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+/* Mobile: expanded legend becomes a centered popover above the scan FAB, with
+   a light scrim so tap-outside dismisses it. Desktop keeps the inline card. */
+.map-legend-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  border: 0;
+  padding: 0;
+  background: rgba(15, 25, 20, 0.24);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  cursor: pointer;
+  animation: map-legend-fade 160ms ease-out;
+}
+.map-legend-card--popover {
+  position: fixed;
+  left: 50%;
+  right: auto;
+  top: auto;
+  /* Sit above the scan FAB (68px) + its bottom offset + own gap. */
+  bottom: calc(env(safe-area-inset-bottom) + 96px);
+  z-index: 60;
+  width: min(320px, calc(100vw - 32px));
+  transform: translateX(-50%);
+  padding: 14px 16px;
+  border-radius: 18px;
+  font-size: 13.5px;
+  gap: 10px;
+  animation: map-legend-pop 200ms cubic-bezier(.2, .8, .2, 1);
+}
+.map-legend-card--popover .map-legend-card__title { font-size: 12px; }
+.map-legend-card--popover .map-legend-card__dot { width: 14px; height: 14px; }
+
+@keyframes map-legend-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes map-legend-pop {
+  from { opacity: 0; transform: translate(-50%, 8px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .map-legend-scrim,
+  .map-legend-card--popover { animation: none; }
 }
 
 @media (hover: hover) and (pointer: fine) {

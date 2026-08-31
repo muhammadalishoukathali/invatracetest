@@ -9,7 +9,8 @@
 @import './sheets.css';
 
 :root {
-  --mobile-nav-clearance: calc(104px + env(safe-area-inset-bottom));
+  /* Scan-only bottom nav: 60px button + 8px padding + 10px offset + safe-area. */
+  --mobile-nav-clearance: calc(96px + env(safe-area-inset-bottom));
   --map-mobile-bottom-clearance: 32px;
   --map-legend-bottom: 40px;
 }
@@ -162,8 +163,10 @@ a, button, [role='button'], [role='link'] {
 }
 @media (max-width: 899.98px) {
   :root {
-    --map-mobile-bottom-clearance: var(--mobile-nav-clearance);
-    --map-legend-bottom: var(--mobile-nav-clearance);
+    /* Scan FAB is centered, so legend and attribution can sit on the same
+       bottom edge on either side of it without overlapping. */
+    --map-mobile-bottom-clearance: calc(14px + env(safe-area-inset-bottom));
+    --map-legend-bottom: calc(14px + env(safe-area-inset-bottom));
   }
   .maplibregl-ctrl-bottom-right,
   .maplibregl-ctrl-bottom-left { bottom: var(--map-mobile-bottom-clearance) !important; }

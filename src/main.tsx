@@ -23,13 +23,19 @@ async function start() {
     // The development mock service worker handles API calls only. Other files,
     // including MapLibre workers, map tiles, fonts, and Vite updates, must pass
     // through unchanged or the map can load with an empty worker script.
-    await worker.start({
-      onUnhandledRequest: 'bypass',
-      // Disable request logging because profile requests can contain private
-      // installation or access tokens.
-      quiet: true,
-      serviceWorker: { url: '/mockServiceWorker.js' },
-    })
+    try {
+      await worker.start({
+        onUnhandledRequest: 'bypass',
+        // Disable request logging because profile requests can contain private
+        // installation or access tokens.
+        quiet: true,
+        serviceWorker: { url: '/mockServiceWorker.js' },
+      })
+    } catch (err) {
+      // Service Worker unavailable (sandboxed preview browser, insecure context,
+      // etc.). Continue booting so the UI still renders; API calls will fail.
+      console.warn('[MSW] worker.start failed, continuing without mocks:', err)
+    }
   }
 
   createRoot(document.getElementById('root')!).render(

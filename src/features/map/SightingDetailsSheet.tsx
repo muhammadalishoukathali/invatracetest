@@ -6,6 +6,7 @@ import { api } from '@/services/api-client'
 import { useMapView } from '@/features/map/map-view-store'
 import { useDialogA11y } from '@/hooks/useDialogA11y'
 import { fetchNearestOsmFeature } from '@/services/osm-nearest'
+import { PIN_TIERS, pinTier } from '@/features/map/ThreatMapPage'
 import type { SightingDetail, SightingStatus } from '@/types'
 
 const OSM_FEATURE_LABEL: Record<string, string> = {
@@ -59,10 +60,11 @@ export function SightingDetailsSheet() {
 
   if (!selectedId) return null
 
-  const isHigh = data?.risk === 'high'
-  const isRemoved = data?.status === 'removed'
-  const riskClass = isRemoved ? 'removed' : isHigh ? 'high' : 'watch'
-  const riskColor = isHigh ? 'var(--red-text)' : 'var(--amber-text)'
+  const tier = data ? pinTier(data) : 'isolated'
+  const tierInfo = PIN_TIERS[tier]
+  const isRemoved = tier === 'removed'
+  const riskClass = isRemoved ? 'removed' : tier === 'hotspot' ? 'high' : 'watch'
+  const riskColor = tier === 'hotspot' ? 'var(--red-text)' : tier === 'spreading' ? 'var(--amber-text)' : 'var(--green-dark)'
   const coordinateDecimals = data?.precisionReduced ? 4 : 5
   const directionsHref = data
     ? `https://www.google.com/maps/dir/?api=1&destination=${data.location.lat},${data.location.lng}`
@@ -104,10 +106,10 @@ export function SightingDetailsSheet() {
               <header className="pin-sheet__heading">
                 <h2 tabIndex={-1} data-dialog-initial>{data.speciesName}</h2>
                 <p>{data.latinName}</p>
-                <div className="pin-sheet__summary" aria-label={`${isHigh ? 'High' : 'Watch'} risk, ${STATUS_LABEL[data.status]}`}>
+                <div className="pin-sheet__summary" aria-label={`${tierInfo.label}, ${STATUS_LABEL[data.status]}`}>
                   <span className="pin-sheet__risk" style={{ color: riskColor }}>
-                    <span aria-hidden className="pin-sheet__risk-dot" />
-                    {isHigh ? 'High risk' : 'Watch risk'}
+                    <span aria-hidden className="pin-sheet__risk-dot" style={{ background: tierInfo.fill }} />
+                    {tierInfo.label}
                   </span>
                   <span aria-hidden className="pin-sheet__summary-separator" />
                   <span className="pin-sheet__status" style={{ color: STATUS_COLOR[data.status] }}>

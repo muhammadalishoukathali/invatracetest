@@ -93,10 +93,9 @@ export function ThreatMapPage() {
     })
     // Keep provider credits visible. Mobile CSS wraps them so they do not cover
     // the raised scan button.
-    m.addControl(new maplibregl.AttributionControl({
-      compact: false,
-      customAttribution: '© <a href="https://openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> · ODbL',
-    }), 'bottom-right')
+    // Attribution is rendered by <MapAttribution/> instead of MapLibre's
+    // AttributionControl. The built-in control auto-opens on load and covers
+    // the scan button on small screens; a plain link chip stays predictable.
     m.addControl(new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }), 'top-right')
     m.addControl(new maplibregl.GeolocateControl({
       positionOptions: { enableHighAccuracy: true },
@@ -178,10 +177,29 @@ export function ThreatMapPage() {
           touchAction: 'none',   // MapLibre handles pinch, drag, and tap gestures.
         }} />
         <MapLegend />
+        <MapAttribution />
       </div>
       <AccessibleSightingList items={filtered} onSelect={select} />
       <SightingDetailsSheet />
     </div>
+  )
+}
+
+/**
+ * Compact OpenStreetMap credit chip. Positioned to avoid the scan button on
+ * mobile and to sit above the MapLibre nav controls on desktop.
+ */
+function MapAttribution() {
+  return (
+    <a
+      href="https://openstreetmap.org/copyright"
+      target="_blank"
+      rel="noopener"
+      className="map-attribution"
+      aria-label="OpenStreetMap contributors — data license"
+    >
+      © OpenStreetMap
+    </a>
   )
 }
 
@@ -201,10 +219,11 @@ function AccessibleSightingList({
           const statusLabel = s.status === 'screened'
             ? 'Community report — not expert validated'
             : 'Removed'
+          const tierLabel = PIN_TIERS[pinTier(s)].label
           return (
             <li key={s.id}>
               <button type="button" onClick={() => onSelect(s.id)}>
-                {s.speciesName} ({s.latinName}) — {s.risk} risk — {statusLabel}
+                {s.speciesName} ({s.latinName}) — {tierLabel} — {statusLabel}
                 {' — '}
                 {s.place.source === 'fallback' || !s.place.displayName
                   ? 'No named trail, park or forest found nearby'
@@ -219,9 +238,35 @@ function AccessibleSightingList({
 }
 
 /**
- * Build a DOM element for a sighting marker. Colour by risk, ring by status.
- * The marker is a "teardrop" so it points at the exact coordinate rather than
- * hovering ambiguously nearby.
+ * Colour a marker by report density. All sightings in the map are already
+ * screened invasive species, so the meaningful signal to visualise is how
+ * many people have reported the same spot — a hotspot needs faster action
+ * than a single isolated sighting.
+ *
+ *   5+ reports  → red     (hotspot — dense cluster of observations)
+ *   2–4 reports → amber   (spreading — small cluster)
+ *   1 report    → green   (isolated — single community sighting)
+ *   removed     → grey    (record kept for audit, no longer active)
+ */
+type PinTier = 'hotspot' | 'spreading' | 'isolated' | 'removed'
+
+export const PIN_TIERS: Record<PinTier, { fill: string; label: string }> = {
+  hotspot: { fill: '#C2412D', label: 'Hotspot (5+ reports)' },
+  spreading: { fill: '#D9880F', label: 'Spreading (2–4 reports)' },
+  isolated: { fill: '#2E7D3F', label: 'Isolated (1 report)' },
+  removed: { fill: '#8B978F', label: 'Removed' },
+}
+
+export function pinTier(s: Pick<Sighting, 'status' | 'reportCount'>): PinTier {
+  if (s.status === 'removed') return 'removed'
+  if (s.reportCount >= 5) return 'hotspot'
+  if (s.reportCount >= 2) return 'spreading'
+  return 'isolated'
+}
+
+/**
+ * Build a DOM element for a sighting marker. The marker is a "teardrop" so it
+ * points at the exact coordinate rather than hovering ambiguously nearby.
  */
 function pinElement(s: Sighting): HTMLElement {
   const el = document.createElement('button')
@@ -229,17 +274,19 @@ function pinElement(s: Sighting): HTMLElement {
   const statusLabel = s.status === 'screened'
     ? 'Community report — not expert validated'
     : 'Removed'
-  el.setAttribute('aria-label', `${s.speciesName} — ${statusLabel}`)
-  el.title = statusLabel
+  const tier = pinTier(s)
+  const tierInfo = PIN_TIERS[tier]
+  const ariaLabel = `${s.speciesName} — ${tierInfo.label} — ${statusLabel}`
+  el.setAttribute('aria-label', ariaLabel)
+  el.title = `${tierInfo.label}\n${statusLabel}`
   el.dataset.sightingId = s.id
+  el.dataset.tier = tier
   el.className = 'map-pin'
-  const colour = s.risk === 'high' ? '#C2412D' : '#D9880F'
-  const isRemoved = s.status === 'removed'
-  const fill = isRemoved ? '#8B978F' : colour
+  const isRemoved = tier === 'removed'
   el.innerHTML = `
     <svg width="26" height="34" viewBox="0 0 26 34" xmlns="http://www.w3.org/2000/svg" style="display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.3));">
       <path d="M13 33 C 13 33 24 20 24 11 A 11 11 0 1 0 2 11 C 2 20 13 33 13 33 Z"
-            fill="${fill}" stroke="#fff" stroke-width="2" />
+            fill="${tierInfo.fill}" stroke="#fff" stroke-width="2" />
       <circle cx="13" cy="11" r="4.5" fill="#fff" opacity="${isRemoved ? 0.6 : 0.9}" />
     </svg>`
   el.style.cssText = `
