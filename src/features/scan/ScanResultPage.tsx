@@ -2,6 +2,8 @@ import { Navigate, useNavigate } from 'react-router-dom'
 import { Icon } from '@/components/Icon'
 import { useScan } from '@/features/scan/scan-store'
 import { useReportDraft } from '@/features/report/report-draft-store'
+import { PlantGuidancePanel } from '@/features/scan/PlantGuidancePanel'
+import { deriveMalaysiaStatusState, isReportEligible } from '@/features/scan/malaysia-status'
 import type { IdentifyResult, SpeciesDetail } from '@/types'
 
 export function ScanResultPage() {
@@ -28,7 +30,19 @@ export function ScanResultPage() {
     navigate('/report')
   }
 
+  const statusState = deriveMalaysiaStatusState(result)
+  const statusUncertain = statusState === 'status_uncertain'
+  const clientReportEligible = isReportEligible(statusState)
+  // AC 1.2.3: when the server has an explicit report/action gate, honour it
+  // over the client-side derivation. Absent flag falls back to the derived
+  // state so unknown species stay report-blocked.
+  const serverReportEligible = speciesDetail?.reportEligible
+  const reportEligible = serverReportEligible === undefined
+    ? clientReportEligible
+    : serverReportEligible
   const canReport = captureSource === 'camera'
+    && !statusUncertain
+    && reportEligible
     && (result.outcome === 'uncertain' || (result.outcome === 'target' && result.reportable))
 
   return (
@@ -50,6 +64,45 @@ export function ScanResultPage() {
       )}
       {result.outcome === 'other_plant' && <OtherPlantResult result={result} />}
       {result.outcome === 'uncertain' && <UncertainResult result={result} />}
+
+      {statusUncertain && (
+        <div style={{
+          marginTop: 16, padding: '12px 14px', borderRadius: 'var(--r-input)',
+          background: '#FEF3E2', border: '1px solid #F0D9A8',
+        }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--amber)' }}>Status uncertain</div>
+          <p style={{ marginTop: 4, fontSize: 12.5, color: 'var(--body)', lineHeight: 1.55 }}>
+            InvaTrace cannot confirm the Malaysian status of this identification from the current reference data.
+            Do not act on this plant and do not submit a sighting report from this result.
+          </p>
+        </div>
+      )}
+
+      {result.outcome !== 'uncertain' && !statusUncertain && (
+        <PlantGuidancePanel
+          scientificName={result.scientificName}
+          speciesName={result.speciesName}
+          plantId={result.speciesId}
+          // AC 1.2.3: when the server marks this species non-eligible for
+          // action, the guidance panel must never expose the active-removal
+          // path regardless of the user's permission selection.
+          actionEligible={speciesDetail?.actionEligible}
+        />
+      )}
+
+      {/* AC 1.2.2 — per-species reviewed date + source, when the server supplies them. */}
+      {(speciesDetail?.statusReviewedAt || speciesDetail?.statusSourceId) && (
+        <div style={{
+          marginTop: 12, padding: '8px 12px',
+          background: 'var(--surface)', border: '1px solid var(--border)',
+          borderRadius: 'var(--r-input)',
+          fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.55,
+        }}>
+          Malaysia status record
+          {speciesDetail.statusSourceId && ` · source ${speciesDetail.statusSourceId}`}
+          {speciesDetail.statusReviewedAt && ` · reviewed ${speciesDetail.statusReviewedAt}`}
+        </div>
+      )}
 
       <ModelInfo version={result.modelVersion} />
 
@@ -203,6 +256,11 @@ function OtherPlantResult({ result }: { result: IdentifyResult }) {
 }
 
 function UncertainResult({ result }: { result: IdentifyResult }) {
+  const navigate = useNavigate()
+  const retake = () => {
+    useScan.getState().reset()
+    navigate('/scan', { replace: true })
+  }
   return (
     <div style={{ marginTop: 16, padding: '16px 18px', borderRadius: 'var(--r-card)', background: 'var(--surface)', border: '1px solid var(--border)' }}>
       <h2 style={{ fontSize: 16, fontWeight: 600 }}>Could not determine species</h2>
@@ -216,6 +274,15 @@ function UncertainResult({ result }: { result: IdentifyResult }) {
         <li>A clear view of the leaf or flower</li>
       </ul>
       <ConfidenceBand confidence={result.confidence} />
+      <button type="button" onClick={retake} style={{
+        marginTop: 14, width: '100%', height: 'var(--h-primary)',
+        borderRadius: 'var(--r-button)', border: 'none',
+        background: 'var(--green)', color: '#fff', fontWeight: 600, fontSize: 14,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer',
+      }}>
+        <Icon name="Camera" size={16} color="#fff" />
+        Retake photo
+      </button>
     </div>
   )
 }
@@ -285,12 +352,18 @@ function ModelInfo({ version }: { version: string }) {
     <div style={{
       marginTop: 20, padding: '10px 14px', borderRadius: 'var(--r-input)',
       background: 'var(--bg-alt)', border: '1px solid var(--border)',
-      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
     }}>
-      <span style={{ fontSize: 11, color: 'var(--muted)' }}>Model version</span>
-      <span className="mono" style={{ fontSize: 12, fontWeight: 500, color: 'var(--body)' }}>
-        {version}
-      </span>
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      }}>
+        <span style={{ fontSize: 11, color: 'var(--muted)' }}>Model version</span>
+        <span className="mono" style={{ fontSize: 12, fontWeight: 500, color: 'var(--body)' }}>
+          {version}
+        </span>
+      </div>
+      <p style={{ marginTop: 6, fontSize: 11, color: 'var(--muted)', lineHeight: 1.5 }}>
+        This result is model-generated. Confirm key features before acting.
+      </p>
     </div>
   )
 }

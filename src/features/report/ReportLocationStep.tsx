@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Icon } from '@/components/Icon'
 import { useReportDraft } from '@/features/report/report-draft-store'
 import { useScan } from '@/features/scan/scan-store'
@@ -7,10 +8,18 @@ import { ReportNextButton } from './components/ReportNextButton'
 type Status = 'idle' | 'locating' | 'located' | 'denied' | 'unavailable'
 
 export function ReportLocationStep() {
-  const { draft, setLocation, next } = useReportDraft()
+  const { draft, setLocation, next, reset } = useReportDraft()
+  const navigate = useNavigate()
   const scanLoc = useScan((s) => s.location)
   const scanLocStatus = useScan((s) => s.locationStatus)
   const [status, setStatus] = useState<Status>('idle')
+
+  const cancelReport = () => {
+    // AC 4.1.2: leaving the report keeps the valid scan around so the user can
+    // retry from the result page without losing their identification.
+    reset()
+    navigate('/scan/result')
+  }
 
   const loc = draft?.location ?? null
   const accuracy = draft?.locationAccuracyM ?? null
@@ -107,8 +116,22 @@ export function ReportLocationStep() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
         }}>
           <Icon name="Crosshair" size={16} color="var(--body)" />
-          {loc ? 'Re-locate me' : 'Use my current location'}
+          {status === 'denied' || status === 'unavailable'
+            ? 'Retry location'
+            : loc ? 'Re-locate me' : 'Use my current location'}
         </button>
+
+        {(status === 'denied' || status === 'unavailable') && (
+          <button type="button" onClick={cancelReport} style={{
+            marginTop: 8, width: '100%', height: 'var(--h-nav)', borderRadius: 'var(--r-button)',
+            border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--body)',
+            fontWeight: 500, fontSize: 13, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}>
+            <Icon name="X" size={16} color="var(--body)" />
+            Cancel report — keep scan
+          </button>
+        )}
       </div>
 
       <ReportNextButton disabled={!canProceed} onClick={next} label="Continue" />

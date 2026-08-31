@@ -12,9 +12,60 @@ const mockUploadIdempotency = new Map<string, {
   request: string
   response: { uploadId: string; uploadUrl: string; photoKey: string; expiresAt: string }
 }>()
-const sessions = new Map<string, { profile: PseudonymousProfile; installationId: string }>()
+const sessions = new Map<string, { profile: PseudonymousProfile; installationId: string; token: string }>()
 const MOCK_SERVER_KEY = 'invatrace-mock-server-v2'
 const MOCK_HASH_PEPPER = 'development-only-invatrace-mock-pepper'
+
+// AC 2.3.3 — sliding-window submission counters. In-memory; sufficient for
+// mock-backend enforcement. Real backend would use Redis or a token bucket.
+const REPORT_RATE_PER_TOKEN = 10
+const REPORT_RATE_PER_IP = 30
+const REPORT_RATE_WINDOW_MS = 10 * 60 * 1000
+const reportSubmissionsByToken = new Map<string, number[]>()
+const reportSubmissionsByIp = new Map<string, number[]>()
+
+function pruneSlidingWindow(bucket: Map<string, number[]>, key: string, now: number): number[] {
+  const cutoff = now - REPORT_RATE_WINDOW_MS
+  const arr = (bucket.get(key) ?? []).filter((t) => t > cutoff)
+  bucket.set(key, arr)
+  return arr
+}
+
+function enforceReportRateLimit(profileId: string, clientIp: string): {
+  blocked: boolean; detail?: string; retryAfterSeconds?: number
+} {
+  const now = Date.now()
+  const perToken = pruneSlidingWindow(reportSubmissionsByToken, profileId, now)
+  const perIp = pruneSlidingWindow(reportSubmissionsByIp, clientIp, now)
+  const overToken = perToken.length >= REPORT_RATE_PER_TOKEN
+  const overIp = perIp.length >= REPORT_RATE_PER_IP
+  if (overToken || overIp) {
+    const oldest = Math.min(...(overToken ? perToken : perIp))
+    const retryAfterSeconds = Math.max(1, Math.ceil((oldest + REPORT_RATE_WINDOW_MS - now) / 1000))
+    return {
+      blocked: true,
+      detail: overToken
+        ? `Rate limit: ${REPORT_RATE_PER_TOKEN} reports per token per 10 minutes.`
+        : `Rate limit: ${REPORT_RATE_PER_IP} reports per network per 10 minutes.`,
+      retryAfterSeconds,
+    }
+  }
+  perToken.push(now)
+  perIp.push(now)
+  return { blocked: false }
+}
+
+// AC 2.3.2 — great-circle distance in metres between two WGS84 points.
+function haversineMetres(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const R = 6_371_000
+  const toRad = (deg: number) => (deg * Math.PI) / 180
+  const dLat = toRad(b.lat - a.lat)
+  const dLon = toRad(b.lng - a.lng)
+  const s1 = Math.sin(dLat / 2)
+  const s2 = Math.sin(dLon / 2)
+  const c = s1 * s1 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * s2 * s2
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(c)))
+}
 
 interface MockRecoveryCode {
   hash: string
@@ -107,23 +158,46 @@ function validInstallationToken(value: unknown): value is string {
 
 function issueSession(record: MockProfileRecord, installationId: string) {
   const accessToken = `mock-session-${crypto.randomUUID()}`
-  sessions.set(accessToken, { profile: record.profile, installationId })
+  sessions.set(accessToken, { profile: record.profile, installationId, token: accessToken })
   return accessToken
 }
 
-const restoreFailures = new Map<string, { count: number; blockedUntil: number }>()
-function restoreBlocked(profileId: string): number {
-  const entry = restoreFailures.get(profileId)
-  return entry && entry.blockedUntil > Date.now()
-    ? Math.ceil((entry.blockedUntil - Date.now()) / 1000) : 0
+// AC 2.1.4 — strict "5 failed restores per profile+IP within a 15-minute
+// window" enforcement. Sliding window over timestamps; per-profile counter
+// and per-IP counter each cap at 5. Overflow returns 429 with Retry-After
+// equal to seconds until the oldest failure in that window ages out.
+const RESTORE_MAX_ATTEMPTS = 5
+const RESTORE_WINDOW_MS = 15 * 60 * 1000
+const restoreFailureTimestamps = new Map<string, number[]>()
+
+function pruneRestoreBucket(key: string, now: number): number[] {
+  const cutoff = now - RESTORE_WINDOW_MS
+  const arr = (restoreFailureTimestamps.get(key) ?? []).filter((t) => t > cutoff)
+  restoreFailureTimestamps.set(key, arr)
+  return arr
 }
-function recordRestoreFailure(profileId: string) {
-  const previous = restoreFailures.get(profileId) ?? { count: 0, blockedUntil: 0 }
-  const count = previous.count + 1
-  restoreFailures.set(profileId, {
-    count,
-    blockedUntil: count < 5 ? 0 : Date.now() + Math.min(60_000, 1000 * 2 ** (count - 5)),
-  })
+
+function restoreBlocked(profileId: string, clientIp: string | null): number {
+  const now = Date.now()
+  const perProfile = pruneRestoreBucket(`p:${profileId}`, now)
+  const perIp = clientIp ? pruneRestoreBucket(`i:${clientIp}`, now) : []
+  const oldest = perProfile.length >= RESTORE_MAX_ATTEMPTS || perIp.length >= RESTORE_MAX_ATTEMPTS
+    ? Math.min(
+        ...(perProfile.length >= RESTORE_MAX_ATTEMPTS ? perProfile : perIp),
+      )
+    : 0
+  return oldest ? Math.max(1, Math.ceil((oldest + RESTORE_WINDOW_MS - now) / 1000)) : 0
+}
+
+function recordRestoreFailure(profileId: string, clientIp: string | null) {
+  const now = Date.now()
+  pruneRestoreBucket(`p:${profileId}`, now).push(now)
+  if (clientIp) pruneRestoreBucket(`i:${clientIp}`, now).push(now)
+}
+
+function clearRestoreFailures(profileId: string, clientIp: string | null) {
+  restoreFailureTimestamps.delete(`p:${profileId}`)
+  if (clientIp) restoreFailureTimestamps.delete(`i:${clientIp}`)
 }
 
 /**
@@ -233,14 +307,15 @@ export const handlers = [
     }
     const profileId = typeof body.profileId === 'string' ? body.profileId.trim().toUpperCase() : ''
     const recoveryCode = typeof body.recoveryCode === 'string' ? body.recoveryCode.trim().toUpperCase() : ''
-    const blockedSeconds = restoreBlocked(profileId)
+    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0].trim() || null
+    const blockedSeconds = restoreBlocked(profileId, clientIp)
     const genericError = 'We couldn’t restore this access. Check the profile ID and recovery code, then try again.'
     if (blockedSeconds) {
       return identityJson({ detail: genericError }, 429, { 'Retry-After': String(blockedSeconds) })
     }
     if (!profileId || profileId.length > 80 || !recoveryCode || recoveryCode.length > 64
       || !validInstallationToken(body.installationToken)) {
-      recordRestoreFailure(profileId)
+      recordRestoreFailure(profileId, clientIp)
       return identityJson({ detail: genericError }, 400)
     }
     const [codeHash, tokenHash] = await Promise.all([secretHash(recoveryCode), secretHash(body.installationToken)])
@@ -248,7 +323,7 @@ export const handlers = [
     const record = state.profiles.find((candidate) => candidate.profile.id === profileId)
     const code = record?.recoveryCodes.find((candidate) => candidate.hash === codeHash && !candidate.usedAt)
     if (!record || !code) {
-      recordRestoreFailure(profileId)
+      recordRestoreFailure(profileId, clientIp)
       return identityJson({ detail: genericError }, 400)
     }
 
@@ -265,7 +340,7 @@ export const handlers = [
     }
     record.installations.push(installation)
     saveMockServer(state)
-    restoreFailures.delete(profileId)
+    clearRestoreFailures(profileId, clientIp)
     return identityJson({
       accessToken: issueSession(record, installation.id),
       profile: record.profile,
@@ -443,6 +518,23 @@ export const handlers = [
     if (!idempotencyKey) {
       return HttpResponse.json({ code: 'invalid_idempotency_key', detail: 'A valid Idempotency-Key is required.' }, { status: 400 })
     }
+
+    // AC 2.3.3 — token + IP submission rate limit. Sliding 10-minute window;
+    // 10 per token, 30 per IP. Reads a stand-in IP from a proxy header (falls
+    // back to a per-session identifier for MSW where no real client IP exists).
+    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0].trim()
+      || `session:${session.token.slice(0, 12)}`
+    const rateCheck = enforceReportRateLimit(session.profile.id, clientIp)
+    if (rateCheck.blocked) {
+      return new HttpResponse(
+        JSON.stringify({ code: 'rate_limited', detail: rateCheck.detail, retryAfterSeconds: rateCheck.retryAfterSeconds }),
+        {
+          status: 429,
+          headers: { 'content-type': 'application/json', 'retry-after': String(rateCheck.retryAfterSeconds) },
+        },
+      )
+    }
+
     const submission = (await request.json()) as ReportSubmission
     const idempotencyScope = `${session.profile.id}:${idempotencyKey}`
     const serialized = JSON.stringify(submission)
@@ -453,21 +545,58 @@ export const handlers = [
       }
       return HttpResponse.json(existing.response, { status: 201 })
     }
+
+    // AC 2.2.2 / 4.1.2: clamp any client observedAt that lies more than five
+    // minutes in the future back to the server's submission time. Prevents
+    // spoofed clocks from placing sightings ahead of the current moment.
+    const createdAt = new Date()
+    const FIVE_MIN_MS = 5 * 60 * 1000
+    const rawObserved = submission.observedAt ? new Date(submission.observedAt) : null
+    const clampedObservedAt = rawObserved && rawObserved.getTime() > createdAt.getTime() + FIVE_MIN_MS
+      ? createdAt.toISOString()
+      : submission.observedAt
+
+    // AC 2.3.1 — exact-image duplicate: same owner + same SHA-256 + same
+    // species → return the existing report ID with status:'merged'. No second
+    // public marker is created.
+    if (submission.imageSha256) {
+      const dup = mockReports.find((r) =>
+        r.submission.imageSha256 === submission.imageSha256
+        && r.submission.speciesId === submission.speciesId
+        && r.ownerProfileId === session.profile.id,
+      )
+      if (dup) return HttpResponse.json({ ...dup, status: 'merged' as const }, { status: 200 })
+    }
+
+    // AC 2.3.2 — near-duplicate merge: same owner + same species + within
+    // 25 m + within 10 min → return the earlier report with status:'merged'.
+    const TEN_MIN_MS = 10 * 60 * 1000
+    const NEAR_M = 25
+    const near = mockReports.find((r) => {
+      if (r.ownerProfileId !== session.profile.id) return false
+      if (r.submission.speciesId !== submission.speciesId) return false
+      if (createdAt.getTime() - new Date(r.createdAt).getTime() > TEN_MIN_MS) return false
+      return haversineMetres(r.submission.location, submission.location) <= NEAR_M
+    })
+    if (near) return HttpResponse.json({ ...near, status: 'merged' as const }, { status: 200 })
+
     const id = crypto.randomUUID()
     const storedSubmission = {
       ...submission,
+      observedAt: clampedObservedAt,
       photoKey: `evidence/${session.profile.id}/${id}.jpg`,
     }
     const report: Report = {
       id,
       status: 'processing',
-      createdAt: new Date().toISOString(),
+      createdAt: createdAt.toISOString(),
       submission: storedSubmission,
       trackingUrl: `/reports/${id}`,
       validation: {
         reasonCodes: [], retryable: false, policyVersion: null, screeningMethod: null,
       },
       sightingId: null,
+      ownerProfileId: session.profile.id,
     }
     mockReports.unshift(report)
     mockReportIdempotency.set(idempotencyScope, { request: serialized, response: report })
@@ -725,6 +854,10 @@ const SPECIES_DETAIL: Record<string, unknown> = {
     isInvasive: true,
     risk: 'high',
     reportable: true,
+    reportEligible: true,
+    actionEligible: true,
+    statusReviewedAt: '2026-07-15',
+    statusSourceId: 'MYBIS-IAS-2024.1',
     traits: [
       { label: 'Leaf shape', value: 'Heart-shaped, opposite, 5–13 cm' },
       { label: 'Flower', value: 'Small white heads in dense clusters' },
@@ -760,6 +893,11 @@ const SPECIES_DETAIL: Record<string, unknown> = {
     isInvasive: true,
     risk: 'high',
     reportable: false,
+    // Chromolaena reporting deferred until Iteration 2 look-alike guide ships.
+    reportEligible: false,
+    actionEligible: false,
+    statusReviewedAt: '2026-07-15',
+    statusSourceId: 'GRIIS-MYS-1.3',
     traits: [
       { label: 'Leaf shape', value: 'Opposite, ovate, 5–12 cm with serrated edges' },
       { label: 'Flower', value: 'Pale purple to white, in terminal clusters' },

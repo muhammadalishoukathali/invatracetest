@@ -11,5 +11,6 @@ backend/.pytest_cache
 backend/.ruff_cache
 .pytest_cache
 .impeccable/review
+.claude
 **/__pycache__
 *.py[cod]

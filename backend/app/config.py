@@ -41,8 +41,9 @@ class Settings(BaseSettings):
     e1_model_versions: Annotated[list[str], NoDecode] = ["oe_v4_31class_web_fp16"]
     screening_minimum_image_dimension: int = Field(default=320, ge=128, le=2048)
     screening_perceptual_hamming_threshold: int = Field(default=6, ge=0, le=16)
-    screening_duplicate_radius_max_m: int = Field(default=50, ge=10, le=100)
+    screening_duplicate_radius_max_m: int = Field(default=25, ge=10, le=100)
     screening_duplicate_window_hours: int = Field(default=24, ge=1, le=168)
+    screening_duplicate_window_minutes: int = Field(default=10, ge=1, le=1440)
     worker_poll_seconds: float = Field(default=2, ge=0.1, le=60)
     worker_max_attempts: int = Field(default=5, ge=1, le=20)
     worker_job_lease_seconds: int = Field(default=300, ge=30, le=3600)

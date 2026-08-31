@@ -1,0 +1,322 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://invatrace.example/schema/plant-guidance-v1.schema.json",
+  "title": "InvaTrace Plant Guidance Dataset",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "content_version",
+    "jurisdiction",
+    "safety_policy",
+    "sources",
+    "plants"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "content_version": {
+      "type": "string"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "next_review_due": {
+      "type": "string",
+      "format": "date"
+    },
+    "jurisdiction": {
+      "type": "string",
+      "const": "Malaysia"
+    },
+    "locale": {
+      "type": "string",
+      "const": "en-MY"
+    },
+    "safety_policy": {
+      "type": "object",
+      "required": [
+        "permission_rule",
+        "model_rule",
+        "never_recommend"
+      ],
+      "properties": {
+        "permission_rule": {
+          "type": "string"
+        },
+        "model_rule": {
+          "type": "string"
+        },
+        "protected_land_rule": {
+          "type": "string"
+        },
+        "never_recommend": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "decision_logic": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "source_id",
+          "title",
+          "publisher",
+          "url",
+          "accessed",
+          "use"
+        ],
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "pattern": "^S[0-9]{2}$"
+          },
+          "title": {
+            "type": "string"
+          },
+          "publisher": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "accessed": {
+            "type": "string",
+            "format": "date"
+          },
+          "use": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "plants": {
+      "type": "array",
+      "minItems": 28,
+      "maxItems": 28,
+      "items": {
+        "$ref": "#/$defs/plant"
+      }
+    }
+  },
+  "$defs": {
+    "sourced_item": {
+      "type": "object",
+      "required": [
+        "text",
+        "source_ids"
+      ],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^S[0-9]{2}$"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "action_path": {
+      "type": "object",
+      "required": [
+        "title",
+        "eligibility",
+        "steps",
+        "stop_conditions",
+        "disposal"
+      ],
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "eligibility": {
+          "type": "string"
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sourced_item"
+          }
+        },
+        "stop_conditions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sourced_item"
+          }
+        },
+        "disposal": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sourced_item"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "plant": {
+      "type": "object",
+      "required": [
+        "plant_id",
+        "model_label",
+        "scientific_name",
+        "common_names",
+        "malaysia_status",
+        "guidance_mode",
+        "general_information",
+        "general_information_source_ids",
+        "identification_note",
+        "risk_flags",
+        "actions",
+        "spread_prevention",
+        "do_not_do",
+        "follow_up"
+      ],
+      "properties": {
+        "plant_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+$"
+        },
+        "model_label": {
+          "type": "string"
+        },
+        "scientific_name": {
+          "type": "string"
+        },
+        "common_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "malaysia_status": {
+          "type": "object",
+          "required": [
+            "category",
+            "display_label",
+            "confidence",
+            "note",
+            "source_ids"
+          ],
+          "properties": {
+            "category": {
+              "type": "string"
+            },
+            "display_label": {
+              "type": "string"
+            },
+            "confidence": {
+              "enum": [
+                "high",
+                "medium",
+                "low"
+              ]
+            },
+            "note": {
+              "type": "string"
+            },
+            "source_ids": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "pattern": "^S[0-9]{2}$"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "guidance_mode": {
+          "enum": [
+            "general_information",
+            "active_guidance",
+            "site_manager_confirmation_required",
+            "report_only"
+          ]
+        },
+        "general_information": {
+          "type": "string"
+        },
+        "general_information_source_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "identification_note": {
+          "type": "string"
+        },
+        "risk_flags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "actions": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "required": [
+                "protected_or_permission_unknown",
+                "authorised_site"
+              ],
+              "properties": {
+                "protected_or_permission_unknown": {
+                  "$ref": "#/$defs/action_path"
+                },
+                "authorised_site": {
+                  "$ref": "#/$defs/action_path"
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "spread_prevention": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sourced_item"
+          }
+        },
+        "do_not_do": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sourced_item"
+          }
+        },
+        "follow_up": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sourced_item"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

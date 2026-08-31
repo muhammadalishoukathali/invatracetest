@@ -581,7 +581,7 @@ test('private detector can scan, analyse, and submit', async ({ page, context })
     .toBeVisible({ timeout: 8000 })
   await expect(page.getByText('Tracking ID')).toBeVisible()
   await page.getByRole('button', { name: 'View screening status' }).click()
-  await expect(page.getByRole('heading', { name: 'Rule screened and published' }))
+  await expect(page.getByRole('heading', { name: 'Report published' }))
     .toBeVisible({ timeout: 7000 })
   expect(reportAuthorizationHeaders).toEqual([
     `Bearer ${initialSession.accessToken}`,

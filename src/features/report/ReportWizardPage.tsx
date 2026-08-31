@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Icon } from '@/components/Icon'
 import { useReportDraft, REPORT_STEPS } from '@/features/report/report-draft-store'
+import { useScan } from '@/features/scan/scan-store'
 import { ReportLocationStep } from './ReportLocationStep'
 import { ReportExtentStep } from './ReportExtentStep'
 import { ReportConsentStep } from './ReportConsentStep'
@@ -32,8 +33,12 @@ export function ReportWizardPage() {
 
   const handleBack = () => {
     if (isFirst) {
+      // Only return to the result page if the scan is still in memory; otherwise
+      // /scan/result immediately redirects to /scan and the user lands on a
+      // blank camera. Fall back to the map so back always goes somewhere useful.
+      const hasScan = !!useScan.getState().result
       reset()
-      navigate('/scan/result')
+      navigate(hasScan ? '/scan/result' : '/map')
     } else {
       back()
     }

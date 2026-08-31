@@ -16,7 +16,7 @@ from app.api.schemas import (
 from app.core.errors import ApiProblem, request_id_var
 from app.core.idempotency import acquire_idempotency_lock, canonical_request_hash
 from app.core.pagination import decode_cursor, encode_cursor
-from app.core.rate_limit import rate_limiter
+from app.core.rate_limit import client_address, rate_limiter
 from app.core.security import AuthContext, require_auth, utcnow
 from app.db.base import get_session
 from app.db.models import (
@@ -51,6 +51,7 @@ def create_report(
 ) -> ReportResponse:
     rate_limiter.check("report_create_burst", str(auth.profile.id))
     rate_limiter.check("report_create_daily", str(auth.profile.id))
+    rate_limiter.check("report_create_ip_burst", client_address(request))
     if not IDEMPOTENCY_PATTERN.fullmatch(idempotency_key):
         raise ApiProblem(400, "invalid_idempotency_key", "A valid Idempotency-Key is required.")
     digest = request_digest(body)

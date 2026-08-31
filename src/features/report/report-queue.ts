@@ -131,10 +131,14 @@ export async function submitReport(
   const ownerProfileId = usePrivateAccess.getState().profile?.id
   if (!ownerProfileId) throw new Error('Private access must be ready before submitting a report.')
   const queuedId = crypto.randomUUID()
+  // AC 2.3.1 — compute SHA-256 of the raw capture once so the server can
+  // reject exact duplicates from this identity. Hash lives on the submission
+  // only; the raw bytes never leave the device beyond the presigned upload.
+  const imageSha256 = await sha256Hex(imageBlob)
   let photoKey = ''
   try {
     photoKey = await uploadImage(imageBlob, queuedId)
-    const report = await createReport({ ...submission, photoKey }, queuedId, false)
+    const report = await createReport({ ...submission, photoKey, imageSha256 }, queuedId, false)
     return { status: 'submitted', report }
   } catch (error) {
     if (!shouldRetry(error)) throw error
@@ -145,12 +149,20 @@ export async function submitReport(
       attempts: 1,
       retryable: true,
       lastError: error instanceof Error ? error.message : String(error),
-      submission: { ...submission, photoKey },
+      submission: { ...submission, photoKey, imageSha256 },
       imageBlob,
     })
     notifyQueueChanged()
     return { status: 'queued', queuedId, error: error instanceof Error ? error.message : String(error) }
   }
+}
+
+async function sha256Hex(blob: Blob): Promise<string> {
+  const buf = await blob.arrayBuffer()
+  const digest = await crypto.subtle.digest('SHA-256', buf)
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
 }
 
 async function sendQueuedReport(item: QueuedReport): Promise<Report> {

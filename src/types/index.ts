@@ -77,6 +77,8 @@ export interface BBox { x: number; y: number; w: number; h: number }
 
 export interface QualityResult { ok: boolean; reason?: string }
 
+export type MalaysiaStatusState = 'invasive' | 'information_only' | 'status_uncertain'
+
 export interface IdentifyResult {
   outcome: Outcome
   speciesId?: string
@@ -121,6 +123,13 @@ export interface SpeciesDetail {
   doNotDo: string[]
   reportable?: boolean
   actionGuide?: SeasonalActionGuide | null
+  // AC 1.2.3 — server-supplied action/report gates. When false, the UI hides
+  // the corresponding controls regardless of client-side derivation.
+  actionEligible?: boolean
+  reportEligible?: boolean
+  // AC 1.2.2 — per-species reviewed date for the Malaysia-status record.
+  statusReviewedAt?: string
+  statusSourceId?: string
 }
 
 export interface SeasonalActionGuide {
@@ -169,6 +178,10 @@ export interface ReportDraft {
 /** The submission wire format. */
 export interface ReportSubmission {
   photoKey: string
+  /** AC 2.3.1 — SHA-256 of the raw capture bytes, computed client-side once
+   *  and sent with the submission so the server can reject exact duplicates
+   *  from the same identity without ever inspecting the image bytes. */
+  imageSha256?: string
   speciesId: string | null
   outcome: Outcome
   confidence: number
@@ -196,6 +209,8 @@ export interface Report {
     screeningMethod: 'deterministic_rules' | null
   }
   sightingId: string | null
+  /** AC 2.3.1 / 2.3.2 — server-scoped owner used for same-identity dedup. */
+  ownerProfileId?: string
 }
 
 /** Item held in the IndexedDB offline queue when submission fails. */

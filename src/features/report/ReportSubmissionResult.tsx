@@ -48,6 +48,14 @@ export function ReportSubmissionResult() {
             ? 'Automated rules are checking image quality, duplicates, location, and submission patterns. The report stays off the public map until screening finishes.'
             : "You're offline or the server is unavailable. We'll retry automatically when connectivity returns."}
         </p>
+        {submitted && (
+          <p style={{
+            fontSize: 12.5, color: 'var(--muted)', marginTop: 8, lineHeight: 1.5,
+            fontStyle: 'italic',
+          }}>
+            Community report — not expert validated.
+          </p>
+        )}
 
         {submitted && outcome.kind === 'submitted' && (
           <div style={{

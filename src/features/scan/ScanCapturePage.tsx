@@ -186,11 +186,18 @@ export function ScanCapturePage() {
     try {
       const adapter = getAdapter()
       await adapter.detect(bitmap)
-      const result = await adapter.identify(imageBlob, (loaded, total) => {
+      const identifyPromise = adapter.identify(imageBlob, (loaded, total) => {
         if (requestId === analysisRequestRef.current) {
           setModelProgress(Math.round((loaded / total) * 100))
         }
       })
+      const result = await Promise.race<Awaited<ReturnType<typeof adapter.identify>>>([
+        identifyPromise,
+        new Promise((_, reject) => setTimeout(
+          () => reject(new Error('Plant analysis timed out after 15 seconds. Retake the photo and try again.')),
+          15_000,
+        )),
+      ])
       if (!mountedRef.current || requestId !== analysisRequestRef.current) return
 
       let detail: SpeciesDetail | null = null
@@ -241,12 +248,12 @@ export function ScanCapturePage() {
   return (
     <div className="scan-capture">
       <input
-        ref={cameraRef} type="file" accept="image/*" capture="environment"
+        ref={cameraRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment"
         onChange={(event) => void handleFile(event, 'camera')} hidden
         aria-label="Take photo"
       />
       <input
-        ref={galleryRef} type="file" accept="image/*"
+        ref={galleryRef} type="file" accept="image/jpeg,image/png,image/webp"
         onChange={(event) => void handleFile(event, 'gallery')} hidden
         aria-label="Choose photo from gallery"
       />
@@ -299,16 +306,20 @@ export function ScanCapturePage() {
 
           {cameraError && <p className="scan-capture__camera-error" role="alert">{cameraError}</p>}
 
-          <button
-            type="button"
-            onClick={() => { captureScanLocation(); galleryRef.current?.click() }}
-            disabled={checking}
-            className="scan-capture__gallery"
-          >
-            <Icon name="ImagePlus" size={16} color="var(--body)" />
-            Identify a gallery photo
-          </button>
-          <p className="scan-capture__gallery-note">Gallery photos can be identified, but field reports require a fresh camera capture.</p>
+          {import.meta.env.DEV && (
+            <>
+              <button
+                type="button"
+                onClick={() => { captureScanLocation(); galleryRef.current?.click() }}
+                disabled={checking}
+                className="scan-capture__gallery"
+              >
+                <Icon name="ImagePlus" size={16} color="var(--body)" />
+                Identify a gallery photo (dev only)
+              </button>
+              <p className="scan-capture__gallery-note">Dev-only gallery upload. Production builds accept live camera capture only.</p>
+            </>
+          )}
         </section>
       ) : (
         <div className="scan-capture__preview">

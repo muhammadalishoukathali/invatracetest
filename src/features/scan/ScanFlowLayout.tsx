@@ -1,15 +1,23 @@
-import { Outlet, useNavigate } from 'react-router-dom'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Icon } from '@/components/Icon'
 import { useScan } from '@/features/scan/scan-store'
 import './scan-flow.css'
 
 export function ScanFlowLayout() {
   const navigate = useNavigate()
+  const location = useLocation()
   const reset = useScan((s) => s.reset)
 
   const goBack = () => {
+    // From /scan/result, back returns to the capture screen (photo preserved
+    // in the store) so the user can retake or re-analyse without losing state.
+    // From /scan, back returns to the map and clears any half-loaded capture.
+    if (location.pathname === '/scan/result') {
+      navigate('/scan')
+      return
+    }
     reset()
-    navigate(-1)
+    navigate('/map')
   }
 
   return (

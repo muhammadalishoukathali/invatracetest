@@ -5,11 +5,21 @@ import { Icon } from '@/components/Icon'
 import { api } from '@/services/api-client'
 import { useMapView } from '@/features/map/map-view-store'
 import { useDialogA11y } from '@/hooks/useDialogA11y'
+import { fetchNearestOsmFeature } from '@/services/osm-nearest'
 import type { SightingDetail, SightingStatus } from '@/types'
+
+const OSM_FEATURE_LABEL: Record<string, string> = {
+  highway_path: 'trail',
+  highway_footway: 'footway',
+  highway_track: 'track',
+  leisure_park: 'park',
+  landuse_forest: 'forest',
+  natural_wood: 'wood',
+}
 import './sighting-details.css'
 
 const STATUS_LABEL: Record<SightingStatus, string> = {
-  screened: 'Rule screened',
+  screened: 'Community report — not expert validated',
   removed: 'Removed',
 }
 
@@ -34,6 +44,17 @@ export function SightingDetailsSheet() {
     queryFn: () => api<SightingDetail>(`/api/v1/sightings/${selectedId}`),
     enabled: !!selectedId,
     staleTime: 60_000,
+  })
+
+  // AC 4.3.1 — live nearest-feature lookup against OpenStreetMap Overpass.
+  // The lookup runs after the sighting detail arrives; failure or "no result"
+  // is silent so publishing and viewing are never blocked (AC 4.3.2).
+  const { data: nearestOsm } = useQuery({
+    queryKey: ['osm-nearest', data?.location.lat, data?.location.lng],
+    queryFn: () => fetchNearestOsmFeature(data!.location.lat, data!.location.lng),
+    enabled: !!data,
+    staleTime: 10 * 60_000,
+    retry: false,
   })
 
   if (!selectedId) return null
@@ -117,8 +138,27 @@ export function SightingDetailsSheet() {
                   <MetaRow icon="MapPin" label="Coordinates"
                     value={`${data.location.lat.toFixed(coordinateDecimals)}, ${data.location.lng.toFixed(coordinateDecimals)}`}
                     sub={data.precisionReduced ? 'Approximate location' : undefined} mono />
-                  <MetaRow icon="Trees" label="Associated place" value={data.place.displayName}
-                    sub={data.place.trailName ? `Nearest trail: ${data.place.trailName}` : undefined} />
+                  <MetaRow icon="Trees" label="Associated place"
+                    value={(() => {
+                      // Prefer the live OSM lookup (AC 4.3.1) when it succeeds;
+                      // fall back to the seeded place; final fallback is the
+                      // AC 4.3.2 "No named …" copy.
+                      if (nearestOsm) {
+                        const kind = OSM_FEATURE_LABEL[nearestOsm.featureType] ?? 'feature'
+                        return `${nearestOsm.featureName} (${kind}, ~${nearestOsm.distanceM} m)`
+                      }
+                      if (data.place.source === 'fallback' || !data.place.displayName) {
+                        return 'No named trail, park or forest found nearby'
+                      }
+                      return data.place.displayName
+                    })()}
+                    sub={
+                      nearestOsm
+                        ? 'OpenStreetMap · live'
+                        : data.place.trailName
+                        ? `Nearest trail: ${data.place.trailName}`
+                        : undefined
+                    } />
                   <MetaRow icon="Clock" label="Last reported" value={formatTime(data.lastReportedAt)} />
                   <MetaRow icon="User" label="Reporter trust" value={data.reporterTrust} />
                   <MetaRow icon="ClipboardList" label="Reports" value={`${data.reportCount}`} />

@@ -155,6 +155,17 @@ export function ThreatMapPage() {
     }
   }, [data, species, statuses, risks, search, select])
 
+  const filtered = data
+    ? data.items.filter((s) => {
+        const q = search.trim().toLowerCase()
+        if (species.length && !species.includes(s.speciesId)) return false
+        if (statuses.length && !statuses.includes(s.status)) return false
+        if (risks.length && !risks.includes(s.risk)) return false
+        if (q && !s.speciesName.toLowerCase().includes(q) && !s.latinName.toLowerCase().includes(q)) return false
+        return true
+      })
+    : []
+
   return (
     <div style={{
       position: 'relative', height: '100%', minHeight: 0,
@@ -168,8 +179,42 @@ export function ThreatMapPage() {
         }} />
         <MapLegend />
       </div>
+      <AccessibleSightingList items={filtered} onSelect={select} />
       <SightingDetailsSheet />
     </div>
+  )
+}
+
+/**
+ * Screen-reader-only, keyboard-operable mirror of the map pins.
+ * Marker/list count parity per AC 4.2.3 — every marker has a matching
+ * list item so report details remain reachable without the canvas.
+ */
+function AccessibleSightingList({
+  items, onSelect,
+}: { items: Sighting[]; onSelect: (id: string) => void }) {
+  return (
+    <section aria-label="Community reports list" className="sr-only">
+      <p>{items.length} community reports match the current filters.</p>
+      <ul>
+        {items.map((s) => {
+          const statusLabel = s.status === 'screened'
+            ? 'Community report — not expert validated'
+            : 'Removed'
+          return (
+            <li key={s.id}>
+              <button type="button" onClick={() => onSelect(s.id)}>
+                {s.speciesName} ({s.latinName}) — {s.risk} risk — {statusLabel}
+                {' — '}
+                {s.place.source === 'fallback' || !s.place.displayName
+                  ? 'No named trail, park or forest found nearby'
+                  : s.place.displayName}
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
   )
 }
 
@@ -181,7 +226,11 @@ export function ThreatMapPage() {
 function pinElement(s: Sighting): HTMLElement {
   const el = document.createElement('button')
   el.type = 'button'
-  el.setAttribute('aria-label', `${s.speciesName} — ${s.status}`)
+  const statusLabel = s.status === 'screened'
+    ? 'Community report — not expert validated'
+    : 'Removed'
+  el.setAttribute('aria-label', `${s.speciesName} — ${statusLabel}`)
+  el.title = statusLabel
   el.dataset.sightingId = s.id
   el.className = 'map-pin'
   const colour = s.risk === 'high' ? '#C2412D' : '#D9880F'

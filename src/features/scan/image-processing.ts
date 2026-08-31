@@ -1,5 +1,11 @@
 const MAX_SIDE = 1024
-const MAX_SOURCE_BYTES = 25 * 1024 * 1024
+export const MAX_SOURCE_BYTES = 10 * 1024 * 1024
+export const ACCEPTED_IMAGE_MIME = ['image/jpeg', 'image/png', 'image/webp'] as const
+export const ACCEPTED_IMAGE_ATTR = ACCEPTED_IMAGE_MIME.join(',')
+
+export function isAcceptedImageType(file: Blob): boolean {
+  return (ACCEPTED_IMAGE_MIME as readonly string[]).includes(file.type)
+}
 
 type ResizeCanvas = OffscreenCanvas | HTMLCanvasElement
 
@@ -28,8 +34,14 @@ function canvasToJpeg(canvas: ResizeCanvas): Promise<Blob> {
 }
 
 export async function resizeImage(file: Blob): Promise<{ bitmap: ImageBitmap; url: string; blob: Blob }> {
+  if (file.size === 0) {
+    throw new Error('Photo file is empty. Retake the photo and try again.')
+  }
   if (file.size > MAX_SOURCE_BYTES) {
-    throw new Error('Photo is too large. Choose an image smaller than 25 MB.')
+    throw new Error('Photo is too large. Choose an image smaller than 10 MB.')
+  }
+  if (!isAcceptedImageType(file)) {
+    throw new Error('Unsupported image format. Use JPEG, PNG or WebP.')
   }
   const bitmap = await createImageBitmap(file)
   let blob: Blob

@@ -13,8 +13,8 @@ const COPY: Record<ReportStatus, { icon: string; title: string; body: string }> 
   },
   screened: {
     icon: 'CircleCheck',
-    title: 'Rule screened and published',
-    body: 'The Iteration 1 rules passed, so this observation now appears on the shared map.',
+    title: 'Report published',
+    body: 'Community report — not expert validated. The Iteration 1 rules passed, so this observation now appears on the shared map.',
   },
   merged: {
     icon: 'GitMerge',

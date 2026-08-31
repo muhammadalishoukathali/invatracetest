@@ -365,10 +365,9 @@ def _find_merge_target(
         settings.screening_duplicate_radius_max_m,
         max(15, report.location_accuracy_m or 25),
     )
-    observed_after = report.observed_at - timedelta(hours=settings.screening_duplicate_window_hours)
-    observed_before = report.observed_at + timedelta(
-        hours=settings.screening_duplicate_window_hours
-    )
+    window_minutes = settings.screening_duplicate_window_minutes
+    observed_after = report.observed_at - timedelta(minutes=window_minutes)
+    observed_before = report.observed_at + timedelta(minutes=window_minutes)
     candidate = session.scalar(
         select(Sighting)
         .where(

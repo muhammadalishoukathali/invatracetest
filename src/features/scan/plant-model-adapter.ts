@@ -47,6 +47,7 @@ class DevelopmentModelAdapter implements ModelAdapter {
       return {
         outcome: 'target', speciesId: 'mikania-micrantha', speciesName: 'Mikania micrantha',
         scientificName: 'Mikania micrantha', isInvasive: true, confidence: 0.87,
+        malaysiaStatus: 'invasive',
         modelVersion: DEVELOPMENT_MODEL_VERSION, reportable: true,
       }
     }

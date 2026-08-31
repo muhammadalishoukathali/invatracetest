@@ -1,0 +1,2817 @@
+{
+  "schema_version": "1.0",
+  "content_version": "1.0.0",
+  "last_reviewed": "2026-08-29",
+  "next_review_due": "2027-02-28",
+  "jurisdiction": "Malaysia",
+  "locale": "en-MY",
+  "safety_policy": {
+    "permission_rule": "A location being outside a mapped protected area does not grant permission. Show active steps only when the land or waterbody manager has explicitly authorised removal at that site.",
+    "model_rule": "The vision model produces a candidate identification, not an official botanical confirmation. Low-confidence or ambiguous results must remain observation-only.",
+    "protected_land_rule": "On protected land, or whenever protection or permission is uncertain, users must not touch, collect, cut or remove the plant. They may photograph safely and submit a candidate report.",
+    "never_recommend": [
+      "burning or fire",
+      "herbicide, pesticide or chemical application",
+      "chainsaws, powered cutters or heavy machinery",
+      "climbing or cutting mature trees",
+      "entering water, unstable banks, steep slopes or dense thorny thickets",
+      "handling Parthenium hysterophorus",
+      "mechanically disturbing Alternanthera philoxeroides"
+    ],
+    "decision_logic": [
+      "If model confidence is below the product threshold or the user selects 'not sure', show identification checks and reporting only.",
+      "If protected status is true, unknown or unavailable, show the protected/permission-unknown path.",
+      "If removal permission is not explicitly confirmed, show the protected/permission-unknown path even when the map says the place is not protected.",
+      "If guidance_mode is report_only, never show physical removal steps.",
+      "If guidance_mode is site_manager_confirmation_required, show active steps only when the coordinator has marked that species as a target for that site.",
+      "Otherwise show the authorised-site path, including its eligibility and stop conditions."
+    ]
+  },
+  "sources": [
+    {
+      "source_id": "S01",
+      "title": "Malaysia Factsheet on Invasive Alien Species in the Agricultural and Forestry Sectors 2025",
+      "publisher": "Department of Agriculture Malaysia",
+      "url": "https://www.doa.gov.my/doa/resources/aktiviti_sumber/sumber_awam/penerbitan/buku/malaysia_factsheet_invasive_alien_species_agricultural_forestry_sector_2025.pdf",
+      "accessed": "2026-08-29",
+      "use": "Current Malaysian IAS status and national context for selected target plants."
+    },
+    {
+      "source_id": "S02",
+      "title": "National Action Plan on Invasive Alien Species 2021–2025",
+      "publisher": "Government of Malaysia",
+      "url": "https://www.doa.gov.my/doa/resources/aktiviti_sumber/sumber_awam/penerbitan/buku/national_action_plan_on_invasive_alien_species_2021-2025.pdf",
+      "accessed": "2026-08-29",
+      "use": "Distribution records, policy context and earlier Malaysian IAS status."
+    },
+    {
+      "source_id": "S03",
+      "title": "Malaysia Biodiversity Information System: Invasive Alien Species",
+      "publisher": "MyBIS, Ministry of Natural Resources and Environmental Sustainability Malaysia",
+      "url": "https://www.mybis.gov.my/ias/",
+      "accessed": "2026-08-29",
+      "use": "Malaysian biodiversity status terminology and species profiles."
+    },
+    {
+      "source_id": "S04",
+      "title": "Physical control of invasive plants",
+      "publisher": "Queensland Government",
+      "url": "https://www.business.qld.gov.au/industries/farms-fishing-forestry/agriculture/biosecurity/plants/invasive/manage/control/physical",
+      "accessed": "2026-08-29",
+      "use": "Beginner-safe physical-control principles: small infestations, gloves, moist soil and complete root removal."
+    },
+    {
+      "source_id": "S05",
+      "title": "Weed control techniques",
+      "publisher": "NSW Government",
+      "url": "https://www.nsw.gov.au/regional-and-primary-industries/biosecurity/weeds/control-techniques",
+      "accessed": "2026-08-29",
+      "use": "Bagging seed or fruit first and hand-removal technique."
+    },
+    {
+      "source_id": "S06",
+      "title": "Siam weed (Chromolaena odorata)",
+      "publisher": "Queensland Government",
+      "url": "https://www.business.qld.gov.au/industries/farms-fishing-forestry/agriculture/biosecurity/plants/invasive/restricted/siam-weed",
+      "accessed": "2026-08-29",
+      "use": "Small-plant removal, regrowth and seed/fragment spread guidance."
+    },
+    {
+      "source_id": "S07",
+      "title": "Mikania vine (Mikania micrantha)",
+      "publisher": "Queensland Government",
+      "url": "https://www.business.qld.gov.au/industries/farms-fishing-forestry/agriculture/biosecurity/plants/invasive/restricted/mikania-vine",
+      "accessed": "2026-08-29",
+      "use": "Stem-fragment rooting and seed movement guidance."
+    },
+    {
+      "source_id": "S08",
+      "title": "Parthenium weed (Parthenium hysterophorus)",
+      "publisher": "Queensland Government",
+      "url": "https://www.business.qld.gov.au/industries/farms-fishing-forestry/agriculture/biosecurity/plants/invasive/restricted/parthenium",
+      "accessed": "2026-08-29",
+      "use": "Allergy risk and why hand-pulling is unsuitable for untrained users."
+    },
+    {
+      "source_id": "S09",
+      "title": "Mimosa pigra",
+      "publisher": "Queensland Government",
+      "url": "https://www.business.qld.gov.au/industries/farms-fishing-forestry/agriculture/biosecurity/plants/invasive/restricted/mimosa-pigra",
+      "accessed": "2026-08-29",
+      "use": "Thorn, thicket and seed-spread risks."
+    },
+    {
+      "source_id": "S10",
+      "title": "Giant sensitive plant (Mimosa diplotricha)",
+      "publisher": "Queensland Government",
+      "url": "https://www.business.qld.gov.au/industries/farms-fishing-forestry/agriculture/biosecurity/plants/invasive/restricted/giant-sensitive-plant",
+      "accessed": "2026-08-29",
+      "use": "Hooked-prickle, seed-bank and transport-spread guidance."
+    },
+    {
+      "source_id": "S11",
+      "title": "Water hyacinth (Eichhornia crassipes)",
+      "publisher": "Queensland Government",
+      "url": "https://www.business.qld.gov.au/industries/farms-fishing-forestry/agriculture/biosecurity/plants/invasive/restricted/water-hyacinth",
+      "accessed": "2026-08-29",
+      "use": "Hand removal of small infestations and fragment/seed spread in water."
+    },
+    {
+      "source_id": "S12",
+      "title": "Alligator weed (Alternanthera philoxeroides)",
+      "publisher": "Queensland Government",
+      "url": "https://www.business.qld.gov.au/industries/farms-fishing-forestry/agriculture/biosecurity/plants/invasive/restricted/alligator-weed",
+      "accessed": "2026-08-29",
+      "use": "High regeneration risk from small fragments and difficulty of mechanical control."
+    },
+    {
+      "source_id": "S13",
+      "title": "Leucaena (Leucaena leucocephala)",
+      "publisher": "Queensland Government",
+      "url": "https://www.business.qld.gov.au/industries/farms-fishing-forestry/agriculture/biosecurity/plants/invasive/other/leucaena",
+      "accessed": "2026-08-29",
+      "use": "Seedling hand-removal and seed movement."
+    },
+    {
+      "source_id": "S14",
+      "title": "Hairy beggarticks (Bidens pilosa) management",
+      "publisher": "University of Florida IFAS Extension",
+      "url": "https://ask.ifas.ufl.edu/publication/EP572",
+      "accessed": "2026-08-29",
+      "use": "Early removal before seed formation."
+    },
+    {
+      "source_id": "S15",
+      "title": "Guava (Psidium guajava) invasive plant profile",
+      "publisher": "University of Florida IFAS",
+      "url": "https://plant-directory.ifas.ufl.edu/plant-directory/psidium-guajava/",
+      "accessed": "2026-08-29",
+      "use": "Seedling removal, suckering after cutting and animal-dispersed fruit."
+    },
+    {
+      "source_id": "S16",
+      "title": "Tropical milkweed (Asclepias curassavica)",
+      "publisher": "National Parks Board Singapore",
+      "url": "https://www.nparks.gov.sg/florafaunaweb/flora/1/6/1693",
+      "accessed": "2026-08-29",
+      "use": "Milky sap irritation and toxicity precautions."
+    },
+    {
+      "source_id": "S17",
+      "title": "Asclepias curassavica invasive species account",
+      "publisher": "Florida Natural Areas Inventory",
+      "url": "https://www.fnai.org/species-communities/invasives/invasive-species?ID=16",
+      "accessed": "2026-08-29",
+      "use": "Hand removal guidance where the plant is an approved management target."
+    },
+    {
+      "source_id": "S18",
+      "title": "Guinea grass (Megathyrsus maximus)",
+      "publisher": "Hawaii Invasive Species Council",
+      "url": "https://dlnr.hawaii.gov/hisc/info/invasive-species-profiles/guinea-grass/",
+      "accessed": "2026-08-29",
+      "use": "Dense growth, seed production and fire-risk context."
+    },
+    {
+      "source_id": "S19",
+      "title": "Allelopathic potential of common Malaysian weeds including Panicum maximum",
+      "publisher": "Sains Malaysiana, Universiti Kebangsaan Malaysia",
+      "url": "https://www.ukm.my/jsm/pdf_files/SM-PDF-46-9-2017/09%20Nurul%20Ain.pdf",
+      "accessed": "2026-08-29",
+      "use": "Malaysian weed context for Megathyrsus maximus (syn. Panicum maximum)."
+    },
+    {
+      "source_id": "S20",
+      "title": "Crofton weed (Ageratina adenophora)",
+      "publisher": "Queensland Government",
+      "url": "https://www.business.qld.gov.au/industries/farms-fishing-forestry/agriculture/biosecurity/plants/invasive/other/crofton-weed",
+      "accessed": "2026-08-29",
+      "use": "Seed movement and small-infestation management; retained as expert context because Malaysian presence sources conflict."
+    },
+    {
+      "source_id": "S21",
+      "title": "East Point Biodiversity Management Plan 2024–2029",
+      "publisher": "City of Darwin",
+      "url": "https://www.darwin.nt.gov.au/sites/default/files/2025-01/East%20Point%20Biodiversity%20Management%20Plan%202024%20-%202029.pdf",
+      "accessed": "2026-08-29",
+      "use": "Hand-pulling context for isolated Sida acuta and Bidens pilosa."
+    },
+    {
+      "source_id": "S22",
+      "title": "Weed Management Plan: Sida acuta seed-spread pathway",
+      "publisher": "Northern Territory Environment Protection Authority",
+      "url": "https://ntepa.nt.gov.au/__data/assets/pdf_file/0007/286252/Appendix-E-Weed-Management-Plan.pdf",
+      "accessed": "2026-08-29",
+      "use": "Barbed seed segments attaching to clothing, animals and muddy equipment."
+    },
+    {
+      "source_id": "S23",
+      "title": "Oxalis control",
+      "publisher": "Clemson Cooperative Extension",
+      "url": "https://hgic.clemson.edu/factsheet/oxalis-control/",
+      "accessed": "2026-08-29",
+      "use": "Seed-ejection and underground-part context; Malaysia display remains information-only because MyBIS records this species as native."
+    },
+    {
+      "source_id": "S24",
+      "title": "MyBIS species profile: Mimosa pudica",
+      "publisher": "Malaysia Biodiversity Information System",
+      "url": "https://www.mybis.gov.my/sp/41216",
+      "accessed": "2026-08-29",
+      "use": "Malaysian occurrence/profile information; displayed status: naturalised."
+    },
+    {
+      "source_id": "S25",
+      "title": "MyBIS species profile: Carica papaya",
+      "publisher": "Malaysia Biodiversity Information System",
+      "url": "https://www.mybis.gov.my/sp/33217",
+      "accessed": "2026-08-29",
+      "use": "Malaysian occurrence/profile information; displayed status: non-native."
+    },
+    {
+      "source_id": "S26",
+      "title": "MyBIS species profile: Clitoria ternatea",
+      "publisher": "Malaysia Biodiversity Information System",
+      "url": "https://www.mybis.gov.my/sp/36158",
+      "accessed": "2026-08-29",
+      "use": "Malaysian occurrence/profile information; displayed status: native."
+    },
+    {
+      "source_id": "S27",
+      "title": "MyBIS species profile: Centella asiatica",
+      "publisher": "Malaysia Biodiversity Information System",
+      "url": "https://www.mybis.gov.my/sp/8117",
+      "accessed": "2026-08-29",
+      "use": "Malaysian occurrence/profile information; displayed status: native."
+    },
+    {
+      "source_id": "S28",
+      "title": "MyBIS species profile: Dicranopteris linearis",
+      "publisher": "Malaysia Biodiversity Information System",
+      "url": "https://www.mybis.gov.my/sp/21273",
+      "accessed": "2026-08-29",
+      "use": "Malaysian occurrence/profile information; displayed status: native."
+    },
+    {
+      "source_id": "S29",
+      "title": "MyBIS species profile: Ageratum conyzoides",
+      "publisher": "Malaysia Biodiversity Information System",
+      "url": "https://www.mybis.gov.my/sp/7397",
+      "accessed": "2026-08-29",
+      "use": "Malaysian occurrence/profile information; displayed status: naturalised."
+    },
+    {
+      "source_id": "S30",
+      "title": "MyBIS species profile: Leucaena leucocephala",
+      "publisher": "Malaysia Biodiversity Information System",
+      "url": "https://www.mybis.gov.my/sp/46575",
+      "accessed": "2026-08-29",
+      "use": "Malaysian occurrence/profile information; displayed status: introduced."
+    },
+    {
+      "source_id": "S31",
+      "title": "MyBIS species profile: Imperata cylindrica",
+      "publisher": "Malaysia Biodiversity Information System",
+      "url": "https://www.mybis.gov.my/sp/2950",
+      "accessed": "2026-08-29",
+      "use": "Malaysian occurrence/profile information; displayed status: naturalised."
+    },
+    {
+      "source_id": "S32",
+      "title": "MyBIS species profile: Pistia stratiotes",
+      "publisher": "Malaysia Biodiversity Information System",
+      "url": "https://www.mybis.gov.my/sp/36744",
+      "accessed": "2026-08-29",
+      "use": "Malaysian occurrence/profile information; displayed status: native."
+    },
+    {
+      "source_id": "S33",
+      "title": "MyBIS species profile: Macaranga tanarius",
+      "publisher": "Malaysia Biodiversity Information System",
+      "url": "https://www.mybis.gov.my/sp/35117",
+      "accessed": "2026-08-29",
+      "use": "Malaysian occurrence/profile information; displayed status: native."
+    },
+    {
+      "source_id": "S34",
+      "title": "MyBIS species profile: Cocos nucifera",
+      "publisher": "Malaysia Biodiversity Information System",
+      "url": "https://www.mybis.gov.my/sp/49488",
+      "accessed": "2026-08-29",
+      "use": "Malaysian occurrence/profile information; displayed status: introduced."
+    },
+    {
+      "source_id": "S35",
+      "title": "MyBIS species profile: Colocasia esculenta",
+      "publisher": "Malaysia Biodiversity Information System",
+      "url": "https://www.mybis.gov.my/sp/10532",
+      "accessed": "2026-08-29",
+      "use": "Malaysian occurrence/profile information; displayed status: status not stated on profile."
+    },
+    {
+      "source_id": "S36",
+      "title": "MyBIS species profile: Pteris vittata",
+      "publisher": "Malaysia Biodiversity Information System",
+      "url": "https://www.mybis.gov.my/sp/41759",
+      "accessed": "2026-08-29",
+      "use": "Malaysian occurrence/profile information; displayed status: native."
+    },
+    {
+      "source_id": "S37",
+      "title": "MyBIS species profile: Catharanthus roseus",
+      "publisher": "Malaysia Biodiversity Information System",
+      "url": "https://www.mybis.gov.my/sp/33491",
+      "accessed": "2026-08-29",
+      "use": "Malaysian occurrence/profile information; displayed status: introduced."
+    },
+    {
+      "source_id": "S38",
+      "title": "MyBIS species profile: Bidens pilosa",
+      "publisher": "Malaysia Biodiversity Information System",
+      "url": "https://www.mybis.gov.my/sp/31737",
+      "accessed": "2026-08-29",
+      "use": "Malaysian occurrence/profile information; displayed status: naturalised."
+    },
+    {
+      "source_id": "S39",
+      "title": "MyBIS species profile: Chromolaena odorata",
+      "publisher": "Malaysia Biodiversity Information System",
+      "url": "https://www.mybis.gov.my/sp/31772",
+      "accessed": "2026-08-29",
+      "use": "Malaysian occurrence/profile information; displayed status: naturalised."
+    },
+    {
+      "source_id": "S40",
+      "title": "MyBIS species profile: Eichhornia crassipes",
+      "publisher": "Malaysia Biodiversity Information System",
+      "url": "https://www.mybis.gov.my/sp/4723",
+      "accessed": "2026-08-29",
+      "use": "Malaysian occurrence/profile information; displayed status: invasive."
+    },
+    {
+      "source_id": "S41",
+      "title": "MyBIS species profile: Mikania micrantha",
+      "publisher": "Malaysia Biodiversity Information System",
+      "url": "https://www.mybis.gov.my/sp/27733",
+      "accessed": "2026-08-29",
+      "use": "Malaysian occurrence/profile information; displayed status: invasive."
+    },
+    {
+      "source_id": "S42",
+      "title": "MyBIS species profile: Oxalis corniculata",
+      "publisher": "Malaysia Biodiversity Information System",
+      "url": "https://www.mybis.gov.my/sp/7947",
+      "accessed": "2026-08-29",
+      "use": "Malaysian occurrence/profile information; displayed status: native."
+    },
+    {
+      "source_id": "S43",
+      "title": "MyBIS species profile: Psidium guajava",
+      "publisher": "Malaysia Biodiversity Information System",
+      "url": "https://www.mybis.gov.my/sp/15925",
+      "accessed": "2026-08-29",
+      "use": "Malaysian occurrence/profile information; displayed status: non-native."
+    },
+    {
+      "source_id": "S44",
+      "title": "MyBIS species profile: Asclepias curassavica",
+      "publisher": "Malaysia Biodiversity Information System",
+      "url": "https://www.mybis.gov.my/sp/6641",
+      "accessed": "2026-08-29",
+      "use": "Malaysian occurrence/profile information; displayed status: introduced."
+    },
+    {
+      "source_id": "S45",
+      "title": "MyBIS species profile: Megathyrsus maximus",
+      "publisher": "Malaysia Biodiversity Information System",
+      "url": "https://www.mybis.gov.my/",
+      "accessed": "2026-08-29",
+      "use": "Malaysian occurrence/profile information; displayed status: status not confirmed."
+    },
+    {
+      "source_id": "S46",
+      "title": "MyBIS species profile: Mimosa diplotricha",
+      "publisher": "Malaysia Biodiversity Information System",
+      "url": "https://www.mybis.gov.my/sp/10611",
+      "accessed": "2026-08-29",
+      "use": "Malaysian occurrence/profile information; displayed status: invasive."
+    },
+    {
+      "source_id": "S47",
+      "title": "MyBIS species profile: Mimosa pigra",
+      "publisher": "Malaysia Biodiversity Information System",
+      "url": "https://www.mybis.gov.my/sp/41213",
+      "accessed": "2026-08-29",
+      "use": "Malaysian occurrence/profile information; displayed status: invasive."
+    },
+    {
+      "source_id": "S48",
+      "title": "MyBIS species profile: Alternanthera philoxeroides",
+      "publisher": "Malaysia Biodiversity Information System",
+      "url": "https://www.mybis.gov.my/sp/30780",
+      "accessed": "2026-08-29",
+      "use": "Malaysian occurrence/profile information; displayed status: invasive."
+    },
+    {
+      "source_id": "S49",
+      "title": "MyBIS species profile: Parthenium hysterophorus",
+      "publisher": "Malaysia Biodiversity Information System",
+      "url": "https://www.mybis.gov.my/sp/66526",
+      "accessed": "2026-08-29",
+      "use": "Malaysian occurrence/profile information; displayed status: invasive."
+    },
+    {
+      "source_id": "S50",
+      "title": "MyBIS species profile: Ageratina adenophora",
+      "publisher": "Malaysia Biodiversity Information System",
+      "url": "https://www.mybis.gov.my/",
+      "accessed": "2026-08-29",
+      "use": "Malaysian occurrence/profile information; displayed status: status conflict."
+    },
+    {
+      "source_id": "S51",
+      "title": "MyBIS species profile: Sida acuta",
+      "publisher": "Malaysia Biodiversity Information System",
+      "url": "https://www.mybis.gov.my/sp/2356",
+      "accessed": "2026-08-29",
+      "use": "Malaysian occurrence/profile information; displayed status: presence recorded; IAS status not confirmed."
+    }
+  ],
+  "plants": [
+    {
+      "plant_id": "mimosa_pudica",
+      "model_label": "Mimosa pudica",
+      "scientific_name": "Mimosa pudica",
+      "common_names": [
+        "sensitive plant",
+        "touch-me-not"
+      ],
+      "malaysia_status": {
+        "category": "naturalised",
+        "display_label": "Naturalised in Malaysia",
+        "confidence": "high",
+        "note": "MyBIS does not label it invasive in Malaysia.",
+        "source_ids": [
+          "S24"
+        ]
+      },
+      "guidance_mode": "general_information",
+      "general_information": "A low, prickly herb whose leaflets fold when touched. It is common in disturbed ground. InvaTrace should provide identification information, not automatic removal advice.",
+      "identification_note": "Treat the model result as a suggestion. Confirm key features before relying on it.",
+      "risk_flags": [],
+      "actions": null,
+      "spread_prevention": [],
+      "do_not_do": [],
+      "follow_up": [],
+      "general_information_source_ids": [
+        "S24"
+      ]
+    },
+    {
+      "plant_id": "carica_papaya",
+      "model_label": "Carica papaya",
+      "scientific_name": "Carica papaya",
+      "common_names": [
+        "papaya",
+        "betik"
+      ],
+      "malaysia_status": {
+        "category": "non_native",
+        "display_label": "Non-native in Malaysia",
+        "confidence": "high",
+        "note": "A non-native crop is not automatically an invasive management target.",
+        "source_ids": [
+          "S25"
+        ]
+      },
+      "guidance_mode": "general_information",
+      "general_information": "A short-lived tropical fruit crop with a soft trunk, large divided leaves and fruit borne close to the trunk.",
+      "identification_note": "Treat the model result as a suggestion. Confirm key features before relying on it.",
+      "risk_flags": [],
+      "actions": null,
+      "spread_prevention": [],
+      "do_not_do": [],
+      "follow_up": [],
+      "general_information_source_ids": [
+        "S25"
+      ]
+    },
+    {
+      "plant_id": "clitoria_ternatea",
+      "model_label": "Clitoria ternatea",
+      "scientific_name": "Clitoria ternatea",
+      "common_names": [
+        "butterfly pea",
+        "bunga telang"
+      ],
+      "malaysia_status": {
+        "category": "native",
+        "display_label": "Native in Malaysia",
+        "confidence": "high",
+        "note": "Do not present this class as an invasive plant.",
+        "source_ids": [
+          "S26"
+        ]
+      },
+      "guidance_mode": "general_information",
+      "general_information": "A twining legume with distinctive blue or white pea-shaped flowers. It is widely grown for ornamental and culinary use.",
+      "identification_note": "Treat the model result as a suggestion. Confirm key features before relying on it.",
+      "risk_flags": [],
+      "actions": null,
+      "spread_prevention": [],
+      "do_not_do": [],
+      "follow_up": [],
+      "general_information_source_ids": [
+        "S26"
+      ]
+    },
+    {
+      "plant_id": "centella_asiatica",
+      "model_label": "Centella asiatica",
+      "scientific_name": "Centella asiatica",
+      "common_names": [
+        "Indian pennywort",
+        "pegaga"
+      ],
+      "malaysia_status": {
+        "category": "native",
+        "display_label": "Native in Malaysia",
+        "confidence": "high",
+        "note": "Do not present this class as invasive.",
+        "source_ids": [
+          "S27"
+        ]
+      },
+      "guidance_mode": "general_information",
+      "general_information": "A creeping herb of moist ground with rounded, scalloped leaves. It is also used as a food and traditional herb.",
+      "identification_note": "Treat the model result as a suggestion. Confirm key features before relying on it.",
+      "risk_flags": [],
+      "actions": null,
+      "spread_prevention": [],
+      "do_not_do": [],
+      "follow_up": [],
+      "general_information_source_ids": [
+        "S27"
+      ]
+    },
+    {
+      "plant_id": "dicranopteris_linearis",
+      "model_label": "Dicranopteris linearis",
+      "scientific_name": "Dicranopteris linearis",
+      "common_names": [
+        "resam",
+        "forked fern"
+      ],
+      "malaysia_status": {
+        "category": "native",
+        "display_label": "Native in Malaysia",
+        "confidence": "high",
+        "note": "It can dominate disturbed areas but is not an alien invasive class in this dataset.",
+        "source_ids": [
+          "S28"
+        ]
+      },
+      "guidance_mode": "general_information",
+      "general_information": "A native fern with repeatedly forked fronds that commonly forms thickets on exposed slopes and disturbed sites.",
+      "identification_note": "Treat the model result as a suggestion. Confirm key features before relying on it.",
+      "risk_flags": [],
+      "actions": null,
+      "spread_prevention": [],
+      "do_not_do": [],
+      "follow_up": [],
+      "general_information_source_ids": [
+        "S28"
+      ]
+    },
+    {
+      "plant_id": "ageratum_conyzoides",
+      "model_label": "Ageratum conyzoides",
+      "scientific_name": "Ageratum conyzoides",
+      "common_names": [
+        "billygoat weed"
+      ],
+      "malaysia_status": {
+        "category": "naturalised",
+        "display_label": "Naturalised in Malaysia",
+        "confidence": "high",
+        "note": "Naturalised is not the same as a nationally designated invasive target.",
+        "source_ids": [
+          "S29"
+        ]
+      },
+      "guidance_mode": "general_information",
+      "general_information": "A small aromatic herb with hairy leaves and clusters of pale blue, lilac or white flower heads. Display information only unless a site manager designates it as a local target.",
+      "identification_note": "Treat the model result as a suggestion. Confirm key features before relying on it.",
+      "risk_flags": [],
+      "actions": null,
+      "spread_prevention": [],
+      "do_not_do": [],
+      "follow_up": [],
+      "general_information_source_ids": [
+        "S29"
+      ]
+    },
+    {
+      "plant_id": "leucaena_leucocephala",
+      "model_label": "Leucaena leucocephala",
+      "scientific_name": "Leucaena leucocephala",
+      "common_names": [
+        "leucaena",
+        "petai belalang"
+      ],
+      "malaysia_status": {
+        "category": "invasive",
+        "display_label": "Invasive alien species of concern in Malaysia",
+        "confidence": "high",
+        "note": "MyBIS records it as introduced, while the 2025 Malaysian IAS factsheet treats it as an IAS of concern. The app should use the more cautious current management status.",
+        "source_ids": [
+          "S01",
+          "S30"
+        ]
+      },
+      "guidance_mode": "active_guidance",
+      "general_information": "A fast-growing shrub or small tree with twice-divided leaves, cream flower balls and many flat pods. It can form dense stands and produce persistent seed.",
+      "identification_note": "Treat the model result as a suggestion. Check diagnostic features and obtain site approval before acting.",
+      "risk_flags": [
+        "seed pods",
+        "woody regrowth"
+      ],
+      "actions": {
+        "protected_or_permission_unknown": {
+          "title": "Observe and report; do not remove",
+          "eligibility": "Use this path whenever the place may be protected, land ownership is unclear, or explicit permission has not been given.",
+          "steps": [
+            {
+              "text": "Stay on the existing path or stable public access point. Do not enter vegetation or water to reach the plant.",
+              "source_ids": [
+                "S02",
+                "S01",
+                "S13"
+              ]
+            },
+            {
+              "text": "Take clear photos from more than one angle and record GPS coordinates and time without disturbing the plant.",
+              "source_ids": [
+                "S02",
+                "S01",
+                "S13"
+              ]
+            },
+            {
+              "text": "Submit the sighting as unverified and send it to the site manager, park authority or relevant local authority.",
+              "source_ids": [
+                "S01",
+                "S02"
+              ]
+            }
+          ],
+          "stop_conditions": [
+            {
+              "text": "Stop if the plant is flowering or carrying seed, the patch is dense, or safe access is not possible.",
+              "source_ids": [
+                "S01",
+                "S13"
+              ]
+            }
+          ],
+          "disposal": []
+        },
+        "authorised_site": {
+          "title": "Beginner-safe action on an authorised site",
+          "eligibility": "Only a small seedling that can be removed without a saw, ladder or powered tool, and only after explicit land-manager approval.",
+          "steps": [
+            {
+              "text": "Wear gloves. If pods are present, place the pods in a bag before touching the seedling.",
+              "source_ids": [
+                "S05",
+                "S13"
+              ]
+            },
+            {
+              "text": "When soil is moist, grip the seedling low and pull steadily so the whole root comes out.",
+              "source_ids": [
+                "S04",
+                "S13"
+              ]
+            },
+            {
+              "text": "Place the whole seedling and any loose pods in a durable bag for disposal according to the site manager's instructions.",
+              "source_ids": [
+                "S05",
+                "S13"
+              ]
+            }
+          ],
+          "stop_conditions": [
+            {
+              "text": "Stop and report if the stem is woody, the plant is taller than the user, pods are opening, or the root will not lift easily.",
+              "source_ids": [
+                "S13"
+              ]
+            }
+          ],
+          "disposal": []
+        }
+      },
+      "spread_prevention": [
+        {
+          "text": "Do not move soil containing seeds to another site; seed can be transported by water and machinery.",
+          "source_ids": [
+            "S13"
+          ]
+        },
+        {
+          "text": "Inspect gloves, footwear and tools and remove any pods or seeds before leaving.",
+          "source_ids": [
+            "S13"
+          ]
+        }
+      ],
+      "do_not_do": [
+        {
+          "text": "Do not cut or ring-bark mature shrubs or trees; cutting can leave a resprouting stump and is not a beginner task.",
+          "source_ids": [
+            "S13"
+          ]
+        },
+        {
+          "text": "Do not burn plant material or apply herbicide through this app.",
+          "source_ids": [
+            "S01"
+          ]
+        }
+      ],
+      "follow_up": [
+        {
+          "text": "Recheck the exact point after 4–6 weeks and again after rain for seedlings or stump regrowth.",
+          "source_ids": [
+            "S13"
+          ]
+        }
+      ],
+      "general_information_source_ids": [
+        "S01",
+        "S30"
+      ]
+    },
+    {
+      "plant_id": "imperata_cylindrica",
+      "model_label": "Imperata cylindrica",
+      "scientific_name": "Imperata cylindrica",
+      "common_names": [
+        "cogon grass",
+        "lalang"
+      ],
+      "malaysia_status": {
+        "category": "naturalised",
+        "display_label": "Naturalised in Malaysia",
+        "confidence": "high",
+        "note": "Do not make it an automatic public-removal target; rhizome control is a land-management task.",
+        "source_ids": [
+          "S31"
+        ]
+      },
+      "guidance_mode": "general_information",
+      "general_information": "A tough rhizomatous grass with narrow sharp-edged leaves and white silky seed heads. Dense stands require planned site management rather than one-off pulling.",
+      "identification_note": "Treat the model result as a suggestion. Confirm key features before relying on it.",
+      "risk_flags": [
+        "Leaf edges may cut skin; dense dry grass can be a fire hazard."
+      ],
+      "actions": null,
+      "spread_prevention": [],
+      "do_not_do": [],
+      "follow_up": [],
+      "general_information_source_ids": [
+        "S31"
+      ]
+    },
+    {
+      "plant_id": "pistia_stratiotes",
+      "model_label": "Pistia stratiotes",
+      "scientific_name": "Pistia stratiotes",
+      "common_names": [
+        "water lettuce"
+      ],
+      "malaysia_status": {
+        "category": "native",
+        "display_label": "Native in Malaysia according to MyBIS",
+        "confidence": "high",
+        "note": "Although invasive in some countries, the app must not label it invasive nationally in Malaysia.",
+        "source_ids": [
+          "S32"
+        ]
+      },
+      "guidance_mode": "general_information",
+      "general_information": "A free-floating aquatic plant forming pale green, velvety rosettes. Local waterbody managers may still control excessive growth, but public users should receive information only.",
+      "identification_note": "Treat the model result as a suggestion. Confirm key features before relying on it.",
+      "risk_flags": [
+        "Never enter water or unstable banks to reach a plant."
+      ],
+      "actions": null,
+      "spread_prevention": [],
+      "do_not_do": [],
+      "follow_up": [],
+      "general_information_source_ids": [
+        "S32"
+      ]
+    },
+    {
+      "plant_id": "macaranga_tanarius",
+      "model_label": "Macaranga tanarius",
+      "scientific_name": "Macaranga tanarius",
+      "common_names": [
+        "mahang"
+      ],
+      "malaysia_status": {
+        "category": "native",
+        "display_label": "Native in Malaysia",
+        "confidence": "high",
+        "note": "Do not present this pioneer tree as invasive.",
+        "source_ids": [
+          "S33"
+        ]
+      },
+      "guidance_mode": "general_information",
+      "general_information": "A native pioneer tree with broad, often shield-like leaves. It commonly colonises open or disturbed ground and can provide early vegetation cover.",
+      "identification_note": "Treat the model result as a suggestion. Confirm key features before relying on it.",
+      "risk_flags": [],
+      "actions": null,
+      "spread_prevention": [],
+      "do_not_do": [],
+      "follow_up": [],
+      "general_information_source_ids": [
+        "S33"
+      ]
+    },
+    {
+      "plant_id": "cocos_nucifera",
+      "model_label": "Cocos nucifera",
+      "scientific_name": "Cocos nucifera",
+      "common_names": [
+        "coconut palm",
+        "kelapa"
+      ],
+      "malaysia_status": {
+        "category": "introduced",
+        "display_label": "Introduced in Malaysia",
+        "confidence": "high",
+        "note": "An introduced cultivated plant is not automatically invasive.",
+        "source_ids": [
+          "S34"
+        ]
+      },
+      "guidance_mode": "general_information",
+      "general_information": "A tall palm with large feather-like fronds and coconuts. Falling fruit and fronds are a physical hazard; the app should never recommend climbing or cutting.",
+      "identification_note": "Treat the model result as a suggestion. Confirm key features before relying on it.",
+      "risk_flags": [
+        "Do not stand beneath fruiting palms or attempt removal."
+      ],
+      "actions": null,
+      "spread_prevention": [],
+      "do_not_do": [],
+      "follow_up": [],
+      "general_information_source_ids": [
+        "S34"
+      ]
+    },
+    {
+      "plant_id": "colocasia_esculenta",
+      "model_label": "Colocasia esculenta",
+      "scientific_name": "Colocasia esculenta",
+      "common_names": [
+        "taro",
+        "keladi"
+      ],
+      "malaysia_status": {
+        "category": "status_unresolved",
+        "display_label": "Malaysia status not assigned in this dataset",
+        "confidence": "medium",
+        "note": "The MyBIS profile confirms the species record but the status used here is not sufficient for invasive action.",
+        "source_ids": [
+          "S35"
+        ]
+      },
+      "guidance_mode": "general_information",
+      "general_information": "A large-leaved aroid usually found in wet ground or cultivation. Raw tissues contain irritating calcium oxalate crystals, so this release provides information only.",
+      "identification_note": "Treat the model result as a suggestion. Confirm key features before relying on it.",
+      "risk_flags": [
+        "Sap and raw tissue may irritate skin and mouth; do not taste a wild plant."
+      ],
+      "actions": null,
+      "spread_prevention": [],
+      "do_not_do": [],
+      "follow_up": [],
+      "general_information_source_ids": [
+        "S35"
+      ]
+    },
+    {
+      "plant_id": "pteris_vittata",
+      "model_label": "Pteris vittata",
+      "scientific_name": "Pteris vittata",
+      "common_names": [
+        "Chinese brake fern"
+      ],
+      "malaysia_status": {
+        "category": "native",
+        "display_label": "Native in Malaysia",
+        "confidence": "high",
+        "note": "Do not present it as invasive.",
+        "source_ids": [
+          "S36"
+        ]
+      },
+      "guidance_mode": "general_information",
+      "general_information": "A native fern with long fronds divided into narrow pinnae. It often grows on walls, limestone and disturbed ground.",
+      "identification_note": "Treat the model result as a suggestion. Confirm key features before relying on it.",
+      "risk_flags": [],
+      "actions": null,
+      "spread_prevention": [],
+      "do_not_do": [],
+      "follow_up": [],
+      "general_information_source_ids": [
+        "S36"
+      ]
+    },
+    {
+      "plant_id": "catharanthus_roseus",
+      "model_label": "Catharanthus roseus",
+      "scientific_name": "Catharanthus roseus",
+      "common_names": [
+        "Madagascar periwinkle",
+        "kemunting cina"
+      ],
+      "malaysia_status": {
+        "category": "introduced",
+        "display_label": "Introduced in Malaysia",
+        "confidence": "high",
+        "note": "Introduced ornamental status does not justify public removal.",
+        "source_ids": [
+          "S37"
+        ]
+      },
+      "guidance_mode": "general_information",
+      "general_information": "A common ornamental herb with glossy opposite leaves and pink or white flowers. All parts contain biologically active compounds; do not ingest it.",
+      "identification_note": "Treat the model result as a suggestion. Confirm key features before relying on it.",
+      "risk_flags": [
+        "Potentially toxic if eaten."
+      ],
+      "actions": null,
+      "spread_prevention": [],
+      "do_not_do": [],
+      "follow_up": [],
+      "general_information_source_ids": [
+        "S37"
+      ]
+    },
+    {
+      "plant_id": "bidens_pilosa",
+      "model_label": "Bidens pilosa",
+      "scientific_name": "Bidens pilosa",
+      "common_names": [
+        "hairy beggarticks",
+        "blackjack"
+      ],
+      "malaysia_status": {
+        "category": "naturalised",
+        "display_label": "Naturalised in Malaysia; local-target approval required",
+        "confidence": "high",
+        "note": "MyBIS does not label it invasive nationally. Only show removal steps when a coordinator has marked it as a target for that site.",
+        "source_ids": [
+          "S38"
+        ]
+      },
+      "guidance_mode": "site_manager_confirmation_required",
+      "general_information": "A short-lived herb with small white-and-yellow flower heads and narrow black seeds tipped with barbs. The seeds readily hitchhike on clothing and animal fur.",
+      "identification_note": "Treat the model result as a suggestion. Check diagnostic features and obtain site approval before acting.",
+      "risk_flags": [
+        "barbed seeds"
+      ],
+      "actions": {
+        "protected_or_permission_unknown": {
+          "title": "Observe and report; do not remove",
+          "eligibility": "Use this path whenever the place may be protected, land ownership is unclear, or explicit permission has not been given.",
+          "steps": [
+            {
+              "text": "Stay on the existing path or stable public access point. Do not enter vegetation or water to reach the plant.",
+              "source_ids": [
+                "S02",
+                "S38",
+                "S14",
+                "S21"
+              ]
+            },
+            {
+              "text": "Take clear photos from more than one angle and record GPS coordinates and time without disturbing the plant.",
+              "source_ids": [
+                "S02",
+                "S38",
+                "S14",
+                "S21"
+              ]
+            },
+            {
+              "text": "Submit the sighting as unverified and send it to the site manager, park authority or relevant local authority.",
+              "source_ids": [
+                "S01",
+                "S02"
+              ]
+            }
+          ],
+          "stop_conditions": [
+            {
+              "text": "Stop if the plant is flowering or carrying seed, the patch is dense, or safe access is not possible.",
+              "source_ids": [
+                "S38",
+                "S14",
+                "S21"
+              ]
+            }
+          ],
+          "disposal": []
+        },
+        "authorised_site": {
+          "title": "Beginner-safe action on an authorised site",
+          "eligibility": "Only an isolated plant explicitly designated as a site-management target, before its seeds have matured.",
+          "steps": [
+            {
+              "text": "Wear gloves. If dark barbed seeds are present, bag the seed heads before moving the plant.",
+              "source_ids": [
+                "S05",
+                "S14"
+              ]
+            },
+            {
+              "text": "Pull the plant from low on the stem while the soil is moist, removing the root.",
+              "source_ids": [
+                "S04",
+                "S21"
+              ]
+            },
+            {
+              "text": "Bag the whole plant if it has flowers or developing seed; otherwise follow the site's green-waste instructions.",
+              "source_ids": [
+                "S05",
+                "S14"
+              ]
+            }
+          ],
+          "stop_conditions": [
+            {
+              "text": "Stop if seeds are already shedding or the patch is too large to contain without carrying seed through the site.",
+              "source_ids": [
+                "S14"
+              ]
+            }
+          ],
+          "disposal": []
+        }
+      },
+      "spread_prevention": [
+        {
+          "text": "Inspect socks, trousers, shoelaces, gloves and bags for barbed seeds before leaving the point.",
+          "source_ids": [
+            "S14"
+          ]
+        },
+        {
+          "text": "Do not carry an unbagged seeding plant along the trail.",
+          "source_ids": [
+            "S05",
+            "S14"
+          ]
+        }
+      ],
+      "do_not_do": [
+        {
+          "text": "Do not remove it merely because the classifier recognises it; its Malaysian status is naturalised, not nationally invasive.",
+          "source_ids": [
+            "S38"
+          ]
+        }
+      ],
+      "follow_up": [
+        {
+          "text": "Revisit in 3–4 weeks and remove new target seedlings before they flower, if the site manager continues the programme.",
+          "source_ids": [
+            "S14"
+          ]
+        }
+      ],
+      "general_information_source_ids": [
+        "S38"
+      ]
+    },
+    {
+      "plant_id": "chromolaena_odorata",
+      "model_label": "Chromolaena odorata",
+      "scientific_name": "Chromolaena odorata",
+      "common_names": [
+        "Siam weed",
+        "devil weed"
+      ],
+      "malaysia_status": {
+        "category": "naturalised",
+        "display_label": "Naturalised in MyBIS; recognised management concern",
+        "confidence": "medium",
+        "note": "Use as a local management target only after site-manager confirmation, because the displayed national status is naturalised rather than invasive.",
+        "source_ids": [
+          "S39",
+          "S06"
+        ]
+      },
+      "guidance_mode": "site_manager_confirmation_required",
+      "general_information": "A branching shrub with opposite triangular leaves and clusters of pale flower heads. It can form dense stands, and cut or broken material can regrow when left in contact with soil.",
+      "identification_note": "Treat the model result as a suggestion. Check diagnostic features and obtain site approval before acting.",
+      "risk_flags": [
+        "wind-borne seed",
+        "regrowth from plant pieces"
+      ],
+      "actions": {
+        "protected_or_permission_unknown": {
+          "title": "Observe and report; do not remove",
+          "eligibility": "Use this path whenever the place may be protected, land ownership is unclear, or explicit permission has not been given.",
+          "steps": [
+            {
+              "text": "Stay on the existing path or stable public access point. Do not enter vegetation or water to reach the plant.",
+              "source_ids": [
+                "S02",
+                "S39",
+                "S06"
+              ]
+            },
+            {
+              "text": "Take clear photos from more than one angle and record GPS coordinates and time without disturbing the plant.",
+              "source_ids": [
+                "S02",
+                "S39",
+                "S06"
+              ]
+            },
+            {
+              "text": "Submit the sighting as unverified and send it to the site manager, park authority or relevant local authority.",
+              "source_ids": [
+                "S01",
+                "S02"
+              ]
+            }
+          ],
+          "stop_conditions": [
+            {
+              "text": "Stop if the plant is flowering or carrying seed, the patch is dense, or safe access is not possible.",
+              "source_ids": [
+                "S39",
+                "S06"
+              ]
+            }
+          ],
+          "disposal": []
+        },
+        "authorised_site": {
+          "title": "Beginner-safe action on an authorised site",
+          "eligibility": "Only a small, isolated young plant that can be pulled by hand, before flowering, on a site where Chromolaena is an approved target.",
+          "steps": [
+            {
+              "text": "Wear gloves and work when soil is moist. Grip near the base and pull out the root crown and roots.",
+              "source_ids": [
+                "S04",
+                "S06"
+              ]
+            },
+            {
+              "text": "Keep every pulled stem off the ground and place it directly into a durable bag or on a contained drying surface approved by the site manager.",
+              "source_ids": [
+                "S06"
+              ]
+            },
+            {
+              "text": "Bag flower or seed heads before moving the rest of the plant.",
+              "source_ids": [
+                "S05",
+                "S06"
+              ]
+            }
+          ],
+          "stop_conditions": [
+            {
+              "text": "Stop if the base is woody, flowers or seed are abundant, or the plant breaks without the root crown coming out.",
+              "source_ids": [
+                "S06"
+              ]
+            }
+          ],
+          "disposal": []
+        }
+      },
+      "spread_prevention": [
+        {
+          "text": "Do not leave broken stems on moist soil because vegetative pieces can regrow.",
+          "source_ids": [
+            "S06"
+          ]
+        },
+        {
+          "text": "Clean seeds and plant pieces from boots, gloves and tools before leaving; seeds can also move by wind.",
+          "source_ids": [
+            "S06"
+          ]
+        }
+      ],
+      "do_not_do": [
+        {
+          "text": "Do not slash or burn it; damaged plants can regrow and fire is not a beginner control method.",
+          "source_ids": [
+            "S06"
+          ]
+        },
+        {
+          "text": "Do not attempt a dense or flowering stand.",
+          "source_ids": [
+            "S06"
+          ]
+        }
+      ],
+      "follow_up": [
+        {
+          "text": "Photograph the cleared point and recheck it after 4–6 weeks for root-crown regrowth or seedlings.",
+          "source_ids": [
+            "S06"
+          ]
+        }
+      ],
+      "general_information_source_ids": [
+        "S39",
+        "S06"
+      ]
+    },
+    {
+      "plant_id": "eichhornia_crassipes",
+      "model_label": "Eichhornia crassipes",
+      "scientific_name": "Eichhornia crassipes",
+      "common_names": [
+        "water hyacinth",
+        "keladi bunting"
+      ],
+      "malaysia_status": {
+        "category": "invasive",
+        "display_label": "Invasive in Malaysia",
+        "confidence": "high",
+        "note": "MyBIS identifies this aquatic plant as invasive.",
+        "source_ids": [
+          "S40",
+          "S01"
+        ]
+      },
+      "guidance_mode": "active_guidance",
+      "general_information": "A free-floating aquatic plant with swollen leaf stalks and lavender flowers. It reproduces rapidly and pieces can drift to form new colonies.",
+      "identification_note": "Treat the model result as a suggestion. Check diagnostic features and obtain site approval before acting.",
+      "risk_flags": [
+        "water hazard",
+        "fragment spread",
+        "seeds"
+      ],
+      "actions": {
+        "protected_or_permission_unknown": {
+          "title": "Observe and report; do not remove",
+          "eligibility": "Use this path whenever the place may be protected, land ownership is unclear, or explicit permission has not been given.",
+          "steps": [
+            {
+              "text": "Stay on the existing path or stable public access point. Do not enter vegetation or water to reach the plant.",
+              "source_ids": [
+                "S02",
+                "S40",
+                "S11"
+              ]
+            },
+            {
+              "text": "Take clear photos from more than one angle and record GPS coordinates and time without disturbing the plant.",
+              "source_ids": [
+                "S02",
+                "S40",
+                "S11"
+              ]
+            },
+            {
+              "text": "Submit the sighting as unverified and send it to the site manager, park authority or relevant local authority.",
+              "source_ids": [
+                "S01",
+                "S02"
+              ]
+            }
+          ],
+          "stop_conditions": [
+            {
+              "text": "Stop if the plant is flowering or carrying seed, the patch is dense, or safe access is not possible.",
+              "source_ids": [
+                "S40",
+                "S11"
+              ]
+            }
+          ],
+          "disposal": []
+        },
+        "authorised_site": {
+          "title": "Beginner-safe action on an authorised site",
+          "eligibility": "Only one or a few floating plants reachable from a dry, stable bank without leaning, wading, boating or entering mud, and only with waterbody-manager permission.",
+          "steps": [
+            {
+              "text": "Wear gloves and work from a stable dry edge. Lift the entire rosette, attached daughter plants and roots together.",
+              "source_ids": [
+                "S11"
+              ]
+            },
+            {
+              "text": "Collect every loose fragment visible within safe reach; small pieces left in water can continue spreading.",
+              "source_ids": [
+                "S11"
+              ]
+            },
+            {
+              "text": "Drain the plants in a contained tub or on an impermeable surface away from drains and waterways, then bag or dispose of them as the manager directs.",
+              "source_ids": [
+                "S11"
+              ]
+            }
+          ],
+          "stop_conditions": [
+            {
+              "text": "Stop if the patch forms a mat, is beyond arm's reach, or requires entering water.",
+              "source_ids": [
+                "S11"
+              ]
+            }
+          ],
+          "disposal": []
+        }
+      },
+      "spread_prevention": [
+        {
+          "text": "Never return roots, daughter plants or broken pieces to the water.",
+          "source_ids": [
+            "S11"
+          ]
+        },
+        {
+          "text": "Rinse or brush mud and plant fragments from tools only in a contained place away from drains and natural water.",
+          "source_ids": [
+            "S11"
+          ]
+        }
+      ],
+      "do_not_do": [
+        {
+          "text": "Do not wade, swim, use a boat or stand on an unstable bank.",
+          "source_ids": [
+            "S11"
+          ]
+        },
+        {
+          "text": "Do not release removed plants into another pond, drain or stream.",
+          "source_ids": [
+            "S11"
+          ]
+        }
+      ],
+      "follow_up": [
+        {
+          "text": "Recheck the same shoreline after 1–2 weeks because overlooked daughter plants can drift back.",
+          "source_ids": [
+            "S11"
+          ]
+        }
+      ],
+      "general_information_source_ids": [
+        "S40",
+        "S01"
+      ]
+    },
+    {
+      "plant_id": "mikania_micrantha",
+      "model_label": "Mikania micrantha",
+      "scientific_name": "Mikania micrantha",
+      "common_names": [
+        "mile-a-minute weed",
+        "mikania vine"
+      ],
+      "malaysia_status": {
+        "category": "invasive",
+        "display_label": "Invasive in Malaysia",
+        "confidence": "high",
+        "note": "MyBIS and Malaysian IAS materials identify it as invasive.",
+        "source_ids": [
+          "S41",
+          "S01",
+          "S02"
+        ]
+      },
+      "guidance_mode": "active_guidance",
+      "general_information": "A fast-growing twining vine with opposite heart-shaped leaves and small white flower heads. Stem pieces with a node can root in moist soil.",
+      "identification_note": "Treat the model result as a suggestion. Check diagnostic features and obtain site approval before acting.",
+      "risk_flags": [
+        "rooting stem fragments",
+        "wind-borne seed"
+      ],
+      "actions": {
+        "protected_or_permission_unknown": {
+          "title": "Observe and report; do not remove",
+          "eligibility": "Use this path whenever the place may be protected, land ownership is unclear, or explicit permission has not been given.",
+          "steps": [
+            {
+              "text": "Stay on the existing path or stable public access point. Do not enter vegetation or water to reach the plant.",
+              "source_ids": [
+                "S02",
+                "S41",
+                "S07"
+              ]
+            },
+            {
+              "text": "Take clear photos from more than one angle and record GPS coordinates and time without disturbing the plant.",
+              "source_ids": [
+                "S02",
+                "S41",
+                "S07"
+              ]
+            },
+            {
+              "text": "Submit the sighting as unverified and send it to the site manager, park authority or relevant local authority.",
+              "source_ids": [
+                "S01",
+                "S02"
+              ]
+            }
+          ],
+          "stop_conditions": [
+            {
+              "text": "Stop if the plant is flowering or carrying seed, the patch is dense, or safe access is not possible.",
+              "source_ids": [
+                "S41",
+                "S07"
+              ]
+            }
+          ],
+          "disposal": []
+        },
+        "authorised_site": {
+          "title": "Beginner-safe action on an authorised site",
+          "eligibility": "Only a small, isolated, non-flowering vine reachable from the ground, where the whole plant and every fragment can be contained, with site permission.",
+          "steps": [
+            {
+              "text": "Place a bag or sheet under the vine before handling it so dropped pieces are captured.",
+              "source_ids": [
+                "S07"
+              ]
+            },
+            {
+              "text": "Wear gloves, unwind gently from low vegetation and avoid snapping the stems into small pieces.",
+              "source_ids": [
+                "S07"
+              ]
+            },
+            {
+              "text": "Pull or dig out the rooted base in moist soil, then bag the entire vine and every fragment.",
+              "source_ids": [
+                "S04",
+                "S07"
+              ]
+            }
+          ],
+          "stop_conditions": [
+            {
+              "text": "Stop if the vine is flowering, covers a tree or large shrub, crosses a slope, or cannot be removed without fragmentation.",
+              "source_ids": [
+                "S07"
+              ]
+            }
+          ],
+          "disposal": []
+        }
+      },
+      "spread_prevention": [
+        {
+          "text": "Do not leave any stem section with a node on moist ground; one-node fragments can root.",
+          "source_ids": [
+            "S07"
+          ]
+        },
+        {
+          "text": "If flowers are present, avoid disturbance and report it because the light seeds can spread by wind.",
+          "source_ids": [
+            "S07"
+          ]
+        },
+        {
+          "text": "Inspect clothing and tools for clinging stems before moving to another point.",
+          "source_ids": [
+            "S07"
+          ]
+        }
+      ],
+      "do_not_do": [
+        {
+          "text": "Do not pull vines from trees, steep banks or overhead growth.",
+          "source_ids": [
+            "S07"
+          ]
+        },
+        {
+          "text": "Do not mow or slash a small patch into fragments.",
+          "source_ids": [
+            "S07"
+          ]
+        }
+      ],
+      "follow_up": [
+        {
+          "text": "Recheck after 2–4 weeks and photograph any regrowth from missed nodes or the root base.",
+          "source_ids": [
+            "S07"
+          ]
+        }
+      ],
+      "general_information_source_ids": [
+        "S41",
+        "S01",
+        "S02"
+      ]
+    },
+    {
+      "plant_id": "oxalis_corniculata",
+      "model_label": "Oxalis corniculata",
+      "scientific_name": "Oxalis corniculata",
+      "common_names": [
+        "creeping woodsorrel"
+      ],
+      "malaysia_status": {
+        "category": "native",
+        "display_label": "Native in Malaysia",
+        "confidence": "high",
+        "note": "The app must not label it invasive in Malaysia even though it may be treated as a garden weed elsewhere.",
+        "source_ids": [
+          "S42"
+        ]
+      },
+      "guidance_mode": "general_information",
+      "general_information": "A low creeping herb with three heart-shaped leaflets and small yellow flowers. Mature capsules can eject seed, but Malaysian users should receive information only rather than invasive-removal instructions.",
+      "identification_note": "Treat the model result as a suggestion. Confirm key features before relying on it.",
+      "risk_flags": [],
+      "actions": null,
+      "spread_prevention": [],
+      "do_not_do": [],
+      "follow_up": [],
+      "general_information_source_ids": [
+        "S42"
+      ]
+    },
+    {
+      "plant_id": "psidium_guajava",
+      "model_label": "Psidium guajava",
+      "scientific_name": "Psidium guajava",
+      "common_names": [
+        "common guava",
+        "jambu batu"
+      ],
+      "malaysia_status": {
+        "category": "non_native",
+        "display_label": "Non-native in Malaysia; local-target approval required",
+        "confidence": "high",
+        "note": "MyBIS does not label common guava nationally invasive. A site manager may still target self-seeded plants in a restoration area.",
+        "source_ids": [
+          "S43"
+        ]
+      },
+      "guidance_mode": "site_manager_confirmation_required",
+      "general_information": "A shrub or small tree with peeling bark, opposite veined leaves and edible fruit. Birds and mammals can move the seed, and cut trees may sucker.",
+      "identification_note": "Treat the model result as a suggestion. Check diagnostic features and obtain site approval before acting.",
+      "risk_flags": [
+        "animal-dispersed fruit",
+        "woody suckering"
+      ],
+      "actions": {
+        "protected_or_permission_unknown": {
+          "title": "Observe and report; do not remove",
+          "eligibility": "Use this path whenever the place may be protected, land ownership is unclear, or explicit permission has not been given.",
+          "steps": [
+            {
+              "text": "Stay on the existing path or stable public access point. Do not enter vegetation or water to reach the plant.",
+              "source_ids": [
+                "S02",
+                "S43",
+                "S15"
+              ]
+            },
+            {
+              "text": "Take clear photos from more than one angle and record GPS coordinates and time without disturbing the plant.",
+              "source_ids": [
+                "S02",
+                "S43",
+                "S15"
+              ]
+            },
+            {
+              "text": "Submit the sighting as unverified and send it to the site manager, park authority or relevant local authority.",
+              "source_ids": [
+                "S01",
+                "S02"
+              ]
+            }
+          ],
+          "stop_conditions": [
+            {
+              "text": "Stop if the plant is flowering or carrying seed, the patch is dense, or safe access is not possible.",
+              "source_ids": [
+                "S43",
+                "S15"
+              ]
+            }
+          ],
+          "disposal": []
+        },
+        "authorised_site": {
+          "title": "Beginner-safe action on an authorised site",
+          "eligibility": "Only a very young self-seeded plant with no fruit and a flexible stem that can be hand-pulled, after the site manager confirms it is a restoration target rather than a planted tree.",
+          "steps": [
+            {
+              "text": "Confirm that the plant is not cultivated, planted or culturally valued at the site.",
+              "source_ids": [
+                "S43"
+              ]
+            },
+            {
+              "text": "Wear gloves and pull the seedling from low on the stem in moist soil, removing the entire root.",
+              "source_ids": [
+                "S04",
+                "S15"
+              ]
+            },
+            {
+              "text": "Bag any fruit found on the ground immediately around the target if the manager authorises its collection.",
+              "source_ids": [
+                "S05",
+                "S15"
+              ]
+            }
+          ],
+          "stop_conditions": [
+            {
+              "text": "Stop if the plant has woody bark, fruit, multiple stems or a root that will not lift easily.",
+              "source_ids": [
+                "S15"
+              ]
+            }
+          ],
+          "disposal": []
+        }
+      },
+      "spread_prevention": [
+        {
+          "text": "Do not move ripe fruit or fruiting branches; animals spread guava seed after eating the fruit.",
+          "source_ids": [
+            "S15"
+          ]
+        },
+        {
+          "text": "Clean fruit pulp and seed from gloves and tools before leaving.",
+          "source_ids": [
+            "S15"
+          ]
+        }
+      ],
+      "do_not_do": [
+        {
+          "text": "Do not cut or saw a shrub or tree; cutting can stimulate suckers and requires planned follow-up.",
+          "source_ids": [
+            "S15"
+          ]
+        },
+        {
+          "text": "Do not remove planted or fruiting trees without written site approval.",
+          "source_ids": [
+            "S43"
+          ]
+        }
+      ],
+      "follow_up": [
+        {
+          "text": "Recheck a removed seedling after 4–6 weeks and ask the manager to monitor beneath fruiting trees for new seedlings.",
+          "source_ids": [
+            "S15"
+          ]
+        }
+      ],
+      "general_information_source_ids": [
+        "S43"
+      ]
+    },
+    {
+      "plant_id": "asclepias_curassavica",
+      "model_label": "Asclepias curassavica",
+      "scientific_name": "Asclepias curassavica",
+      "common_names": [
+        "tropical milkweed",
+        "bloodflower"
+      ],
+      "malaysia_status": {
+        "category": "introduced",
+        "display_label": "Introduced in Malaysia; local-target approval required",
+        "confidence": "high",
+        "note": "MyBIS records it as introduced, not nationally invasive. It may also be deliberately grown for butterflies.",
+        "source_ids": [
+          "S44"
+        ]
+      },
+      "guidance_mode": "site_manager_confirmation_required",
+      "general_information": "An upright herb with red-and-orange flowers and narrow opposite leaves. Broken tissue releases milky sap that can irritate skin and eyes; the plant may be deliberately cultivated.",
+      "identification_note": "Treat the model result as a suggestion. Check diagnostic features and obtain site approval before acting.",
+      "risk_flags": [
+        "irritant milky sap",
+        "toxic if ingested",
+        "wind-borne seed"
+      ],
+      "actions": {
+        "protected_or_permission_unknown": {
+          "title": "Observe and report; do not remove",
+          "eligibility": "Use this path whenever the place may be protected, land ownership is unclear, or explicit permission has not been given.",
+          "steps": [
+            {
+              "text": "Stay on the existing path or stable public access point. Do not enter vegetation or water to reach the plant.",
+              "source_ids": [
+                "S02",
+                "S44",
+                "S16",
+                "S17"
+              ]
+            },
+            {
+              "text": "Take clear photos from more than one angle and record GPS coordinates and time without disturbing the plant.",
+              "source_ids": [
+                "S02",
+                "S44",
+                "S16",
+                "S17"
+              ]
+            },
+            {
+              "text": "Submit the sighting as unverified and send it to the site manager, park authority or relevant local authority.",
+              "source_ids": [
+                "S01",
+                "S02"
+              ]
+            }
+          ],
+          "stop_conditions": [
+            {
+              "text": "Stop if the plant is flowering or carrying seed, the patch is dense, or safe access is not possible.",
+              "source_ids": [
+                "S44",
+                "S16",
+                "S17"
+              ]
+            }
+          ],
+          "disposal": []
+        },
+        "authorised_site": {
+          "title": "Beginner-safe action on an authorised site",
+          "eligibility": "Only a small, isolated plant explicitly designated for removal by the site manager, away from children and pets, with intact gloves and eye protection available.",
+          "steps": [
+            {
+              "text": "Confirm it is not part of a planted butterfly garden or restoration planting.",
+              "source_ids": [
+                "S44"
+              ]
+            },
+            {
+              "text": "Wear waterproof gloves and eye protection; avoid touching the face. Bag mature pods before handling the stem.",
+              "source_ids": [
+                "S05",
+                "S16"
+              ]
+            },
+            {
+              "text": "Pull from low on the stem in moist soil and keep the plant intact, then seal it in a bag.",
+              "source_ids": [
+                "S04",
+                "S17"
+              ]
+            },
+            {
+              "text": "Wash hands and exposed skin after removing gloves.",
+              "source_ids": [
+                "S16"
+              ]
+            }
+          ],
+          "stop_conditions": [
+            {
+              "text": "Stop if there are many plants, open seed pods, damaged stems leaking sap, or uncertainty that it was planted.",
+              "source_ids": [
+                "S16",
+                "S17"
+              ]
+            }
+          ],
+          "disposal": []
+        }
+      },
+      "spread_prevention": [
+        {
+          "text": "Do not open seed pods; the seeds carry silky hairs that aid wind dispersal.",
+          "source_ids": [
+            "S17"
+          ]
+        },
+        {
+          "text": "Keep bagged pods and stems closed during transport.",
+          "source_ids": [
+            "S17"
+          ]
+        }
+      ],
+      "do_not_do": [
+        {
+          "text": "Do not act if gloves or eye protection are unavailable, or if sap contacts the skin or eyes.",
+          "source_ids": [
+            "S16"
+          ]
+        },
+        {
+          "text": "Do not ingest any part or allow children or pets to handle it.",
+          "source_ids": [
+            "S16"
+          ]
+        }
+      ],
+      "follow_up": [
+        {
+          "text": "Recheck after 4 weeks for seedlings, but do not disturb a planted site without renewed approval.",
+          "source_ids": [
+            "S17"
+          ]
+        }
+      ],
+      "general_information_source_ids": [
+        "S44"
+      ]
+    },
+    {
+      "plant_id": "megathyrsus_maximus",
+      "model_label": "Megathyrsus maximus",
+      "scientific_name": "Megathyrsus maximus",
+      "common_names": [
+        "Guinea grass",
+        "buffalo grass",
+        "syn. Panicum maximum"
+      ],
+      "malaysia_status": {
+        "category": "status_unresolved",
+        "display_label": "Malaysian weed; national IAS status not confirmed",
+        "confidence": "medium",
+        "note": "Malaysian research records it as a common weed, but the evidence set does not establish a national invasive designation. Removal therefore requires a site-specific target decision.",
+        "source_ids": [
+          "S18",
+          "S19"
+        ]
+      },
+      "guidance_mode": "site_manager_confirmation_required",
+      "general_information": "A tall clumping grass with broad leaves and a large open seed head. Dense dry stands can add fuel to fire and the plant produces many wind- or animal-moved seeds.",
+      "identification_note": "Treat the model result as a suggestion. Check diagnostic features and obtain site approval before acting.",
+      "risk_flags": [
+        "sharp leaves",
+        "large seed crop",
+        "dry-grass fire risk"
+      ],
+      "actions": {
+        "protected_or_permission_unknown": {
+          "title": "Observe and report; do not remove",
+          "eligibility": "Use this path whenever the place may be protected, land ownership is unclear, or explicit permission has not been given.",
+          "steps": [
+            {
+              "text": "Stay on the existing path or stable public access point. Do not enter vegetation or water to reach the plant.",
+              "source_ids": [
+                "S02",
+                "S18",
+                "S19"
+              ]
+            },
+            {
+              "text": "Take clear photos from more than one angle and record GPS coordinates and time without disturbing the plant.",
+              "source_ids": [
+                "S02",
+                "S18",
+                "S19"
+              ]
+            },
+            {
+              "text": "Submit the sighting as unverified and send it to the site manager, park authority or relevant local authority.",
+              "source_ids": [
+                "S01",
+                "S02"
+              ]
+            }
+          ],
+          "stop_conditions": [
+            {
+              "text": "Stop if the plant is flowering or carrying seed, the patch is dense, or safe access is not possible.",
+              "source_ids": [
+                "S18",
+                "S19"
+              ]
+            }
+          ],
+          "disposal": []
+        },
+        "authorised_site": {
+          "title": "Beginner-safe action on an authorised site",
+          "eligibility": "Only one small, green, isolated clump before seed maturity, with site approval, hand tools and a route that does not pass through dry dense grass.",
+          "steps": [
+            {
+              "text": "Wear gloves, long sleeves and eye protection. If a seed head is developing, bag and cut only the seed head first.",
+              "source_ids": [
+                "S05",
+                "S18"
+              ]
+            },
+            {
+              "text": "Use a hand trowel to loosen moist soil and lift the whole crown and root clump without scattering soil.",
+              "source_ids": [
+                "S04",
+                "S18"
+              ]
+            },
+            {
+              "text": "Bag the crown and any seed heads; follow the manager's green-waste instructions for leaf material.",
+              "source_ids": [
+                "S05",
+                "S18"
+              ]
+            }
+          ],
+          "stop_conditions": [
+            {
+              "text": "Stop if the stand is dry, taller than the user, densely seeded, or too large for one bag.",
+              "source_ids": [
+                "S18"
+              ]
+            }
+          ],
+          "disposal": []
+        }
+      },
+      "spread_prevention": [
+        {
+          "text": "Keep seed heads contained and brush seeds from clothes, tools and bags before leaving.",
+          "source_ids": [
+            "S18"
+          ]
+        },
+        {
+          "text": "Do not transport an unbagged flowering or seeding clump.",
+          "source_ids": [
+            "S18"
+          ]
+        }
+      ],
+      "do_not_do": [
+        {
+          "text": "Do not burn dry grass or work in a dense dry stand.",
+          "source_ids": [
+            "S18"
+          ]
+        },
+        {
+          "text": "Do not attempt mature clumps requiring a powered cutter or heavy digging.",
+          "source_ids": [
+            "S18"
+          ]
+        }
+      ],
+      "follow_up": [
+        {
+          "text": "Recheck after 4–6 weeks for shoots from crown pieces and for new seedlings after rain.",
+          "source_ids": [
+            "S18"
+          ]
+        }
+      ],
+      "general_information_source_ids": [
+        "S18",
+        "S19"
+      ]
+    },
+    {
+      "plant_id": "mimosa_diplotricha",
+      "model_label": "Mimosa diplotricha",
+      "scientific_name": "Mimosa diplotricha",
+      "common_names": [
+        "giant sensitive plant",
+        "creeping sensitive plant"
+      ],
+      "malaysia_status": {
+        "category": "invasive",
+        "display_label": "Invasive in Malaysia",
+        "confidence": "high",
+        "note": "MyBIS identifies it as invasive.",
+        "source_ids": [
+          "S46",
+          "S01"
+        ]
+      },
+      "guidance_mode": "active_guidance",
+      "general_information": "A scrambling sensitive plant with hooked prickles, twice-divided leaves and pink flower balls. Its seeds can remain dormant and spread in soil, water and on equipment.",
+      "identification_note": "Treat the model result as a suggestion. Check diagnostic features and obtain site approval before acting.",
+      "risk_flags": [
+        "hooked prickles",
+        "persistent seed",
+        "contaminated soil"
+      ],
+      "actions": {
+        "protected_or_permission_unknown": {
+          "title": "Observe and report; do not remove",
+          "eligibility": "Use this path whenever the place may be protected, land ownership is unclear, or explicit permission has not been given.",
+          "steps": [
+            {
+              "text": "Stay on the existing path or stable public access point. Do not enter vegetation or water to reach the plant.",
+              "source_ids": [
+                "S02",
+                "S46",
+                "S10"
+              ]
+            },
+            {
+              "text": "Take clear photos from more than one angle and record GPS coordinates and time without disturbing the plant.",
+              "source_ids": [
+                "S02",
+                "S46",
+                "S10"
+              ]
+            },
+            {
+              "text": "Submit the sighting as unverified and send it to the site manager, park authority or relevant local authority.",
+              "source_ids": [
+                "S01",
+                "S02"
+              ]
+            }
+          ],
+          "stop_conditions": [
+            {
+              "text": "Stop if the plant is flowering or carrying seed, the patch is dense, or safe access is not possible.",
+              "source_ids": [
+                "S46",
+                "S10"
+              ]
+            }
+          ],
+          "disposal": []
+        },
+        "authorised_site": {
+          "title": "Beginner-safe action on an authorised site",
+          "eligibility": "Only a tiny isolated seedling before flowering or pod formation, reachable without entering a thicket, and with site permission.",
+          "steps": [
+            {
+              "text": "Wear thick gloves, long sleeves, long trousers and closed shoes because the stems carry hooked prickles.",
+              "source_ids": [
+                "S10"
+              ]
+            },
+            {
+              "text": "When soil is moist, grip the seedling low using gloved hands and pull out the whole root.",
+              "source_ids": [
+                "S04",
+                "S10"
+              ]
+            },
+            {
+              "text": "Place it directly into a strong bag so prickles and any unnoticed seed do not catch on clothing.",
+              "source_ids": [
+                "S10"
+              ]
+            }
+          ],
+          "stop_conditions": [
+            {
+              "text": "Stop if there are flowers, pods, multiple intertwined stems or a patch larger than one isolated seedling.",
+              "source_ids": [
+                "S10"
+              ]
+            }
+          ],
+          "disposal": []
+        }
+      },
+      "spread_prevention": [
+        {
+          "text": "Do not move soil from the plant's base; seed can spread with soil, water, vehicles and machinery.",
+          "source_ids": [
+            "S10"
+          ]
+        },
+        {
+          "text": "Inspect clothing, laces, gloves, tools and bags for prickles or pods before leaving.",
+          "source_ids": [
+            "S10"
+          ]
+        }
+      ],
+      "do_not_do": [
+        {
+          "text": "Do not enter or pull a tangled patch and do not slash a seeding plant.",
+          "source_ids": [
+            "S10"
+          ]
+        },
+        {
+          "text": "Do not handle it with bare hands.",
+          "source_ids": [
+            "S10"
+          ]
+        }
+      ],
+      "follow_up": [
+        {
+          "text": "Recheck after 3–4 weeks and after heavy rain because dormant seed may produce new seedlings.",
+          "source_ids": [
+            "S10"
+          ]
+        }
+      ],
+      "general_information_source_ids": [
+        "S46",
+        "S01"
+      ]
+    },
+    {
+      "plant_id": "mimosa_pigra",
+      "model_label": "Mimosa pigra",
+      "scientific_name": "Mimosa pigra",
+      "common_names": [
+        "mimosa",
+        "giant sensitive tree"
+      ],
+      "malaysia_status": {
+        "category": "invasive",
+        "display_label": "Invasive in Malaysia",
+        "confidence": "high",
+        "note": "MyBIS and Malaysia's IAS materials identify it as invasive.",
+        "source_ids": [
+          "S47",
+          "S01",
+          "S02"
+        ]
+      },
+      "guidance_mode": "report_only",
+      "general_information": "A large thorny shrub forming dense wetland thickets. Seed can move in floodwater, mud, vehicles, boats, machinery and clothing.",
+      "identification_note": "Treat the model result as a suggestion. Check diagnostic features and obtain site approval before acting.",
+      "risk_flags": [
+        "large thorns",
+        "dense thickets",
+        "water-edge hazard",
+        "persistent seed"
+      ],
+      "actions": {
+        "protected_or_permission_unknown": {
+          "title": "Observe and report; do not remove",
+          "eligibility": "Use this path whenever the place may be protected, land ownership is unclear, or explicit permission has not been given.",
+          "steps": [
+            {
+              "text": "Stay on the existing path or stable public access point. Do not enter vegetation or water to reach the plant.",
+              "source_ids": [
+                "S02",
+                "S47",
+                "S09"
+              ]
+            },
+            {
+              "text": "Take clear photos from more than one angle and record GPS coordinates and time without disturbing the plant.",
+              "source_ids": [
+                "S02",
+                "S47",
+                "S09"
+              ]
+            },
+            {
+              "text": "Submit the sighting as unverified and send it to the site manager, park authority or relevant local authority.",
+              "source_ids": [
+                "S01",
+                "S02"
+              ]
+            }
+          ],
+          "stop_conditions": [
+            {
+              "text": "Stop if the plant is flowering or carrying seed, the patch is dense, or safe access is not possible.",
+              "source_ids": [
+                "S47",
+                "S09"
+              ]
+            }
+          ],
+          "disposal": []
+        },
+        "authorised_site": {
+          "title": "Beginner-safe action on an authorised site",
+          "eligibility": "No beginner active action is released for this species, even on an authorised site. The risk of thorns, inaccessible thickets and seed spread requires a trained team.",
+          "steps": [
+            {
+              "text": "Mark the point from a safe distance, photograph the plant and send the report to the authorised coordinator.",
+              "source_ids": [
+                "S09"
+              ]
+            }
+          ],
+          "stop_conditions": [
+            {
+              "text": "Always stop at observation and reporting; there is no public removal workflow for this class.",
+              "source_ids": [
+                "S09"
+              ]
+            }
+          ],
+          "disposal": []
+        }
+      },
+      "spread_prevention": [
+        {
+          "text": "Avoid walking or driving through a patch; seed can move in mud and on vehicles, boats, machinery and clothing.",
+          "source_ids": [
+            "S09"
+          ]
+        },
+        {
+          "text": "Clean any mud from footwear or equipment at the approved cleaning point before visiting another wetland.",
+          "source_ids": [
+            "S09"
+          ]
+        }
+      ],
+      "do_not_do": [
+        {
+          "text": "Do not cut, pull, enter or burn the thicket.",
+          "source_ids": [
+            "S09"
+          ]
+        },
+        {
+          "text": "Do not collect pods or carry branches as samples.",
+          "source_ids": [
+            "S09"
+          ]
+        }
+      ],
+      "follow_up": [
+        {
+          "text": "A coordinator should schedule expert assessment and repeat photographs from the same safe point.",
+          "source_ids": [
+            "S09"
+          ]
+        }
+      ],
+      "general_information_source_ids": [
+        "S47",
+        "S01",
+        "S02"
+      ]
+    },
+    {
+      "plant_id": "alternanthera_philoxeroides",
+      "model_label": "Alternanthera philoxeroides",
+      "scientific_name": "Alternanthera philoxeroides",
+      "common_names": [
+        "alligator weed"
+      ],
+      "malaysia_status": {
+        "category": "invasive",
+        "display_label": "Invasive/early-detection priority in current Malaysian material",
+        "confidence": "medium",
+        "note": "The 2025 factsheet and MyBIS treat it as invasive, while the earlier national action plan recorded it as not present. Preserve the location and report rather than allowing public removal.",
+        "source_ids": [
+          "S01",
+          "S02",
+          "S48"
+        ]
+      },
+      "guidance_mode": "report_only",
+      "general_information": "A mat-forming aquatic or semi-aquatic herb with hollow stems, opposite leaves and small white papery flower heads. Very small stem or root fragments can start new growth.",
+      "identification_note": "Treat the model result as a suggestion. Check diagnostic features and obtain site approval before acting.",
+      "risk_flags": [
+        "extreme fragment spread",
+        "water-edge hazard",
+        "early-detection priority"
+      ],
+      "actions": {
+        "protected_or_permission_unknown": {
+          "title": "Observe and report; do not remove",
+          "eligibility": "Use this path whenever the place may be protected, land ownership is unclear, or explicit permission has not been given.",
+          "steps": [
+            {
+              "text": "Stay on the existing path or stable public access point. Do not enter vegetation or water to reach the plant.",
+              "source_ids": [
+                "S02",
+                "S01",
+                "S48",
+                "S12"
+              ]
+            },
+            {
+              "text": "Take clear photos from more than one angle and record GPS coordinates and time without disturbing the plant.",
+              "source_ids": [
+                "S02",
+                "S01",
+                "S48",
+                "S12"
+              ]
+            },
+            {
+              "text": "Submit the sighting as unverified and send it to the site manager, park authority or relevant local authority.",
+              "source_ids": [
+                "S01",
+                "S02"
+              ]
+            }
+          ],
+          "stop_conditions": [
+            {
+              "text": "Stop if the plant is flowering or carrying seed, the patch is dense, or safe access is not possible.",
+              "source_ids": [
+                "S01",
+                "S02",
+                "S48",
+                "S12"
+              ]
+            }
+          ],
+          "disposal": []
+        },
+        "authorised_site": {
+          "title": "Beginner-safe action on an authorised site",
+          "eligibility": "No beginner active action is released. Even authorised volunteers should preserve the patch for expert confirmation because mechanical disturbance can create many propagules.",
+          "steps": [
+            {
+              "text": "Photograph it from stable ground, record the exact location and alert the site manager or relevant authority promptly.",
+              "source_ids": [
+                "S01",
+                "S12"
+              ]
+            }
+          ],
+          "stop_conditions": [
+            {
+              "text": "Always stop at observation and reporting; mechanical removal is not a beginner workflow.",
+              "source_ids": [
+                "S12"
+              ]
+            }
+          ],
+          "disposal": []
+        }
+      },
+      "spread_prevention": [
+        {
+          "text": "Do not break, carry or float any stem; small fragments can regenerate.",
+          "source_ids": [
+            "S12"
+          ]
+        },
+        {
+          "text": "Avoid moving mud, water or equipment from the patch to another waterbody.",
+          "source_ids": [
+            "S12"
+          ]
+        }
+      ],
+      "do_not_do": [
+        {
+          "text": "Do not hand-pull, mow, slash, rake or enter the water.",
+          "source_ids": [
+            "S12"
+          ]
+        },
+        {
+          "text": "Do not take a physical specimen unless an authorised expert requests and contains it.",
+          "source_ids": [
+            "S12"
+          ]
+        }
+      ],
+      "follow_up": [
+        {
+          "text": "A coordinator should request expert validation and monitor the same point without disturbing it.",
+          "source_ids": [
+            "S01",
+            "S12"
+          ]
+        }
+      ],
+      "general_information_source_ids": [
+        "S01",
+        "S02",
+        "S48"
+      ]
+    },
+    {
+      "plant_id": "parthenium_hysterophorus",
+      "model_label": "Parthenium hysterophorus",
+      "scientific_name": "Parthenium hysterophorus",
+      "common_names": [
+        "parthenium weed",
+        "carrot weed"
+      ],
+      "malaysia_status": {
+        "category": "invasive",
+        "display_label": "Invasive in Malaysia",
+        "confidence": "high",
+        "note": "Malaysia's current IAS factsheet identifies it as invasive.",
+        "source_ids": [
+          "S01",
+          "S02",
+          "S49"
+        ]
+      },
+      "guidance_mode": "report_only",
+      "general_information": "An upright herb with deeply divided leaves and many small white flower heads. Contact and airborne material may trigger dermatitis, hay fever or respiratory symptoms.",
+      "identification_note": "Treat the model result as a suggestion. Check diagnostic features and obtain site approval before acting.",
+      "risk_flags": [
+        "allergic dermatitis",
+        "respiratory irritation",
+        "large seed bank"
+      ],
+      "actions": {
+        "protected_or_permission_unknown": {
+          "title": "Observe and report; do not remove",
+          "eligibility": "Use this path whenever the place may be protected, land ownership is unclear, or explicit permission has not been given.",
+          "steps": [
+            {
+              "text": "Stay on the existing path or stable public access point. Do not enter vegetation or water to reach the plant.",
+              "source_ids": [
+                "S02",
+                "S01",
+                "S08"
+              ]
+            },
+            {
+              "text": "Take clear photos from more than one angle and record GPS coordinates and time without disturbing the plant.",
+              "source_ids": [
+                "S02",
+                "S01",
+                "S08"
+              ]
+            },
+            {
+              "text": "Submit the sighting as unverified and send it to the site manager, park authority or relevant local authority.",
+              "source_ids": [
+                "S01",
+                "S02"
+              ]
+            }
+          ],
+          "stop_conditions": [
+            {
+              "text": "Stop if the plant is flowering or carrying seed, the patch is dense, or safe access is not possible.",
+              "source_ids": [
+                "S01",
+                "S08"
+              ]
+            }
+          ],
+          "disposal": []
+        },
+        "authorised_site": {
+          "title": "Beginner-safe action on an authorised site",
+          "eligibility": "No beginner active action is released, even when the site is authorised. The health risk and risk of dropping mature seed make hand-pulling unsuitable for untrained users.",
+          "steps": [
+            {
+              "text": "Keep a safe distance, avoid touching or sniffing it, photograph it and report the exact location.",
+              "source_ids": [
+                "S08"
+              ]
+            }
+          ],
+          "stop_conditions": [
+            {
+              "text": "Always stop at observation and reporting.",
+              "source_ids": [
+                "S08"
+              ]
+            }
+          ],
+          "disposal": []
+        }
+      },
+      "spread_prevention": [
+        {
+          "text": "Do not brush against flowering plants or carry any part on clothing.",
+          "source_ids": [
+            "S08"
+          ]
+        },
+        {
+          "text": "If accidental contact occurs, leave the area and follow normal medical advice for allergy or breathing symptoms.",
+          "source_ids": [
+            "S08"
+          ]
+        }
+      ],
+      "do_not_do": [
+        {
+          "text": "Do not hand-pull, mow, slash, burn or collect a specimen.",
+          "source_ids": [
+            "S08"
+          ]
+        },
+        {
+          "text": "Do not ask users with asthma, allergies or skin sensitivity to approach it.",
+          "source_ids": [
+            "S08"
+          ]
+        }
+      ],
+      "follow_up": [
+        {
+          "text": "A trained coordinator should arrange confirmation and specialist control; public users should only monitor from a safe point.",
+          "source_ids": [
+            "S01",
+            "S08"
+          ]
+        }
+      ],
+      "general_information_source_ids": [
+        "S01",
+        "S02",
+        "S49"
+      ]
+    },
+    {
+      "plant_id": "ageratina_adenophora",
+      "model_label": "Ageratina adenophora",
+      "scientific_name": "Ageratina adenophora",
+      "common_names": [
+        "crofton weed"
+      ],
+      "malaysia_status": {
+        "category": "invasive_watchlist",
+        "display_label": "Watchlist/early-detection: Malaysian presence sources conflict",
+        "confidence": "medium",
+        "note": "The 2021–2025 plan recorded it in Sabah, while the 2025 factsheet says it is not present in Malaysia. The app should flag it for expert confirmation, not public removal.",
+        "source_ids": [
+          "S01",
+          "S02"
+        ]
+      },
+      "guidance_mode": "report_only",
+      "general_information": "A perennial shrub with opposite serrated leaves and clusters of small white flowers. Its light seed can move in wind, water, soil, footwear and machinery.",
+      "identification_note": "Treat the model result as a suggestion. Check diagnostic features and obtain site approval before acting.",
+      "risk_flags": [
+        "status conflict",
+        "wind-borne seed",
+        "possible toxic effects"
+      ],
+      "actions": {
+        "protected_or_permission_unknown": {
+          "title": "Observe and report; do not remove",
+          "eligibility": "Use this path whenever the place may be protected, land ownership is unclear, or explicit permission has not been given.",
+          "steps": [
+            {
+              "text": "Stay on the existing path or stable public access point. Do not enter vegetation or water to reach the plant.",
+              "source_ids": [
+                "S02",
+                "S01",
+                "S20"
+              ]
+            },
+            {
+              "text": "Take clear photos from more than one angle and record GPS coordinates and time without disturbing the plant.",
+              "source_ids": [
+                "S02",
+                "S01",
+                "S20"
+              ]
+            },
+            {
+              "text": "Submit the sighting as unverified and send it to the site manager, park authority or relevant local authority.",
+              "source_ids": [
+                "S01",
+                "S02"
+              ]
+            }
+          ],
+          "stop_conditions": [
+            {
+              "text": "Stop if the plant is flowering or carrying seed, the patch is dense, or safe access is not possible.",
+              "source_ids": [
+                "S01",
+                "S02",
+                "S20"
+              ]
+            }
+          ],
+          "disposal": []
+        },
+        "authorised_site": {
+          "title": "Beginner-safe action on an authorised site",
+          "eligibility": "No beginner active action is released while national presence information remains inconsistent. Preserve the sighting for expert review.",
+          "steps": [
+            {
+              "text": "Take several photographs without touching the plant, record GPS and time, and escalate the report as a possible early-detection record.",
+              "source_ids": [
+                "S01",
+                "S02",
+                "S20"
+              ]
+            }
+          ],
+          "stop_conditions": [
+            {
+              "text": "Always stop at observation and reporting until an authority resolves the record.",
+              "source_ids": [
+                "S01",
+                "S02"
+              ]
+            }
+          ],
+          "disposal": []
+        }
+      },
+      "spread_prevention": [
+        {
+          "text": "Avoid walking through or cutting a flowering patch because seed spreads by wind and on footwear or machinery.",
+          "source_ids": [
+            "S20"
+          ]
+        },
+        {
+          "text": "Do not move soil or plant material from the site.",
+          "source_ids": [
+            "S20"
+          ]
+        }
+      ],
+      "do_not_do": [
+        {
+          "text": "Do not pull, slash, burn or take a specimen unless an authorised expert directs the collection.",
+          "source_ids": [
+            "S20"
+          ]
+        }
+      ],
+      "follow_up": [
+        {
+          "text": "A coordinator should request botanical confirmation and retain repeat photographs from the same point.",
+          "source_ids": [
+            "S01",
+            "S02"
+          ]
+        }
+      ],
+      "general_information_source_ids": [
+        "S01",
+        "S02"
+      ]
+    },
+    {
+      "plant_id": "sida_acuta",
+      "model_label": "Sida acuta",
+      "scientific_name": "Sida acuta",
+      "common_names": [
+        "common wireweed",
+        "pokok kelulut putih"
+      ],
+      "malaysia_status": {
+        "category": "status_unresolved",
+        "display_label": "Present in Malaysia; national IAS designation not confirmed",
+        "confidence": "medium",
+        "note": "MyBIS and Malaysian herbarium records confirm occurrence, but this evidence set does not establish a national invasive designation. Use only as a local approved target.",
+        "source_ids": [
+          "S51"
+        ]
+      },
+      "guidance_mode": "site_manager_confirmation_required",
+      "general_information": "A tough upright herb or small shrub with toothed leaves, small yellow flowers and dry fruit segments that can catch on clothing and fur.",
+      "identification_note": "Treat the model result as a suggestion. Check diagnostic features and obtain site approval before acting.",
+      "risk_flags": [
+        "barbed seed segments",
+        "tough woody stem"
+      ],
+      "actions": {
+        "protected_or_permission_unknown": {
+          "title": "Observe and report; do not remove",
+          "eligibility": "Use this path whenever the place may be protected, land ownership is unclear, or explicit permission has not been given.",
+          "steps": [
+            {
+              "text": "Stay on the existing path or stable public access point. Do not enter vegetation or water to reach the plant.",
+              "source_ids": [
+                "S02",
+                "S51",
+                "S21",
+                "S22"
+              ]
+            },
+            {
+              "text": "Take clear photos from more than one angle and record GPS coordinates and time without disturbing the plant.",
+              "source_ids": [
+                "S02",
+                "S51",
+                "S21",
+                "S22"
+              ]
+            },
+            {
+              "text": "Submit the sighting as unverified and send it to the site manager, park authority or relevant local authority.",
+              "source_ids": [
+                "S01",
+                "S02"
+              ]
+            }
+          ],
+          "stop_conditions": [
+            {
+              "text": "Stop if the plant is flowering or carrying seed, the patch is dense, or safe access is not possible.",
+              "source_ids": [
+                "S51",
+                "S21",
+                "S22"
+              ]
+            }
+          ],
+          "disposal": []
+        },
+        "authorised_site": {
+          "title": "Beginner-safe action on an authorised site",
+          "eligibility": "Only a small isolated plant explicitly designated by the site manager, before seed segments are shedding, and only if it can be hand-pulled without cutting a woody stem.",
+          "steps": [
+            {
+              "text": "Wear gloves. If dry fruit is present, enclose and bag the fruiting tips before moving the stem.",
+              "source_ids": [
+                "S05",
+                "S22"
+              ]
+            },
+            {
+              "text": "Pull from low on the stem when soil is moist, removing the whole root.",
+              "source_ids": [
+                "S04",
+                "S21"
+              ]
+            },
+            {
+              "text": "Place the plant and every fruit segment into a durable closed bag.",
+              "source_ids": [
+                "S05",
+                "S22"
+              ]
+            }
+          ],
+          "stop_conditions": [
+            {
+              "text": "Stop if fruit is shedding, the stem is woody, or there is more than a small isolated patch.",
+              "source_ids": [
+                "S21",
+                "S22"
+              ]
+            }
+          ],
+          "disposal": []
+        }
+      },
+      "spread_prevention": [
+        {
+          "text": "Inspect clothes, socks, animal fur, tools and muddy footwear because the awned fruit segments can hitchhike.",
+          "source_ids": [
+            "S22"
+          ]
+        },
+        {
+          "text": "Do not move contaminated hay, soil or mud to another site.",
+          "source_ids": [
+            "S22"
+          ]
+        }
+      ],
+      "do_not_do": [
+        {
+          "text": "Do not cut a mature woody plant or slash a seeding patch.",
+          "source_ids": [
+            "S21",
+            "S22"
+          ]
+        },
+        {
+          "text": "Do not remove it without local target confirmation; Malaysia-wide IAS status is unresolved in this dataset.",
+          "source_ids": [
+            "S51"
+          ]
+        }
+      ],
+      "follow_up": [
+        {
+          "text": "Recheck after 4 weeks and after rain for seedlings or regrowth.",
+          "source_ids": [
+            "S21"
+          ]
+        }
+      ],
+      "general_information_source_ids": [
+        "S51"
+      ]
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { PrivateAccessLayout } from '@/features/private-access/components/PrivateAccessLayout'
 import { PrivateAccessButton, PrivateAccessField, PrivateAccessNotice } from '@/features/private-access/components/PrivateAccessControls'
 import { usePrivateAccess } from '@/features/private-access/private-access-store'
@@ -54,10 +54,10 @@ export function RestorePrivateAccessPage() {
   return (
     <PrivateAccessLayout compact>
       <section className="access-form-panel">
-        <a className="access-back-link" href="/private-access">
+        <Link className="access-back-link" to="/private-access">
           <Icon name="ChevronLeft" size={17} />
           <span>Back to private access</span>
-        </a>
+        </Link>
         <h1 ref={headingRef} tabIndex={-1}>Restore existing access</h1>
         <p className="access-form-panel__lead">
           Use the public profile ID and one unused recovery code. This device becomes an additional active installation.
