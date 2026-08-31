@@ -353,6 +353,10 @@ class AdminRoleUpdateRequest(ApiModel):
     reason: Annotated[str, StringConstraints(min_length=5, max_length=500)]
 
 
+class AdminSightingRemoveRequest(ApiModel):
+    reason: Annotated[str, StringConstraints(min_length=10, max_length=500)]
+
+
 class OkResponse(ApiModel):
     ok: Literal[True] = True
 

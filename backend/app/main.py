@@ -67,6 +67,12 @@ def create_app() -> FastAPI:
             response.headers["X-Request-ID"] = request_id
             response.headers["X-Content-Type-Options"] = "nosniff"
             response.headers["Referrer-Policy"] = "no-referrer"
+            # API is JSON-only; block all sub-resource loads if a response
+            # is ever rendered directly in a browser tab.
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
+            )
+            response.headers["X-Frame-Options"] = "DENY"
             if settings.app_env == "production":
                 response.headers["Strict-Transport-Security"] = (
                     "max-age=31536000; includeSubDomains"

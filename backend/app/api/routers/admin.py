@@ -6,11 +6,25 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.schemas import AdminRepairRequest, AdminRoleUpdateRequest, OkResponse
+from app.api.schemas import (
+    AdminRepairRequest,
+    AdminRoleUpdateRequest,
+    AdminSightingRemoveRequest,
+    OkResponse,
+)
 from app.core.errors import ApiProblem, request_id_var
 from app.core.security import AuthContext, require_admin, utcnow
 from app.db.base import get_session
-from app.db.models import AuditEvent, Notification, Profile, Report, VerificationJob
+from app.db.models import (
+    AuditEvent,
+    Notification,
+    Profile,
+    Report,
+    ReportSightingLink,
+    Sighting,
+    VerificationJob,
+)
+from app.services.storage import storage
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
@@ -123,4 +137,60 @@ def update_profile_role(
         )
     )
     session.commit()
+    return OkResponse()
+
+
+@router.post("/sightings/{sighting_id}/remove", response_model=OkResponse)
+def remove_sighting(
+    sighting_id: uuid.UUID,
+    body: AdminSightingRemoveRequest,
+    request: Request,
+    auth: AuthContext = Depends(require_admin),
+    session: Session = Depends(get_session),
+) -> OkResponse:
+    sighting = session.scalar(
+        select(Sighting).where(Sighting.id == sighting_id).with_for_update()
+    )
+    if not sighting:
+        raise ApiProblem(404, "sighting_not_found", "Not found")
+    if sighting.status == "removed":
+        return OkResponse()
+    thumbnail_key = sighting.thumbnail_key
+    sighting.status = "removed"
+    sighting.thumbnail_key = None
+    linked_report_ids = list(
+        session.scalars(
+            select(ReportSightingLink.report_id).where(
+                ReportSightingLink.sighting_id == sighting.id
+            )
+        ).all()
+    )
+    photo_keys: list[str] = []
+    for report_id in linked_report_ids:
+        report = session.scalar(select(Report).where(Report.id == report_id).with_for_update())
+        if report and report.photo_key:
+            photo_keys.append(report.photo_key)
+            report.status = "rejected"
+    session.add(
+        AuditEvent(
+            event_type="sighting.admin_removed",
+            acting_profile_id=auth.profile.id,
+            subject_type="sighting",
+            subject_id=str(sighting.id),
+            request_id=request_id_var.get(),
+            metadata_json={
+                "reason": body.reason,
+                "thumbnail_key": thumbnail_key,
+                "linked_report_ids": [str(r) for r in linked_report_ids],
+            },
+        )
+    )
+    session.commit()
+    for key in [thumbnail_key, *photo_keys]:
+        if not key:
+            continue
+        try:
+            storage.delete(key)
+        except ApiProblem:
+            pass
     return OkResponse()

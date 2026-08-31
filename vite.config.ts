@@ -76,6 +76,24 @@ export default defineConfig({
             handler: 'NetworkOnly',
             method: 'PATCH',
           },
+          {
+            // Cache raster map tiles so the map keeps working offline once a
+            // reporter has panned an area. Bounded per-cache size prevents
+            // unbounded disk use as reporters roam.
+            urlPattern: ({ url }) =>
+              /\.(png|jpg|jpeg|webp|pbf)$/.test(url.pathname) &&
+              (url.hostname.endsWith('tile.openstreetmap.org') ||
+                url.hostname.endsWith('openfreemap.org') ||
+                url.hostname.endsWith('maptiler.com') ||
+                url.hostname.endsWith('stadiamaps.com') ||
+                url.hostname.endsWith('basemaps.cartocdn.com')),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'invatrace-map-tiles',
+              expiration: { maxEntries: 800, maxAgeSeconds: 30 * 24 * 60 * 60 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
         ],
       },
     }),
