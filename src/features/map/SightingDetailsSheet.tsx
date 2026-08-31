@@ -7,6 +7,8 @@ import { useMapView } from '@/features/map/map-view-store'
 import { useDialogA11y } from '@/hooks/useDialogA11y'
 import { fetchNearestOsmFeature } from '@/services/osm-nearest'
 import { PIN_TIERS, pinTier } from '@/features/map/ThreatMapPage'
+import { PlantGuidancePanel } from '@/features/scan/PlantGuidancePanel'
+import { findPlantGuidance } from '@/data/plant-guidance'
 import type { SightingDetail, SightingStatus } from '@/types'
 
 const OSM_FEATURE_LABEL: Record<string, string> = {
@@ -123,9 +125,6 @@ export function SightingDetailsSheet() {
                 </div>
               </header>
 
-              {/* Trimmed to essentials — species/photo above, place + coords + last reported here.
-                  Reporter trust, seasonal action guide, and "recommended action" removed until
-                  coordinator-tier features ship. */}
               <section className="pin-sheet__record" aria-labelledby="sighting-record-heading">
                 <h3 id="sighting-record-heading">Sighting record</h3>
                 <dl>
@@ -147,6 +146,17 @@ export function SightingDetailsSheet() {
                   <MetaRow icon="Clock" label="Last reported" value={formatTime(data.lastReportedAt)} />
                 </dl>
               </section>
+
+              {/* Mirror the scan-result page: same plant reference photo,
+                  short description, and the dynamic permission-aware
+                  guidance panel so a map viewer gets identical decision
+                  support to someone who just captured the plant. */}
+              <PlantInfoBlock latinName={data.latinName} speciesName={data.speciesName} />
+              <PlantGuidancePanel
+                scientificName={data.latinName}
+                speciesName={data.speciesName}
+                plantId={data.speciesId}
+              />
             </>
           )}
         </div>
@@ -164,6 +174,51 @@ export function SightingDetailsSheet() {
       </aside>
     </>,
     document.body,
+  )
+}
+
+/** Reference photo + one-sentence description, pulled from the bundled
+ *  guidance dataset. Renders nothing when the species has no reviewed record. */
+function PlantInfoBlock({ latinName, speciesName }: { latinName: string; speciesName: string }) {
+  const guidance = findPlantGuidance({
+    scientificName: latinName,
+    modelLabel: speciesName,
+    plantId: null,
+  })
+  if (!guidance) return null
+  const firstSentence = guidance.general_information.match(/^.*?[.!?](?=\s|$)/)?.[0]
+    ?? guidance.general_information
+  return (
+    <section
+      aria-label="About this plant"
+      style={{
+        marginTop: 16,
+        padding: 12,
+        borderRadius: 'var(--r-card)',
+        background: 'var(--bg-alt)',
+        border: '1px solid var(--border)',
+      }}
+    >
+      {guidance.reference_image && (
+        <figure style={{ margin: 0 }}>
+          <img
+            src={guidance.reference_image}
+            alt={`Reference photo of ${latinName}`}
+            loading="lazy"
+            style={{
+              width: '100%', maxHeight: 220, objectFit: 'cover',
+              borderRadius: 'var(--r-input)', display: 'block',
+            }}
+          />
+          <figcaption style={{ marginTop: 4, fontSize: 10.5, color: 'var(--muted)' }}>
+            Reference photo · {guidance.reference_image_credit ?? 'Wikimedia'}
+          </figcaption>
+        </figure>
+      )}
+      <p style={{ marginTop: 10, fontSize: 13, color: 'var(--body)', lineHeight: 1.55 }}>
+        {firstSentence}
+      </p>
+    </section>
   )
 }
 

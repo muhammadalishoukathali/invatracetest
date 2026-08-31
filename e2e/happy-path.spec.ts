@@ -401,7 +401,7 @@ test('restoration adds an installation, consumes codes once, rotates batches, an
   await page.goto('/access')
   await expect(page.getByRole('heading', { name: 'Private access', level: 1 })).toBeVisible()
   await expect(page.locator('.installation-list > li')).toHaveCount(2)
-  await expect(page.getByText('This installation')).toBeVisible()
+  await expect(page.getByText('Current', { exact: true })).toBeVisible()
 
   const indistinguishable = await page.evaluate(async ({ profileId, usedCode }) => {
     const token = () => {

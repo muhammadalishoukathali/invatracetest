@@ -12,7 +12,7 @@ import './app-shell.css'
 
 const TITLES: Record<string, [string, string]> = {
   '/map': ['Live threat map', 'Bukit Kiara · updated 2 hours ago'],
-  '/access': ['Private access', 'Recovery codes and authorized installations'],
+  '/access': ['Private access', 'Recovery codes and devices'],
 }
 
 export function AppShell() {
@@ -29,6 +29,7 @@ export function AppShell() {
     NAV.find((n) => n.path === pathname)?.full ?? 'InvaTrace', '',
   ]
   const pageFillsAvailableSpace = pathname === '/map'
+  const showBottomTabs = !isDesktop && pathname === '/map'
 
   return (
     <div style={{ display: 'flex', flexDirection: isDesktop ? 'row' : 'column',
@@ -67,7 +68,11 @@ export function AppShell() {
           overflow: pageFillsAvailableSpace ? 'hidden' : 'auto',
           padding: pageFillsAvailableSpace ? 0 : (isDesktop ? 26 : 16),
           /* Scrollable mobile pages need room for the floating navigation island. */
-          paddingBottom: pageFillsAvailableSpace ? 0 : (isDesktop ? 26 : 'var(--mobile-nav-clearance)'),
+          paddingBottom: pageFillsAvailableSpace
+            ? 0
+            : isDesktop
+              ? 26
+              : showBottomTabs ? 'var(--mobile-nav-clearance)' : 24,
         }}>
           <ErrorBoundary>
             <Outlet />
@@ -75,7 +80,8 @@ export function AppShell() {
         </main>
       </div>
 
-      {!isDesktop && <BottomTabs role={profile.role} />}
+      {/* The scan FAB is a map-context action, so hide it on other pages. */}
+      {showBottomTabs && <BottomTabs role={profile.role} />}
     </div>
   )
 }

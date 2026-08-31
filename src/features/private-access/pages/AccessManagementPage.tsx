@@ -18,7 +18,7 @@ function approximateDate(value: string): string {
 }
 
 function installationLabel(item: AuthorizedInstallation): string {
-  return item.current ? 'This installation' : `Installation added ${approximateDate(item.createdAt)}`
+  return item.current ? 'This device' : `Device added ${approximateDate(item.createdAt)}`
 }
 
 export function AccessManagementPage() {
@@ -43,7 +43,7 @@ export function AccessManagementPage() {
       setOverview(await api<AccessOverview>('/api/v1/profiles/me/access'))
       setError(null)
     } catch {
-      setError('Access details could not be loaded. Try again when the connection is stable.')
+      setError('Could not load access details. Try again once you have a stable connection.')
     } finally {
       setLoading(false)
     }
@@ -77,7 +77,7 @@ export function AccessManagementPage() {
       setReplacement(batch)
       setConfirmRotate(false)
       await load()
-      setMessage('Replacement codes generated. Every unused older code is now invalid.')
+      setMessage('New codes generated. Older unused codes no longer work.')
     } catch {
       setError('Replacement codes could not be generated. Your current unused codes remain unchanged.')
     } finally { setBusy(null) }
@@ -89,7 +89,7 @@ export function AccessManagementPage() {
       await api<void>(`/api/v1/profiles/me/installations/${encodeURIComponent(installationId)}/revoke`, { method: 'POST' })
       setConfirmRevoke(null)
       await load()
-      setMessage('Installation revoked. It can no longer bootstrap this profile.')
+      setMessage('Device revoked. It can no longer restore this profile.')
     } catch {
       setError('That installation could not be revoked. Refresh the list and try again.')
     } finally { setBusy(null) }
@@ -108,37 +108,40 @@ export function AccessManagementPage() {
         </span>
         <div className="access-profile-summary__identity">
           <h2 ref={headingRef} tabIndex={-1}>{profile.displayName ?? 'Local reporter'}</h2>
-          <p>{profile.role} · {profile.trustLevel} trust</p>
+          <p>
+            <span className="access-role-chip">{profile.role}</span>
+            <span className="access-trust-chip">{profile.trustLevel} trust</span>
+          </p>
         </div>
         <p className="access-profile-summary__description">
-          This pseudonymous profile connects your field reports across authorized installations.
+          Pseudonymous profile that links your field reports across devices.
         </p>
       </header>
 
-      {!online && <PrivateAccessNotice tone="warning" title="Access management is offline">Reconnect to update recovery codes, your display name, or installations.</PrivateAccessNotice>}
-      {error && <PrivateAccessNotice tone="error" title="Access management needs attention" live>{error}</PrivateAccessNotice>}
-      {message && <PrivateAccessNotice tone="success" title="Access updated" live>{message}</PrivateAccessNotice>}
+      {!online && <PrivateAccessNotice tone="warning" title="You are offline">Reconnect to change recovery codes, your display name, or devices.</PrivateAccessNotice>}
+      {error && <PrivateAccessNotice tone="error" title="Something went wrong" live>{error}</PrivateAccessNotice>}
+      {message && <PrivateAccessNotice tone="success" title="Saved" live>{message}</PrivateAccessNotice>}
 
       <section className="access-management__section" aria-labelledby="profile-access-heading">
-        <div className="section-heading-row"><div><h3 id="profile-access-heading">Profile access</h3><p>Your ID is public. It cannot restore access without a recovery code.</p></div></div>
+        <div className="section-heading-row"><div><h3 id="profile-access-heading">Profile access</h3><p>Your ID is public. Sharing it alone cannot restore access.</p></div></div>
         <div className="profile-id-row">
           <div><span>Public profile ID</span><code>{profileId}</code></div>
           <PrivateAccessButton kind="quiet" icon="Copy" onClick={() => void copy(profileId, 'Public profile ID copied.')}>Copy ID</PrivateAccessButton>
         </div>
         <div className="access-name-editor">
-          <PrivateAccessField id="access-display-name" label="Display name" hint="Optional. Shown with your reports and editable at any time." value={displayName} maxLength={80} onChange={(event) => setDisplayName(event.target.value)} />
+          <PrivateAccessField id="access-display-name" label="Display name" hint="Optional. Shown with your reports." value={displayName} maxLength={80} onChange={(event) => setDisplayName(event.target.value)} />
           <PrivateAccessButton kind="secondary" onClick={() => void saveName()} disabled={!online || busy === 'name' || displayName === savedDisplayName}>{busy === 'name' ? 'Saving…' : 'Save name'}</PrivateAccessButton>
         </div>
       </section>
 
       <section className="access-management__section" aria-labelledby="recovery-access-heading">
-        <div className="section-heading-row"><div><h3 id="recovery-access-heading">Recovery codes</h3><p>Each code restores this profile once on a new installation.</p></div></div>
+        <div className="section-heading-row"><div><h3 id="recovery-access-heading">Recovery codes</h3><p>One code restores this profile on a new device. Each code works once.</p></div></div>
         {replacement && replacementInput ? (
           <div className="replacement-batch">
-            <PrivateAccessNotice tone="warning" title="Save this replacement batch now">These codes stay in memory only until you leave this page.</PrivateAccessNotice>
+            <PrivateAccessNotice tone="warning" title="Save these codes now">They stay in memory only until you leave this page.</PrivateAccessNotice>
             <RecoveryCodeGrid codes={replacement.recoveryCodes} />
             <div className="recovery-kit-actions">
-              <PrivateAccessButton kind="secondary" icon="Copy" onClick={() => void copy(recoveryKitText(replacementInput), 'Replacement recovery information copied.')}>Copy recovery information</PrivateAccessButton>
+              <PrivateAccessButton kind="secondary" icon="Copy" onClick={() => void copy(recoveryKitText(replacementInput), 'Recovery codes copied.')}>Copy recovery information</PrivateAccessButton>
               <PrivateAccessButton kind="secondary" icon="Download" onClick={() => downloadRecoveryKit(replacementInput)}>Download recovery kit</PrivateAccessButton>
               <PrivateAccessButton kind="quiet" onClick={() => setReplacement(null)}>I have saved these codes</PrivateAccessButton>
             </div>
@@ -146,7 +149,7 @@ export function AccessManagementPage() {
         ) : confirmRotate ? (
           <div className="destructive-confirmation">
             <Icon name="AlertTriangle" size={22} color="var(--amber-text)" />
-            <div><strong>Replace every unused recovery code?</strong><p>Older unused codes will stop working immediately.</p></div>
+            <div><strong>Replace all unused codes?</strong><p>Older unused codes stop working the moment new ones are issued.</p></div>
             <div><PrivateAccessButton kind="danger" onClick={() => void rotate()} disabled={busy === 'rotate'}>{busy === 'rotate' ? 'Replacing…' : 'Replace codes'}</PrivateAccessButton><PrivateAccessButton kind="quiet" onClick={() => setConfirmRotate(false)}>Cancel</PrivateAccessButton></div>
           </div>
         ) : (
@@ -154,7 +157,7 @@ export function AccessManagementPage() {
             <span className="recovery-status-row__icon" aria-hidden><Icon name="KeyRound" size={20} /></span>
             <div>
               <strong>{loading ? 'Checking recovery codes…' : `${overview?.unusedRecoveryCodeCount ?? 0} unused code${overview?.unusedRecoveryCodeCount === 1 ? '' : 's'}`}</strong>
-              <p>{loading ? 'This should only take a moment.' : 'Keep at least one code somewhere separate from this device.'}</p>
+              <p>{loading ? 'One moment…' : 'Keep at least one code stored off this device.'}</p>
             </div>
             <PrivateAccessButton kind="secondary" icon="RefreshCw" onClick={() => setConfirmRotate(true)} disabled={!online || loading}>Replace codes</PrivateAccessButton>
           </div>
@@ -162,10 +165,10 @@ export function AccessManagementPage() {
       </section>
 
       <section className="access-management__section" aria-labelledby="installations-heading">
-        <div className="section-heading-row"><div><h3 id="installations-heading">Active installations</h3><p>Restoring adds a device. It does not revoke an earlier installation.</p></div></div>
-        {loading ? <p className="access-muted" aria-live="polite">Loading installations…</p> : (
+        <div className="section-heading-row"><div><h3 id="installations-heading">Active devices</h3><p>Restoring adds a device without removing the old ones.</p></div></div>
+        {loading ? <p className="access-muted" aria-live="polite">Loading devices…</p> : (
           <ul className="installation-list">
-            {activeInstallations.length === 0 && <li className="installation-list__empty">No active installations were found.</li>}
+            {activeInstallations.length === 0 && <li className="installation-list__empty">No active devices.</li>}
             {activeInstallations.map((item) => (
               <li key={item.id}>
                 <span className="installation-icon"><Icon name="Smartphone" size={19} /></span>
@@ -181,7 +184,7 @@ export function AccessManagementPage() {
 
       <div className="access-loss-warning">
         <Icon name="AlertTriangle" size={18} />
-        <p>If every installation is lost or revoked and no unused recovery code remains, this profile cannot be recovered.</p>
+        <p>Lose every device and every recovery code and this profile is gone for good.</p>
       </div>
     </div>
   )
