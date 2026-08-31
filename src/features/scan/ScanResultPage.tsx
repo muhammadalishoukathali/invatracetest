@@ -441,22 +441,13 @@ function Section({ title, icon, children }: { title: string; icon?: string; chil
 }
 
 function ModelInfo({ version }: { version: string }) {
+  // Written as a single caption, not a label:value admin row. Prevents the
+  // "data-field output" feel the earlier bordered card had.
   return (
-    <div style={{
-      marginTop: 20, padding: '10px 14px', borderRadius: 'var(--r-input)',
-      background: 'var(--bg-alt)', border: '1px solid var(--border)',
+    <p style={{
+      marginTop: 16, fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.55,
     }}>
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      }}>
-        <span style={{ fontSize: 11, color: 'var(--muted)' }}>InvaTrace model</span>
-        <span className="mono" style={{ fontSize: 12, fontWeight: 500, color: 'var(--body)' }}>
-          {version}
-        </span>
-      </div>
-      <p style={{ marginTop: 6, fontSize: 11, color: 'var(--muted)', lineHeight: 1.5 }}>
-        Automated identification. Check the plant in person before acting on it.
-      </p>
-    </div>
+      Identified by the InvaTrace model ({version}). Check the plant in person before acting on it.
+    </p>
   )
 }

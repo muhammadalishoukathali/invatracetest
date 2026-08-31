@@ -96,16 +96,9 @@ export function ReportPreviewStep() {
         )}
       </Card>
 
-      <div style={{
-        padding: '10px 14px', borderRadius: 'var(--r-input)',
-        background: 'var(--bg-alt)', border: '1px solid var(--border)',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      }}>
-        <span style={{ fontSize: 11, color: 'var(--muted)' }}>Model version</span>
-        <span className="mono" style={{ fontSize: 12, fontWeight: 500 }}>
-          {draft.modelVersion}
-        </span>
-      </div>
+      <p style={{ fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.55, marginTop: 4 }}>
+        InvaTrace model {draft.modelVersion}
+      </p>
 
       <ReportNextButton
         disabled={!canSubmit}

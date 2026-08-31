@@ -579,7 +579,7 @@ test('private detector can scan, analyse, and submit', async ({ page, context })
 
   await expect(page.getByRole('heading', { name: 'Report submitted' }))
     .toBeVisible({ timeout: 8000 })
-  await expect(page.getByText('Tracking ID')).toBeVisible()
+  await expect(page.getByText(/Reference:/i)).toBeVisible()
   await page.getByRole('button', { name: 'View screening status' }).click()
   await expect(page.getByRole('heading', { name: 'Report published' }))
     .toBeVisible({ timeout: 7000 })

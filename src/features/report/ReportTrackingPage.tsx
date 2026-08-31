@@ -72,7 +72,7 @@ export function ReportTrackingPage() {
         <span className="report-tracking__icon" aria-hidden>
           <Icon name={copy.icon} size={34} color="currentColor" />
         </span>
-        <p className="report-tracking__eyebrow">Report {report.id.slice(0, 8)}</p>
+        <p className="report-tracking__eyebrow">Reference {report.id.slice(0, 8)}</p>
         <h1>{copy.title}</h1>
         <p>{copy.body}</p>
         {report.validation.reasonCodes.length > 0 && (
@@ -99,19 +99,19 @@ export function ReportTrackingPage() {
 }
 
 const REASON_COPY: Record<string, string> = {
-  automated_rule_screened: 'Automated rule checks passed',
-  exact_photo_replay: 'The photo bytes or capture identifier were already submitted',
-  perceptual_photo_replay: 'The image closely matches an earlier photo of this species',
-  same_species_nearby_recent: 'A recent nearby report of the same species was found',
-  image_too_small: 'The image is too small for screening',
-  image_too_dark: 'The image is too dark',
-  image_too_bright: 'The image is too bright',
-  image_low_contrast: 'The plant does not have enough visible contrast',
-  image_too_blurry: 'The image appears too blurry',
-  invalid_or_corrupt_image: 'The uploaded file is not a readable JPEG image',
-  location_accuracy_insufficient: 'A GPS fix within 100 metres is required',
-  plant_identification_not_reportable: 'The E1 result is not reportable',
-  unsupported_client_model_version: 'The E1 model version is not supported by this release',
+  automated_rule_screened: 'Automated checks passed',
+  exact_photo_replay: 'This photo was already submitted',
+  perceptual_photo_replay: 'Very similar to an earlier photo of the same species',
+  same_species_nearby_recent: 'Someone recently reported the same species nearby',
+  image_too_small: 'The photo is too small to check',
+  image_too_dark: 'The photo is too dark',
+  image_too_bright: 'The photo is too bright',
+  image_low_contrast: 'The plant is hard to see against the background',
+  image_too_blurry: 'The photo is too blurry',
+  invalid_or_corrupt_image: 'The photo could not be read',
+  location_accuracy_insufficient: 'GPS needs to be accurate to within 100 m',
+  plant_identification_not_reportable: 'This species is not on the reportable list yet',
+  unsupported_client_model_version: 'Update the app to submit this report',
 }
 
 const humanize = (reason: string) => REASON_COPY[reason]

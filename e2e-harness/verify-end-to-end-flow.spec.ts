@@ -87,7 +87,7 @@ async function completeReportWizard(
   await expect(page.getByRole('heading', { name: /Report submitted/i })).toBeVisible({ timeout: 8_000 })
   const successBody = await page.locator('body').innerText()
   expect(successBody).toContain('Community report — not expert validated')
-  expect(successBody).toContain('Tracking ID')
+  expect(successBody).toMatch(/Reference:/i)
 }
 
 for (const choice of ['protected', 'explicit'] as const) {

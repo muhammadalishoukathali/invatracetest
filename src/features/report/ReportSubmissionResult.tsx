@@ -58,17 +58,13 @@ export function ReportSubmissionResult() {
         )}
 
         {submitted && outcome.kind === 'submitted' && (
-          <div style={{
-            marginTop: 20, padding: '10px 14px',
-            background: 'var(--surface)', border: '1px solid var(--border)',
-            borderRadius: 'var(--r-input)', display: 'flex',
-            justifyContent: 'space-between', alignItems: 'center',
+          <p style={{
+            marginTop: 14, fontSize: 12, color: 'var(--muted)', lineHeight: 1.55,
           }}>
-            <span style={{ fontSize: 11, color: 'var(--muted)' }}>Tracking ID</span>
-            <span className="mono" style={{ fontSize: 12, fontWeight: 500 }}>
+            Reference: <span className="mono" style={{ fontWeight: 500, color: 'var(--body)' }}>
               {outcome.report.id.slice(0, 8)}
             </span>
-          </div>
+          </p>
         )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 24 }}>

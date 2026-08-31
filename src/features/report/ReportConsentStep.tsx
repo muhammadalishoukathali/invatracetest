@@ -17,8 +17,9 @@ export function ReportConsentStep() {
       }}>
         <Icon name="Info" size={20} color="var(--green)" />
         <p style={{ fontSize: 13, color: 'var(--green-dark)', lineHeight: 1.55 }}>
-          Please confirm your submission before automated rule screening begins.
-          Your photo, coordinates and notes are checked automatically. Validated sighting data appears on the shared map.
+          Confirm the details below, then submit. We'll run a few automated
+          checks on your photo, location and notes before the sighting
+          appears on the shared map.
         </p>
       </div>
 

@@ -53,7 +53,7 @@ export function MapLegend() {
       <div style={{
         marginTop: 4, paddingTop: 6, borderTop: '1px solid var(--border)',
         fontSize: 11, color: 'var(--muted)', lineHeight: 1.5,
-      }}>Records appear after automated rule screening.</div>
+      }}>Reports appear on the map once they pass automated checks.</div>
     </div>
   )
 }
