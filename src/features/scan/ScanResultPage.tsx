@@ -198,8 +198,6 @@ function TargetResult({
               badge="Your scan"
               imageUrl={imageUrl}
               imageAlt="Your scanned plant"
-              title={detail.name}
-              subtitle={detail.latinName}
               caption="Possible invasive"
             />
             <ComparisonCard
@@ -235,7 +233,7 @@ function ComparisonCard({
   tone, badge, imageUrl, imageAlt, imageCredit, title, subtitle, caption,
 }: {
   tone: 'warn' | 'ok'; badge: string; imageUrl?: string | null; imageAlt: string;
-  imageCredit?: string; title: string; subtitle?: string; caption: string
+  imageCredit?: string; title?: string; subtitle?: string; caption: string
 }) {
   const bg = tone === 'warn' ? 'var(--red-light)' : 'var(--green-light)'
   const captionColor = tone === 'warn' ? 'var(--red-text)' : 'var(--green-dark)'
@@ -257,7 +255,7 @@ function ComparisonCard({
           display: 'inline-block', fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4,
           textTransform: 'uppercase', color: captionColor,
         }}>{badge}</span>
-        <div style={{ marginTop: 4, fontSize: 13, fontWeight: 650 }}>{title}</div>
+        {title && <div style={{ marginTop: 4, fontSize: 13, fontWeight: 650 }}>{title}</div>}
         {subtitle && <div style={{ fontSize: 11.5, color: 'var(--muted)', fontStyle: 'italic' }}>{subtitle}</div>}
         <p style={{ marginTop: 6, color: captionColor, fontSize: 11.5, fontWeight: 600 }}>{caption}</p>
         {imageCredit && (
