@@ -313,6 +313,13 @@
           "items": {
             "$ref": "#/$defs/sourced_item"
           }
+        },
+        "reference_image": {
+          "type": "string",
+          "pattern": "^/reference-images/[a-z0-9_-]+\\.(jpg|jpeg|png|webp)$"
+        },
+        "reference_image_credit": {
+          "type": "string"
         }
       },
       "additionalProperties": false

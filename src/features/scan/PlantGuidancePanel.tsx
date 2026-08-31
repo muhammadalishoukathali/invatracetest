@@ -117,6 +117,23 @@ export function PlantGuidancePanel({ scientificName, speciesName, plantId, actio
 
       <ModeBanner mode={plant.guidance_mode} help={modeInfo.help} tone={modeInfo.tone} label={modeInfo.label} />
 
+      {plant.reference_image && (
+        <figure style={{ margin: '12px 0 0' }}>
+          <img
+            src={plant.reference_image}
+            alt={`Reference photo of ${plant.scientific_name}`}
+            loading="lazy"
+            style={{
+              width: '100%', maxHeight: 220, objectFit: 'cover',
+              borderRadius: 'var(--r-input)', display: 'block',
+            }}
+          />
+          <figcaption style={{ marginTop: 4, fontSize: 10.5, color: 'var(--muted)' }}>
+            Reference photo · {plant.reference_image_credit ?? 'Wikimedia'}
+          </figcaption>
+        </figure>
+      )}
+
       <Block title="About this plant" icon="Info">
         <p style={{ fontSize: 13.5, color: 'var(--body)', lineHeight: 1.6 }}>{plant.general_information}</p>
         <SourceLine ids={plant.general_information_source_ids} />

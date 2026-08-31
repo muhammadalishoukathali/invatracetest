@@ -4,6 +4,7 @@ import { useScan } from '@/features/scan/scan-store'
 import { useReportDraft } from '@/features/report/report-draft-store'
 import { PlantGuidancePanel } from '@/features/scan/PlantGuidancePanel'
 import { deriveMalaysiaStatusState, isReportEligible } from '@/features/scan/malaysia-status'
+import { findPlantGuidance } from '@/data/plant-guidance'
 import type { IdentifyResult, SpeciesDetail } from '@/types'
 
 export function ScanResultPage() {
@@ -330,11 +331,34 @@ function UncertainResult({ result }: { result: IdentifyResult }) {
 function UnsupportedTargetResult({ result }: { result: IdentifyResult }) {
   const displayName = result.speciesName ?? result.scientificName ?? 'Possible invasive plant'
   const scientific = result.scientificName && result.scientificName !== displayName ? result.scientificName : null
+  // Even without full detail we can still show a reference photo when the
+  // guidance dataset carries one — helps the user eyeball the match.
+  const guidance = findPlantGuidance({
+    scientificName: result.scientificName ?? null,
+    modelLabel: result.speciesName ?? null,
+    plantId: result.speciesId ?? null,
+  })
   return (
     <div style={{ marginTop: 16, padding: '16px 18px', borderRadius: 'var(--r-card)', background: 'var(--amber-light)' }}>
       <h2 style={{ fontSize: 18, fontWeight: 650 }}>{displayName}</h2>
       {scientific && (
         <p style={{ color: 'var(--muted)', fontSize: 12.5, fontStyle: 'italic', marginTop: 2 }}>{scientific}</p>
+      )}
+      {guidance?.reference_image && (
+        <figure style={{ margin: '10px 0 0' }}>
+          <img
+            src={guidance.reference_image}
+            alt={`Reference photo of ${scientific ?? displayName}`}
+            loading="lazy"
+            style={{
+              width: '100%', maxHeight: 220, objectFit: 'cover',
+              borderRadius: 'var(--r-input)', display: 'block',
+            }}
+          />
+          <figcaption style={{ marginTop: 4, fontSize: 10.5, color: 'var(--muted)' }}>
+            Reference photo · {guidance.reference_image_credit ?? 'Wikimedia'}
+          </figcaption>
+        </figure>
       )}
       <p style={{ marginTop: 8, color: 'var(--body)', fontSize: 13.5, lineHeight: 1.6 }}>
         The model matched this plant, but detailed field guidance for it is not

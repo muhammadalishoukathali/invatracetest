@@ -62,6 +62,11 @@ export interface PlantGuidance {
   spread_prevention: SourcedItem[]
   do_not_do: SourcedItem[]
   follow_up: SourcedItem[]
+  /** Curated public-domain / CC-BY-SA reference photo bundled with the app.
+   *  Renders alongside the panel header so users can compare their scan with
+   *  a known-good specimen. */
+  reference_image?: string
+  reference_image_credit?: string
 }
 
 export interface SafetyPolicy {

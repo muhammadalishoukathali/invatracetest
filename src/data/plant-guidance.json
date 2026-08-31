@@ -465,7 +465,9 @@
       "follow_up": [],
       "general_information_source_ids": [
         "S24"
-      ]
+      ],
+      "reference_image": "/reference-images/mimosa_pudica.jpg",
+      "reference_image_credit": "Wikimedia · CC BY-SA"
     },
     {
       "plant_id": "carica_papaya",
@@ -494,7 +496,9 @@
       "follow_up": [],
       "general_information_source_ids": [
         "S25"
-      ]
+      ],
+      "reference_image": "/reference-images/carica_papaya.jpg",
+      "reference_image_credit": "Wikimedia · CC BY-SA"
     },
     {
       "plant_id": "clitoria_ternatea",
@@ -523,7 +527,9 @@
       "follow_up": [],
       "general_information_source_ids": [
         "S26"
-      ]
+      ],
+      "reference_image": "/reference-images/clitoria_ternatea.jpg",
+      "reference_image_credit": "Wikimedia · CC BY-SA"
     },
     {
       "plant_id": "centella_asiatica",
@@ -552,7 +558,9 @@
       "follow_up": [],
       "general_information_source_ids": [
         "S27"
-      ]
+      ],
+      "reference_image": "/reference-images/centella_asiatica.jpg",
+      "reference_image_credit": "Wikimedia · CC BY-SA"
     },
     {
       "plant_id": "dicranopteris_linearis",
@@ -581,7 +589,9 @@
       "follow_up": [],
       "general_information_source_ids": [
         "S28"
-      ]
+      ],
+      "reference_image": "/reference-images/dicranopteris_linearis.jpg",
+      "reference_image_credit": "Wikimedia · CC BY-SA"
     },
     {
       "plant_id": "ageratum_conyzoides",
@@ -609,7 +619,9 @@
       "follow_up": [],
       "general_information_source_ids": [
         "S29"
-      ]
+      ],
+      "reference_image": "/reference-images/ageratum_conyzoides.jpg",
+      "reference_image_credit": "Wikimedia · CC BY-SA"
     },
     {
       "plant_id": "leucaena_leucocephala",
@@ -752,7 +764,9 @@
       "general_information_source_ids": [
         "S01",
         "S30"
-      ]
+      ],
+      "reference_image": "/reference-images/leucaena_leucocephala.jpg",
+      "reference_image_credit": "Wikimedia · CC BY-SA"
     },
     {
       "plant_id": "imperata_cylindrica",
@@ -783,7 +797,9 @@
       "follow_up": [],
       "general_information_source_ids": [
         "S31"
-      ]
+      ],
+      "reference_image": "/reference-images/imperata_cylindrica.jpg",
+      "reference_image_credit": "Wikimedia · CC BY-SA"
     },
     {
       "plant_id": "pistia_stratiotes",
@@ -813,7 +829,9 @@
       "follow_up": [],
       "general_information_source_ids": [
         "S32"
-      ]
+      ],
+      "reference_image": "/reference-images/pistia_stratiotes.jpg",
+      "reference_image_credit": "Wikimedia · CC BY-SA"
     },
     {
       "plant_id": "macaranga_tanarius",
@@ -841,7 +859,9 @@
       "follow_up": [],
       "general_information_source_ids": [
         "S33"
-      ]
+      ],
+      "reference_image": "/reference-images/macaranga_tanarius.jpg",
+      "reference_image_credit": "Wikimedia · CC BY-SA"
     },
     {
       "plant_id": "cocos_nucifera",
@@ -872,7 +892,9 @@
       "follow_up": [],
       "general_information_source_ids": [
         "S34"
-      ]
+      ],
+      "reference_image": "/reference-images/cocos_nucifera.jpg",
+      "reference_image_credit": "Wikimedia · CC BY-SA"
     },
     {
       "plant_id": "colocasia_esculenta",
@@ -903,7 +925,9 @@
       "follow_up": [],
       "general_information_source_ids": [
         "S35"
-      ]
+      ],
+      "reference_image": "/reference-images/colocasia_esculenta.jpg",
+      "reference_image_credit": "Wikimedia · CC BY-SA"
     },
     {
       "plant_id": "pteris_vittata",
@@ -931,7 +955,9 @@
       "follow_up": [],
       "general_information_source_ids": [
         "S36"
-      ]
+      ],
+      "reference_image": "/reference-images/pteris_vittata.jpg",
+      "reference_image_credit": "Wikimedia · CC BY-SA"
     },
     {
       "plant_id": "catharanthus_roseus",
@@ -962,7 +988,9 @@
       "follow_up": [],
       "general_information_source_ids": [
         "S37"
-      ]
+      ],
+      "reference_image": "/reference-images/catharanthus_roseus.jpg",
+      "reference_image_credit": "Wikimedia · CC BY-SA"
     },
     {
       "plant_id": "bidens_pilosa",
@@ -1100,7 +1128,9 @@
       ],
       "general_information_source_ids": [
         "S38"
-      ]
+      ],
+      "reference_image": "/reference-images/bidens_pilosa.jpg",
+      "reference_image_credit": "Wikimedia · CC BY-SA"
     },
     {
       "plant_id": "chromolaena_odorata",
@@ -1242,7 +1272,9 @@
       "general_information_source_ids": [
         "S39",
         "S06"
-      ]
+      ],
+      "reference_image": "/reference-images/chromolaena_odorata.jpg",
+      "reference_image_credit": "Wikimedia · CC BY-SA"
     },
     {
       "plant_id": "eichhornia_crassipes",
@@ -1383,7 +1415,9 @@
       "general_information_source_ids": [
         "S40",
         "S01"
-      ]
+      ],
+      "reference_image": "/reference-images/eichhornia_crassipes.jpg",
+      "reference_image_credit": "Wikimedia · CC BY-SA"
     },
     {
       "plant_id": "mikania_micrantha",
@@ -1532,7 +1566,9 @@
         "S41",
         "S01",
         "S02"
-      ]
+      ],
+      "reference_image": "/reference-images/mikania_micrantha.jpg",
+      "reference_image_credit": "Wikimedia · CC BY-SA"
     },
     {
       "plant_id": "oxalis_corniculata",
@@ -1560,7 +1596,9 @@
       "follow_up": [],
       "general_information_source_ids": [
         "S42"
-      ]
+      ],
+      "reference_image": "/reference-images/oxalis_corniculata.jpg",
+      "reference_image_credit": "Wikimedia · CC BY-SA"
     },
     {
       "plant_id": "psidium_guajava",
@@ -1700,7 +1738,9 @@
       ],
       "general_information_source_ids": [
         "S43"
-      ]
+      ],
+      "reference_image": "/reference-images/psidium_guajava.jpg",
+      "reference_image_credit": "Wikimedia · CC BY-SA"
     },
     {
       "plant_id": "asclepias_curassavica",
@@ -1851,7 +1891,9 @@
       ],
       "general_information_source_ids": [
         "S44"
-      ]
+      ],
+      "reference_image": "/reference-images/asclepias_curassavica.jpg",
+      "reference_image_credit": "Wikimedia · CC BY-SA"
     },
     {
       "plant_id": "megathyrsus_maximus",
@@ -1996,7 +2038,9 @@
       "general_information_source_ids": [
         "S18",
         "S19"
-      ]
+      ],
+      "reference_image": "/reference-images/megathyrsus_maximus.jpg",
+      "reference_image_credit": "Wikimedia · CC BY-SA"
     },
     {
       "plant_id": "mimosa_diplotricha",
@@ -2138,7 +2182,9 @@
       "general_information_source_ids": [
         "S46",
         "S01"
-      ]
+      ],
+      "reference_image": "/reference-images/mimosa_diplotricha.jpg",
+      "reference_image_credit": "Wikimedia · CC BY-SA"
     },
     {
       "plant_id": "mimosa_pigra",
@@ -2270,7 +2316,9 @@
         "S47",
         "S01",
         "S02"
-      ]
+      ],
+      "reference_image": "/reference-images/mimosa_pigra.jpg",
+      "reference_image_credit": "Wikimedia · CC BY-SA"
     },
     {
       "plant_id": "alternanthera_philoxeroides",
@@ -2406,7 +2454,9 @@
         "S01",
         "S02",
         "S48"
-      ]
+      ],
+      "reference_image": "/reference-images/alternanthera_philoxeroides.jpg",
+      "reference_image_credit": "Wikimedia · CC BY-SA"
     },
     {
       "plant_id": "parthenium_hysterophorus",
@@ -2538,7 +2588,9 @@
         "S01",
         "S02",
         "S49"
-      ]
+      ],
+      "reference_image": "/reference-images/parthenium_hysterophorus.jpg",
+      "reference_image_credit": "Wikimedia · CC BY-SA"
     },
     {
       "plant_id": "ageratina_adenophora",
@@ -2665,7 +2717,9 @@
       "general_information_source_ids": [
         "S01",
         "S02"
-      ]
+      ],
+      "reference_image": "/reference-images/ageratina_adenophora.jpg",
+      "reference_image_credit": "Wikimedia · CC BY-SA"
     },
     {
       "plant_id": "sida_acuta",
@@ -2811,7 +2865,9 @@
       ],
       "general_information_source_ids": [
         "S51"
-      ]
+      ],
+      "reference_image": "/reference-images/sida_acuta.jpg",
+      "reference_image_credit": "Wikimedia · CC BY-SA"
     }
   ]
 }
