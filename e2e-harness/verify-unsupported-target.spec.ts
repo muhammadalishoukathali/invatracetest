@@ -10,7 +10,10 @@ fs.mkdirSync(OUT, { recursive: true })
 // mock backend, so it renders UnsupportedTargetResult. This proves the old
 // "PULIH model / seasonal / look-alike" copy is gone.
 test('Asclepias curassavica — unsupported target shows real plant info, no PULIH text', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 })
+  // 320x780 is the tightest common mobile viewport (iPhone SE 1st gen /
+  // Chrome side panel / split-screen). If the chip wraps here, it wraps
+  // everywhere.
+  await page.setViewportSize({ width: 320, height: 780 })
   await page.goto('http://localhost:5174/')
   await page.getByRole('button', { name: /Start privately/i }).click()
   await expect(page.getByRole('heading', { name: /Save your recovery information/i })).toBeVisible({ timeout: 15_000 })

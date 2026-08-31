@@ -102,17 +102,15 @@ export function PlantGuidancePanel({ scientificName, speciesName, plantId, actio
         border: '1px solid var(--border)',
       }}
     >
-      <header style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: '8px 10px' }}>
-        <div style={{ flex: '1 1 180px', minWidth: 0 }}>
-          <h3 id="plant-guidance-heading" style={{ fontSize: 15, fontWeight: 700 }}>
-            Malaysia plant guidance
-          </h3>
-          <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
-            Dataset v{plantGuidanceDataset.content_version} · {plantGuidanceDataset.jurisdiction}
-            {plantGuidanceDataset.last_reviewed ? ` · reviewed ${plantGuidanceDataset.last_reviewed}` : ''}
-          </p>
-        </div>
+      <header style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8 }}>
+        <h3 id="plant-guidance-heading" style={{ fontSize: 15, fontWeight: 700 }}>
+          Malaysia plant guidance
+        </h3>
         <StatusChip status={plant.malaysia_status} />
+        <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 0 }}>
+          Dataset v{plantGuidanceDataset.content_version} · {plantGuidanceDataset.jurisdiction}
+          {plantGuidanceDataset.last_reviewed ? ` · reviewed ${plantGuidanceDataset.last_reviewed}` : ''}
+        </p>
       </header>
 
       <ModeBanner mode={plant.guidance_mode} help={modeInfo.help} tone={modeInfo.tone} label={modeInfo.label} />
@@ -432,8 +430,9 @@ function StatusChip({ status }: { status: MalaysiaStatus }) {
         letterSpacing: '0.04em',
         whiteSpace: 'normal',
         wordBreak: 'break-word',
+        overflowWrap: 'anywhere',
         maxWidth: '100%',
-        flexShrink: 0,
+        lineHeight: 1.4,
       }}
     >
       {status.display_label}
