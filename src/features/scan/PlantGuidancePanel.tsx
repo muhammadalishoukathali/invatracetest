@@ -102,8 +102,8 @@ export function PlantGuidancePanel({ scientificName, speciesName, plantId, actio
         border: '1px solid var(--border)',
       }}
     >
-      <header style={{ display: 'flex', alignItems: 'flex-start', gap: 10, justifyContent: 'space-between' }}>
-        <div>
+      <header style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: '8px 10px' }}>
+        <div style={{ flex: '1 1 180px', minWidth: 0 }}>
           <h3 id="plant-guidance-heading" style={{ fontSize: 15, fontWeight: 700 }}>
             Malaysia plant guidance
           </h3>
@@ -430,7 +430,10 @@ function StatusChip({ status }: { status: MalaysiaStatus }) {
         border: `1px solid ${tone.border}`,
         textTransform: 'uppercase',
         letterSpacing: '0.04em',
-        whiteSpace: 'nowrap',
+        whiteSpace: 'normal',
+        wordBreak: 'break-word',
+        maxWidth: '100%',
+        flexShrink: 0,
       }}
     >
       {status.display_label}

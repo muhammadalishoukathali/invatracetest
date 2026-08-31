@@ -358,16 +358,24 @@ function UnsupportedTargetResult({ result }: { result: IdentifyResult }) {
           </figcaption>
         </figure>
       )}
-      {/* Plant information when the guidance dataset has it; otherwise a
-          short fallback. Either way this replaces the old copy about
-          "seasonal" and "look-alike" features the app doesn't have. */}
+      {/* One-line plant summary + confidence — kept short so this stays a
+          quick scan-result box, not a guidance article. Full detail (when
+          available) lives in the PlantGuidancePanel below. */}
       <p style={{ marginTop: 8, color: 'var(--body)', fontSize: 13.5, lineHeight: 1.6 }}>
         {guidance?.general_information
-          ?? 'Detailed field guidance for this plant is not yet available in InvaTrace. Do not act on it based on this result — record it visually and check back after the next data release.'}
+          ? firstSentence(guidance.general_information)
+          : 'Detailed field guidance for this plant is not yet available in InvaTrace.'}
       </p>
       <ConfidenceBand confidence={result.confidence} />
     </div>
   )
+}
+
+/** Trims a longer description down to its first sentence for compact result
+ *  boxes. Falls back to the full text if no sentence boundary is found. */
+function firstSentence(text: string): string {
+  const match = text.match(/^.*?[.!?](?=\s|$)/)
+  return match ? match[0] : text
 }
 
 function ConfidenceBand({ confidence }: { confidence: number }) {
