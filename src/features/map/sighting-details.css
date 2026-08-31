@@ -18,8 +18,13 @@
   animation: sighting-sheet-enter 280ms cubic-bezier(.2, .8, .2, 1) both;
 }
 
-.pin-sheet--high { --risk-accent: var(--red); }
-.pin-sheet--removed { --risk-accent: var(--icon); }
+.pin-sheet--hotspot   { --risk-accent: #C2412D; }
+.pin-sheet--spreading { --risk-accent: #D9880F; }
+.pin-sheet--isolated  { --risk-accent: #2E7D3F; }
+.pin-sheet--removed   { --risk-accent: var(--icon); }
+/* Backwards-compat: earlier map code used "high" / "watch" class names. */
+.pin-sheet--high { --risk-accent: #C2412D; }
+.pin-sheet--watch { --risk-accent: #D9880F; }
 
 @keyframes sighting-sheet-enter {
   from { opacity: .72; translate: 0 18px; }

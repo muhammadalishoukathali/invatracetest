@@ -332,7 +332,9 @@
 .map-legend-scrim {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  /* Sit above the scan FAB shell (z:50) so the button hides behind the scrim
+     while the popover (z:60) reads as the focused surface. */
+  z-index: 55;
   border: 0;
   padding: 0;
   background: rgba(15, 25, 20, 0.24);

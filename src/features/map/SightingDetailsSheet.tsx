@@ -62,9 +62,13 @@ export function SightingDetailsSheet() {
 
   const tier = data ? pinTier(data) : 'isolated'
   const tierInfo = PIN_TIERS[tier]
-  const isRemoved = tier === 'removed'
-  const riskClass = isRemoved ? 'removed' : tier === 'hotspot' ? 'high' : 'watch'
-  const riskColor = tier === 'hotspot' ? 'var(--red-text)' : tier === 'spreading' ? 'var(--amber-text)' : 'var(--green-dark)'
+  // Tier name doubles as the sheet's modifier class so the accent bar picks
+  // up the matching --risk-accent from sighting-details.css.
+  const riskClass = tier
+  const riskColor = tier === 'hotspot' ? 'var(--red-text)'
+    : tier === 'spreading' ? 'var(--amber-text)'
+    : tier === 'isolated' ? 'var(--green-dark)'
+    : 'var(--muted)'
   const coordinateDecimals = data?.precisionReduced ? 4 : 5
   const directionsHref = data
     ? `https://www.google.com/maps/dir/?api=1&destination=${data.location.lat},${data.location.lng}`

@@ -183,7 +183,10 @@ function TargetResult({
             Also known as: {detail.commonNames.join(', ')}
           </p>
         )}
-        <RiskChip risk={detail.risk} />
+        {/* Per-species severity is now conveyed by the Malaysia-status chip
+            in the guidance panel below. A separate "HIGH RISK" pill here
+            was redundant and used the same red/amber palette as the map
+            density tiers, which was confusing. */}
       </div>
 
       <ConfidenceBand confidence={result.confidence} />
@@ -409,22 +412,6 @@ function ConfidenceBand({ confidence }: { confidence: number }) {
         }} />
       </div>
     </div>
-  )
-}
-
-function RiskChip({ risk }: { risk: string }) {
-  const isHigh = risk === 'high'
-  return (
-    <span style={{
-      display: 'inline-block', marginTop: 8, padding: '3px 10px',
-      borderRadius: 'var(--r-chip)', fontSize: 11, fontWeight: 600,
-      background: isHigh ? 'var(--red-light)' : '#FEF3E2',
-      color: isHigh ? 'var(--red)' : 'var(--amber)',
-      border: `1px solid ${isHigh ? 'var(--red-border)' : '#F0D9A8'}`,
-      textTransform: 'uppercase', letterSpacing: '0.04em',
-    }}>
-      {risk} risk
-    </span>
   )
 }
 
