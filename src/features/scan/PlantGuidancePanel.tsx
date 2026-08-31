@@ -112,10 +112,6 @@ export function PlantGuidancePanel({ scientificName, speciesName, plantId, actio
           Malaysia plant guidance
         </h3>
         <StatusChip status={plant.malaysia_status} />
-        <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 0 }}>
-          Dataset v{plantGuidanceDataset.content_version} · {plantGuidanceDataset.jurisdiction}
-          {plantGuidanceDataset.last_reviewed ? ` · reviewed ${plantGuidanceDataset.last_reviewed}` : ''}
-        </p>
       </header>
 
       <ModeBanner mode={plant.guidance_mode} help={modeInfo.help} tone={modeInfo.tone} label={modeInfo.label} />

@@ -98,21 +98,19 @@ export function ScanResultPage() {
         />
       )}
 
-      {/* AC 1.2.2 — per-species reviewed date + source, when the server supplies them.
-          Wrap on narrow screens so the label + values don't overflow. */}
+      {/* AC 1.2.2 — surface the per-species reviewed month + source in a
+          natural, non-AI-slop way. Kept intentionally quiet: a single greyed
+          caption line, not a bordered admin card. */}
       {(speciesDetail?.statusReviewedAt || speciesDetail?.statusSourceId) && (
-        <div style={{
-          marginTop: 12, padding: '8px 12px',
-          background: 'var(--surface)', border: '1px solid var(--border)',
-          borderRadius: 'var(--r-input)',
+        <p style={{
+          marginTop: 10,
           fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.55,
-          display: 'flex', flexWrap: 'wrap', gap: '2px 10px',
-          wordBreak: 'break-word', overflowWrap: 'anywhere',
+          wordBreak: 'break-word',
         }}>
-          <span style={{ fontWeight: 600, color: 'var(--body)' }}>Status record</span>
-          {speciesDetail.statusSourceId && <span>Source: {speciesDetail.statusSourceId}</span>}
-          {speciesDetail.statusReviewedAt && <span>Reviewed: {speciesDetail.statusReviewedAt}</span>}
-        </div>
+          {speciesDetail.statusReviewedAt && `Malaysia status reviewed ${humanReviewedDate(speciesDetail.statusReviewedAt)}`}
+          {speciesDetail.statusReviewedAt && speciesDetail.statusSourceId && ' · '}
+          {speciesDetail.statusSourceId}
+        </p>
       )}
 
       <ModelInfo version={result.modelVersion} />
@@ -376,6 +374,22 @@ function UnsupportedTargetResult({ result }: { result: IdentifyResult }) {
 function firstSentence(text: string): string {
   const match = text.match(/^.*?[.!?](?=\s|$)/)
   return match ? match[0] : text
+}
+
+/** Converts an ISO-8601 date (e.g. "2026-07-15") into a human phrase like
+ *  "July 2026". The full ISO date reads like AI slop in a plain-English
+ *  caption. Falls back to the input if it can't be parsed. */
+function humanReviewedDate(iso: string): string {
+  const match = iso.match(/^(\d{4})-(\d{2})/)
+  if (!match) return iso
+  const [, year, monthNum] = match
+  const monthIndex = Number(monthNum) - 1
+  if (monthIndex < 0 || monthIndex > 11) return iso
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ]
+  return `${months[monthIndex]} ${year}`
 }
 
 function ConfidenceBand({ confidence }: { confidence: number }) {
