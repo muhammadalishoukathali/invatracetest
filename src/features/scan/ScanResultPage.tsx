@@ -358,10 +358,12 @@ function UnsupportedTargetResult({ result }: { result: IdentifyResult }) {
           </figcaption>
         </figure>
       )}
+      {/* Plant information when the guidance dataset has it; otherwise a
+          short fallback. Either way this replaces the old copy about
+          "seasonal" and "look-alike" features the app doesn't have. */}
       <p style={{ marginTop: 8, color: 'var(--body)', fontSize: 13.5, lineHeight: 1.6 }}>
-        The model matched this plant, but detailed field guidance for it is not
-        yet available in InvaTrace. Do not act on the plant from this result —
-        record it visually and check back after the next data release.
+        {guidance?.general_information
+          ?? 'Detailed field guidance for this plant is not yet available in InvaTrace. Do not act on it based on this result — record it visually and check back after the next data release.'}
       </p>
       <ConfidenceBand confidence={result.confidence} />
     </div>
@@ -425,7 +427,7 @@ function ModelInfo({ version }: { version: string }) {
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       }}>
-        <span style={{ fontSize: 11, color: 'var(--muted)' }}>Model version</span>
+        <span style={{ fontSize: 11, color: 'var(--muted)' }}>InvaTrace model</span>
         <span className="mono" style={{ fontSize: 12, fontWeight: 500, color: 'var(--body)' }}>
           {version}
         </span>
