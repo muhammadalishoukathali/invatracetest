@@ -9,7 +9,7 @@ test('gallery upload unlocks Report sighting button in DEV', async ({ page }) =>
   await expect(page).toHaveURL(/\/map/, { timeout: 15_000 })
 
   await page.goto('http://localhost:5173/scan')
-  await expect(page.getByRole('button', { name: /gallery/i })).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByRole('button', { name: /Choose a photo instead/i })).toBeVisible({ timeout: 10_000 })
 
   await page.evaluate(async () => {
     const c = document.createElement('canvas'); c.width = 500; c.height = 500

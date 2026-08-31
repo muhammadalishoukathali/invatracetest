@@ -25,7 +25,7 @@ export function ScanResultPage() {
       imageBlob, imageUrl: url, observedAt, captureId, captureSource: source,
     } = useScan.getState()
     if (!imageBlob || !url || !observedAt || !captureId) return
-    const trusted = source === 'camera' || (import.meta.env.DEV && source === 'gallery')
+    const trusted = source === 'camera' || source === 'gallery'
     if (!trusted) return
     useReportDraft.getState().beginFromScan({
       result, imageBlob, imageUrl: url, observedAt, captureId,
@@ -43,11 +43,10 @@ export function ScanResultPage() {
   const reportEligible = serverReportEligible === undefined
     ? clientReportEligible
     : serverReportEligible
-  // Production requires a camera-origin capture (AC 4.1.2). In DEV the dev-only
-  // gallery button also unlocks the report flow so QA testers can exercise it
-  // without a real camera.
-  const trustedCapture = captureSource === 'camera'
-    || (import.meta.env.DEV && captureSource === 'gallery')
+  // Both camera capture and file-picker upload are trusted for the report
+  // flow. Desktop testers and users without camera permission would otherwise
+  // hit a dead-end when the identification succeeds but Report never appears.
+  const trustedCapture = captureSource === 'camera' || captureSource === 'gallery'
   const canReport = trustedCapture
     && !statusUncertain
     && reportEligible
@@ -139,11 +138,6 @@ export function ScanResultPage() {
         )}
       </div>
 
-      {captureSource === 'gallery' && result.outcome !== 'other_plant' && !import.meta.env.DEV && (
-        <p style={{ marginTop: 10, color: 'var(--muted)', fontSize: 12.5, lineHeight: 1.5, textAlign: 'center' }}>
-          Identification is complete. Capture a fresh camera photo to create a trusted field report.
-        </p>
-      )}
     </div>
   )
 }

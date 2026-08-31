@@ -306,20 +306,19 @@ export function ScanCapturePage() {
 
           {cameraError && <p className="scan-capture__camera-error" role="alert">{cameraError}</p>}
 
-          {import.meta.env.DEV && (
-            <>
-              <button
-                type="button"
-                onClick={() => { captureScanLocation(); galleryRef.current?.click() }}
-                disabled={checking}
-                className="scan-capture__gallery"
-              >
-                <Icon name="ImagePlus" size={16} color="var(--body)" />
-                Identify a gallery photo (dev only)
-              </button>
-              <p className="scan-capture__gallery-note">Dev-only gallery upload. Production builds accept live camera capture only.</p>
-            </>
-          )}
+          <button
+            type="button"
+            onClick={() => { captureScanLocation(); galleryRef.current?.click() }}
+            disabled={checking}
+            className="scan-capture__gallery"
+          >
+            <Icon name="ImagePlus" size={16} color="var(--body)" />
+            Choose a photo instead
+          </button>
+          <p className="scan-capture__gallery-note">
+            Use this when the camera isn't available — e.g. on a desktop
+            browser or if camera permission is blocked.
+          </p>
         </section>
       ) : (
         <div className="scan-capture__preview">
