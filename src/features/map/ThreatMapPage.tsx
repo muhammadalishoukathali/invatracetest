@@ -32,24 +32,29 @@ const MY_BOUNDS: [[number, number], [number, number]] = [
   [119.5, 7.5],  // North-east corner.
 ]
 
-/** OpenStreetMap raster tiles from the OSM Foundation servers. No API key
- *  required. Rate-limited to standard OSM tile usage policy; production should
- *  switch to a paid provider (Stadia Maps, MapTiler, or self-hosted). */
+/** Tile provider is env-configurable so production can use a keyed provider
+ *  (MapTiler, Stadia, self-hosted) instead of OSM's shared tiles which are
+ *  rate-limited and not for production. Set VITE_MAP_TILE_URL and
+ *  VITE_MAP_TILE_ATTRIBUTION in .env to override. */
+const TILE_URL =
+  (import.meta.env.VITE_MAP_TILE_URL as string | undefined) ??
+  'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+const TILE_ATTRIBUTION =
+  (import.meta.env.VITE_MAP_TILE_ATTRIBUTION as string | undefined) ??
+  '© <a href="https://openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>'
+
 const STYLE_URL: maplibregl.StyleSpecification = {
   version: 8,
   sources: {
-    'osm-standard': {
+    'basemap-src': {
       type: 'raster',
-      tiles: [
-        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-      ],
+      tiles: [TILE_URL],
       tileSize: 256,
       maxzoom: 19,
-      attribution:
-        '© <a href="https://openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>',
+      attribution: TILE_ATTRIBUTION,
     },
   },
-  layers: [{ id: 'basemap', type: 'raster', source: 'osm-standard' }],
+  layers: [{ id: 'basemap', type: 'raster', source: 'basemap-src' }],
 }
 
 export function ThreatMapPage() {

@@ -6,11 +6,11 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.schemas import AdminRepairRequest, OkResponse
+from app.api.schemas import AdminRepairRequest, AdminRoleUpdateRequest, OkResponse
 from app.core.errors import ApiProblem, request_id_var
 from app.core.security import AuthContext, require_admin, utcnow
 from app.db.base import get_session
-from app.db.models import AuditEvent, Notification, Report, VerificationJob
+from app.db.models import AuditEvent, Notification, Profile, Report, VerificationJob
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
@@ -78,6 +78,48 @@ def repair_report(
             title="Report status updated",
             body="An administrator repaired an exceptional screening state.",
             link_to=f"/reports/{report.id}",
+        )
+    )
+    session.commit()
+    return OkResponse()
+
+
+@router.post("/profiles/{profile_id}/role", response_model=OkResponse)
+def update_profile_role(
+    profile_id: uuid.UUID,
+    body: AdminRoleUpdateRequest,
+    request: Request,
+    auth: AuthContext = Depends(require_admin),
+    session: Session = Depends(get_session),
+) -> OkResponse:
+    profile = session.scalar(select(Profile).where(Profile.id == profile_id).with_for_update())
+    if not profile:
+        raise ApiProblem(404, "profile_not_found", "Not found")
+    if profile.id == auth.profile.id and body.role != "Admin":
+        raise ApiProblem(
+            409, "self_demote_forbidden", "Admins cannot demote themselves."
+        )
+    before = profile.role
+    if before == body.role:
+        return OkResponse()
+    profile.role = body.role
+    session.add(
+        AuditEvent(
+            event_type="profile.role_updated",
+            acting_profile_id=auth.profile.id,
+            subject_type="profile",
+            subject_id=str(profile.id),
+            request_id=request_id_var.get(),
+            metadata_json={"before": before, "after": body.role, "reason": body.reason},
+        )
+    )
+    session.add(
+        Notification(
+            profile_id=profile.id,
+            kind="system",
+            title="Account role updated",
+            body=f"Your role changed from {before} to {body.role}.",
+            link_to="/account",
         )
     )
     session.commit()

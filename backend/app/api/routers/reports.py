@@ -229,6 +229,57 @@ def _sighting_id(session: Session, report_id: uuid.UUID) -> uuid.UUID | None:
     )
 
 
+@router.delete("/{report_id}", response_model=None, status_code=204)
+def delete_report(
+    report_id: uuid.UUID,
+    request: Request,
+    auth: AuthContext = Depends(require_auth),
+    session: Session = Depends(get_session),
+) -> Response:
+    report = session.scalar(
+        select(Report)
+        .where(Report.id == report_id, Report.profile_id == auth.profile.id)
+        .with_for_update()
+    )
+    if not report:
+        raise ApiProblem(404, "report_not_found", "Not found")
+    # Owner may only delete reports that never became a published sighting.
+    # Screened/merged reports back a public sighting and require an admin flow.
+    if report.status in {"screened", "merged"}:
+        raise ApiProblem(
+            409,
+            "report_published",
+            "Published reports cannot be deleted by the reporter.",
+        )
+    photo_key = report.photo_key
+    prior_status = report.status
+    session.execute(
+        ReportSightingLink.__table__.delete().where(ReportSightingLink.report_id == report.id)
+    )
+    session.execute(
+        VerificationJob.__table__.delete().where(VerificationJob.report_id == report.id)
+    )
+    session.delete(report)
+    session.add(
+        AuditEvent(
+            event_type="report.deleted",
+            acting_profile_id=auth.profile.id,
+            subject_type="report",
+            subject_id=str(report_id),
+            request_id=request_id_var.get(),
+            metadata_json={"photo_key": photo_key, "prior_status": prior_status},
+        )
+    )
+    session.commit()
+    # Purge object storage after DB commit so a storage failure does not
+    # roll back the delete; storage.delete already handles missing keys.
+    try:
+        storage.delete(photo_key)
+    except ApiProblem:
+        pass
+    return Response(status_code=204)
+
+
 @router.get("/{report_id}", response_model=ReportResponse)
 def report_status(
     report_id: uuid.UUID,

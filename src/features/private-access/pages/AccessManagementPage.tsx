@@ -21,6 +21,28 @@ function installationLabel(item: AuthorizedInstallation): string {
   return item.current ? 'This device' : `Device added ${approximateDate(item.createdAt)}`
 }
 
+/** Never render an email or phone shape as the profile chip — even if an
+ *  older display name that predates the input guard is still stored. */
+export function safeDisplayName(value?: string | null): string {
+  if (!value) return 'Local reporter'
+  if (looksLikeContactDetail(value)) return 'Local reporter'
+  return value
+}
+
+/** Blocks display-name inputs that look like an email or a phone number.
+ *  Prevents a well-meaning user from stamping their real contact details
+ *  across every screen that renders the profile chip. */
+export function looksLikeContactDetail(value: string): boolean {
+  const trimmed = value.trim()
+  if (!trimmed) return false
+  // Email: something@something.tld
+  if (/\S+@\S+\.\S+/.test(trimmed)) return true
+  // Phone: 7 or more digits with the usual separators.
+  const digits = trimmed.replace(/[\s()+\-.]/g, '')
+  if (/^\d{7,}$/.test(digits)) return true
+  return false
+}
+
 export function AccessManagementPage() {
   const headingRef = usePageHeadingFocus()
   const online = useOnline()
@@ -61,10 +83,20 @@ export function AccessManagementPage() {
 
   const saveName = async () => {
     setBusy('name'); setError(null); setMessage(null)
+    // Privacy guard — reject email / phone-shaped strings so a curious tester
+    // can't stamp their real contact details across every screen that shows
+    // the profile chip. Keeps the pseudonymous promise on the landing page
+    // honest even when the user tries to defeat it.
+    const trimmed = displayName.trim()
+    if (looksLikeContactDetail(trimmed)) {
+      setBusy(null)
+      setError('Display name can\'t contain an email address or phone number — keep it a nickname.')
+      return
+    }
     try {
-      await updateDisplayName(displayName)
+      await updateDisplayName(trimmed)
       setDisplayName(usePrivateAccess.getState().profile?.displayName ?? '')
-      setMessage(displayName.trim() ? 'Display name updated.' : 'Display name removed.')
+      setMessage(trimmed ? 'Display name updated.' : 'Display name removed.')
     } catch (nameError) {
       setError(nameError instanceof Error ? nameError.message : 'Display name could not be updated.')
     } finally { setBusy(null) }
@@ -107,7 +139,7 @@ export function AccessManagementPage() {
           <Icon name="User" size={24} />
         </span>
         <div className="access-profile-summary__identity">
-          <h2 ref={headingRef} tabIndex={-1}>{profile.displayName ?? 'Local reporter'}</h2>
+          <h2 ref={headingRef} tabIndex={-1}>{safeDisplayName(profile.displayName)}</h2>
           <p>
             <span className="access-role-chip">{profile.role}</span>
             <span className="access-trust-chip">{profile.trustLevel} trust</span>
@@ -129,7 +161,7 @@ export function AccessManagementPage() {
           <PrivateAccessButton kind="quiet" icon="Copy" onClick={() => void copy(profileId, 'Public profile ID copied.')}>Copy ID</PrivateAccessButton>
         </div>
         <div className="access-name-editor">
-          <PrivateAccessField id="access-display-name" label="Display name" hint="Optional. Shown with your reports." value={displayName} maxLength={80} onChange={(event) => setDisplayName(event.target.value)} />
+          <PrivateAccessField id="access-display-name" label="Display name" hint="Optional nickname shown on your reports. Don't use your real name, email, or phone number." value={displayName} maxLength={80} onChange={(event) => setDisplayName(event.target.value)} />
           <PrivateAccessButton kind="secondary" onClick={() => void saveName()} disabled={!online || busy === 'name' || displayName === savedDisplayName}>{busy === 'name' ? 'Saving…' : 'Save name'}</PrivateAccessButton>
         </div>
       </section>

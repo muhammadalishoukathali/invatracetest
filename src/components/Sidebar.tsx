@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { Icon } from './Icon'
 import { Logo } from './Logo'
 import { isEnabled, visibleNav, type NavItem } from '@/app/nav'
+import { safeDisplayName } from '@/features/private-access/pages/AccessManagementPage'
 import type { PseudonymousProfile } from '@/types'
 
 const LATER = 'Available in a later iteration'
@@ -90,7 +91,7 @@ export function Sidebar({ profile }: { profile: PseudonymousProfile }) {
               fontSize: 13, fontWeight: 600, overflow: 'hidden',
               textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>
-              {profile.displayName ?? 'Local reporter'}
+              {safeDisplayName(profile.displayName)}
             </div>
             <div style={{ fontSize: 11, color: 'var(--muted)' }}>
               {profile.role} · {profile.trustLevel} trust
