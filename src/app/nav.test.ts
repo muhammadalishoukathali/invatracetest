@@ -7,10 +7,10 @@ describe('navigation gating', () => {
     expect(enabled).toEqual(['map'])
   })
 
-  it('keeps later-iteration destinations visible for every role', () => {
+  it('hides not-yet-enabled destinations from every role', () => {
     for (const role of ['Detector', 'Volunteer'] as const) {
       const ids = visibleNav(role).map((i) => i.id)
-      expect(ids).toEqual(expect.arrayContaining(['trail', 'sessions', 'impact']))
+      expect(ids).toEqual(['map'])
       expect(NAV.filter((i) => i.iteration > 1).every((i) => !isEnabled(i, role))).toBe(true)
     }
   })

@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { BottomTabs } from './BottomTabs'
-import { NotificationsPanel } from '@/features/notifications/NotificationsPanel'
 import { ReportQueueStatusBanner } from '@/features/report/ReportQueueStatusBanner'
 import { ErrorBoundary } from './ErrorBoundary'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
@@ -57,7 +56,7 @@ export function AppShell() {
                 <Icon name="User" size={18} color={pathname === '/access' ? 'var(--green)' : 'var(--body)'} />
               </button>
             )}
-            <NotificationsPanel />
+            {/* NotificationsPanel removed — coordinator-tier feature not in this iteration. */}
           </div>
         </header>
 

@@ -23,7 +23,9 @@ export function ScanResultPage() {
     const {
       imageBlob, imageUrl: url, observedAt, captureId, captureSource: source,
     } = useScan.getState()
-    if (!imageBlob || !url || !observedAt || !captureId || source !== 'camera') return
+    if (!imageBlob || !url || !observedAt || !captureId) return
+    const trusted = source === 'camera' || (import.meta.env.DEV && source === 'gallery')
+    if (!trusted) return
     useReportDraft.getState().beginFromScan({
       result, imageBlob, imageUrl: url, observedAt, captureId,
     })
@@ -40,7 +42,12 @@ export function ScanResultPage() {
   const reportEligible = serverReportEligible === undefined
     ? clientReportEligible
     : serverReportEligible
-  const canReport = captureSource === 'camera'
+  // Production requires a camera-origin capture (AC 4.1.2). In DEV the dev-only
+  // gallery button also unlocks the report flow so QA testers can exercise it
+  // without a real camera.
+  const trustedCapture = captureSource === 'camera'
+    || (import.meta.env.DEV && captureSource === 'gallery')
+  const canReport = trustedCapture
     && !statusUncertain
     && reportEligible
     && (result.outcome === 'uncertain' || (result.outcome === 'target' && result.reportable))
@@ -90,17 +97,20 @@ export function ScanResultPage() {
         />
       )}
 
-      {/* AC 1.2.2 — per-species reviewed date + source, when the server supplies them. */}
+      {/* AC 1.2.2 — per-species reviewed date + source, when the server supplies them.
+          Wrap on narrow screens so the label + values don't overflow. */}
       {(speciesDetail?.statusReviewedAt || speciesDetail?.statusSourceId) && (
         <div style={{
           marginTop: 12, padding: '8px 12px',
           background: 'var(--surface)', border: '1px solid var(--border)',
           borderRadius: 'var(--r-input)',
           fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.55,
+          display: 'flex', flexWrap: 'wrap', gap: '2px 10px',
+          wordBreak: 'break-word', overflowWrap: 'anywhere',
         }}>
-          Malaysia status record
-          {speciesDetail.statusSourceId && ` · source ${speciesDetail.statusSourceId}`}
-          {speciesDetail.statusReviewedAt && ` · reviewed ${speciesDetail.statusReviewedAt}`}
+          <span style={{ fontWeight: 600, color: 'var(--body)' }}>Status record</span>
+          {speciesDetail.statusSourceId && <span>Source: {speciesDetail.statusSourceId}</span>}
+          {speciesDetail.statusReviewedAt && <span>Reviewed: {speciesDetail.statusReviewedAt}</span>}
         </div>
       )}
 
@@ -130,7 +140,7 @@ export function ScanResultPage() {
         )}
       </div>
 
-      {captureSource === 'gallery' && result.outcome !== 'other_plant' && (
+      {captureSource === 'gallery' && result.outcome !== 'other_plant' && !import.meta.env.DEV && (
         <p style={{ marginTop: 10, color: 'var(--muted)', fontSize: 12.5, lineHeight: 1.5, textAlign: 'center' }}>
           Identification is complete. Capture a fresh camera photo to create a trusted field report.
         </p>
@@ -288,11 +298,18 @@ function UncertainResult({ result }: { result: IdentifyResult }) {
 }
 
 function UnsupportedTargetResult({ result }: { result: IdentifyResult }) {
+  const displayName = result.speciesName ?? result.scientificName ?? 'Possible invasive plant'
+  const scientific = result.scientificName && result.scientificName !== displayName ? result.scientificName : null
   return (
     <div style={{ marginTop: 16, padding: '16px 18px', borderRadius: 'var(--r-card)', background: 'var(--amber-light)' }}>
-      <h2 style={{ fontSize: 18, fontWeight: 650 }}>{result.speciesName ?? result.scientificName ?? 'Possible invasive plant'}</h2>
+      <h2 style={{ fontSize: 18, fontWeight: 650 }}>{displayName}</h2>
+      {scientific && (
+        <p style={{ color: 'var(--muted)', fontSize: 12.5, fontStyle: 'italic', marginTop: 2 }}>{scientific}</p>
+      )}
       <p style={{ marginTop: 8, color: 'var(--body)', fontSize: 13.5, lineHeight: 1.6 }}>
-        The PULIH model recognizes this species, but InvaTrace does not yet have a complete reviewed look-alike and seasonal action guide for it. Do not remove it and do not publish a field report from this result yet.
+        The model matched this plant, but detailed field guidance for it is not
+        yet available in InvaTrace. Do not act on the plant from this result —
+        record it visually and check back after the next data release.
       </p>
       <ConfidenceBand confidence={result.confidence} />
     </div>

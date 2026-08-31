@@ -167,7 +167,7 @@ export function PlantGuidancePanel({ scientificName, speciesName, plantId, actio
         />
       )}
 
-      {plant.actions && (
+      {plant.actions && permission === 'unknown' && (
         <ActionPathBlock
           title="If protected or permission is unknown"
           icon="Shield"
@@ -649,9 +649,6 @@ function SafetyPolicyFooter({ plant }: { plant: PlantGuidance }) {
                 {src.title}
               </a>{' '}
               — <span style={{ color: 'var(--muted)' }}>{src.publisher}</span>
-              {src.accessed && (
-                <span style={{ color: 'var(--muted)' }}> · accessed {src.accessed}</span>
-              )}
             </li>
           ))}
         </ul>

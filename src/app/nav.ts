@@ -17,15 +17,14 @@ export interface NavItem {
  *  destinations keep their position so navigation does not move between releases. */
 export const NAV: NavItem[] = [
   { id: 'map',      path: '/map',      label: 'Map',      full: 'Threat map',   icon: 'MapPinned',    iteration: 1 },
-  { id: 'trail',    path: '/trail',    label: 'Trail',    full: 'My Trail',     icon: 'Route',        iteration: 2 },
-  { id: 'sessions', path: '/sessions', label: 'Sessions', full: 'Sessions',     icon: 'CalendarDays', iteration: 2 },
-  { id: 'impact',   path: '/impact',   label: 'Impact',   full: 'Impact',       icon: 'TrendingUp',   iteration: 3 },
+  // Trail / Sessions / Impact hidden until a later iteration ships the real
+  // features. Keeping the constants around so re-enabling them is one edit.
 ]
 
 export const isEnabled = (item: NavItem, role: Role): boolean =>
   item.iteration === 1 && (!item.roles || item.roles.includes(role))
 
 export const visibleNav = (role: Role): NavItem[] =>
-  // Hide destinations that the current role is not allowed to use. Keep future
-  // destinations visible so users can see where they will appear later.
-  NAV.filter((i) => i.iteration > 1 || !i.roles || i.roles.includes(role))
+  // Only enabled destinations are visible for now; disabled placeholders were
+  // removed per Iteration 1 QA feedback.
+  NAV.filter((i) => isEnabled(i, role))

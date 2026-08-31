@@ -16,7 +16,6 @@ import { useMapView as useMapStore } from '@/features/map/map-view-store'
 import type { Sighting } from '@/types'
 import { SightingDetailsSheet } from './SightingDetailsSheet'
 import { MapLegend } from './MapLegend'
-import { MapFilters } from './MapFilters'
 
 // Give MapLibre the worker file explicitly. Its automatic URL points beside
 // Vite's optimized dependency file during development, where the worker does
@@ -33,26 +32,24 @@ const MY_BOUNDS: [[number, number], [number, number]] = [
   [119.5, 7.5],  // North-east corner.
 ]
 
-/** Carto supplies raster tiles made from OpenStreetMap data. Raster tiles are
- *  used because the development mock service worker can interfere with
- *  MapLibre's separate vector-tile worker. The attribution text below is kept
- *  visible to meet the OpenStreetMap and Carto licence requirements. */
+/** OpenStreetMap raster tiles from the OSM Foundation servers. No API key
+ *  required. Rate-limited to standard OSM tile usage policy; production should
+ *  switch to a paid provider (Stadia Maps, MapTiler, or self-hosted). */
 const STYLE_URL: maplibregl.StyleSpecification = {
   version: 8,
   sources: {
-    'carto-positron': {
+    'osm-standard': {
       type: 'raster',
       tiles: [
-        'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png',
-        'https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png',
-        'https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png',
-        'https://d.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png',
+        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
       ],
       tileSize: 256,
       maxzoom: 19,
+      attribution:
+        '© <a href="https://openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>',
     },
   },
-  layers: [{ id: 'basemap', type: 'raster', source: 'carto-positron' }],
+  layers: [{ id: 'basemap', type: 'raster', source: 'osm-standard' }],
 }
 
 export function ThreatMapPage() {
@@ -98,7 +95,7 @@ export function ThreatMapPage() {
     // the raised scan button.
     m.addControl(new maplibregl.AttributionControl({
       compact: false,
-      customAttribution: '© <a href="https://openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> · ODbL · © <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>',
+      customAttribution: '© <a href="https://openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> · ODbL',
     }), 'bottom-right')
     m.addControl(new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }), 'top-right')
     m.addControl(new maplibregl.GeolocateControl({
@@ -171,7 +168,10 @@ export function ThreatMapPage() {
       position: 'relative', height: '100%', minHeight: 0,
       display: 'flex', flexDirection: 'column',
     }}>
-      <MapFilters />
+      {/* MapFilters (search + species chips + status/risk filters) removed —
+          those controls belong to a coordinator role that doesn't exist yet.
+          The accessible sighting list still exposes every marker to screen
+          readers per AC 4.2.3. */}
       <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
         <div ref={container} style={{
           position: 'absolute', inset: 0,

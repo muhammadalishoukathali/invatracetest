@@ -117,32 +117,17 @@ export function SightingDetailsSheet() {
                 </div>
               </header>
 
-              {!isRemoved && (
-                <p className="pin-sheet__screening-note">
-                  <Icon name="Info" size={14} color="var(--green-dark)" />
-                  <span>Automated rules checked image quality, duplicates, location, and submission patterns.</span>
-                </p>
-              )}
-
-              <section className="pin-sheet__recommendation" aria-labelledby="recommended-action-heading">
-                <Icon name="ShieldCheck" size={19} color="var(--green-dark)" />
-                <div>
-                  <h3 id="recommended-action-heading">Recommended action</h3>
-                  <p>{data.recommendedAction}</p>
-                </div>
-              </section>
-
+              {/* Trimmed to essentials — species/photo above, place + coords + last reported here.
+                  Reporter trust, seasonal action guide, and "recommended action" removed until
+                  coordinator-tier features ship. */}
               <section className="pin-sheet__record" aria-labelledby="sighting-record-heading">
                 <h3 id="sighting-record-heading">Sighting record</h3>
                 <dl>
                   <MetaRow icon="MapPin" label="Coordinates"
                     value={`${data.location.lat.toFixed(coordinateDecimals)}, ${data.location.lng.toFixed(coordinateDecimals)}`}
                     sub={data.precisionReduced ? 'Approximate location' : undefined} mono />
-                  <MetaRow icon="Trees" label="Associated place"
+                  <MetaRow icon="Trees" label="Nearby place"
                     value={(() => {
-                      // Prefer the live OSM lookup (AC 4.3.1) when it succeeds;
-                      // fall back to the seeded place; final fallback is the
-                      // AC 4.3.2 "No named …" copy.
                       if (nearestOsm) {
                         const kind = OSM_FEATURE_LABEL[nearestOsm.featureType] ?? 'feature'
                         return `${nearestOsm.featureName} (${kind}, ~${nearestOsm.distanceM} m)`
@@ -152,35 +137,10 @@ export function SightingDetailsSheet() {
                       }
                       return data.place.displayName
                     })()}
-                    sub={
-                      nearestOsm
-                        ? 'OpenStreetMap · live'
-                        : data.place.trailName
-                        ? `Nearest trail: ${data.place.trailName}`
-                        : undefined
-                    } />
+                    sub={nearestOsm ? 'OpenStreetMap · live' : undefined} />
                   <MetaRow icon="Clock" label="Last reported" value={formatTime(data.lastReportedAt)} />
-                  <MetaRow icon="User" label="Reporter trust" value={data.reporterTrust} />
-                  <MetaRow icon="ClipboardList" label="Reports" value={`${data.reportCount}`} />
                 </dl>
               </section>
-
-              {data.actionGuide && (
-                <section className="pin-sheet__record" aria-labelledby="seasonal-guide-heading">
-                  <h3 id="seasonal-guide-heading">This season</h3>
-                  <p>{data.actionGuide.title}</p>
-                  <ul>
-                    {data.actionGuide.steps.map((step) => <li key={step.order}>{step.action}</li>)}
-                  </ul>
-                </section>
-              )}
-
-              {data.precisionReduced && (
-                <p className="pin-sheet__privacy-note">
-                  <Icon name="Info" size={14} color="var(--muted)" />
-                  <span>Reports from new profiles may be shifted by about 100 m for privacy.</span>
-                </p>
-              )}
             </>
           )}
         </div>
