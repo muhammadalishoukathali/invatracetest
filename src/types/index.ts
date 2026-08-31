@@ -106,6 +106,9 @@ export interface NativeTwin {
   name: string
   latinName: string
   distinguishingTraits: string[]
+  /** Photo of the native look-alike so the user can compare visually. */
+  referenceImageUrl?: string
+  referenceImageCredit?: string
 }
 
 export interface RemovalStep { order: number; action: string; safe: boolean }
@@ -130,6 +133,10 @@ export interface SpeciesDetail {
   // AC 1.2.2 — per-species reviewed date for the Malaysia-status record.
   statusReviewedAt?: string
   statusSourceId?: string
+  /** Curated reference photo of a healthy specimen. Used in the look-alike
+   *  comparison so the user can eyeball their scan against a known example. */
+  referenceImageUrl?: string
+  referenceImageCredit?: string
 }
 
 export interface SeasonalActionGuide {

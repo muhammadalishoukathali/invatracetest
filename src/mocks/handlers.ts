@@ -858,6 +858,8 @@ const SPECIES_DETAIL: Record<string, unknown> = {
     actionEligible: true,
     statusReviewedAt: '2026-07-15',
     statusSourceId: 'MYBIS-IAS-2024.1',
+    referenceImageUrl: '/reference-images/mikania-micrantha.jpg',
+    referenceImageCredit: 'Wikimedia · CC BY-SA',
     traits: [
       { label: 'Leaf shape', value: 'Heart-shaped, opposite, 5–13 cm' },
       { label: 'Flower', value: 'Small white heads in dense clusters' },
@@ -873,6 +875,8 @@ const SPECIES_DETAIL: Record<string, unknown> = {
         'No heart-shaped leaves',
         'Does not climb or smother other plants',
       ],
+      referenceImageUrl: '/reference-images/dicranopteris-linearis.jpg',
+      referenceImageCredit: 'Wikimedia · Starr Environmental',
     },
     removalSteps: [
       { order: 1, action: 'Cut the vine at ground level', safe: true },
@@ -898,6 +902,8 @@ const SPECIES_DETAIL: Record<string, unknown> = {
     actionEligible: false,
     statusReviewedAt: '2026-07-15',
     statusSourceId: 'GRIIS-MYS-1.3',
+    referenceImageUrl: '/reference-images/chromolaena-odorata.jpg',
+    referenceImageCredit: 'Wikimedia · CC BY-SA',
     traits: [
       { label: 'Leaf shape', value: 'Opposite, ovate, 5–12 cm with serrated edges' },
       { label: 'Flower', value: 'Pale purple to white, in terminal clusters' },

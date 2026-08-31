@@ -171,6 +171,9 @@ function OutcomeBadge({ outcome }: { outcome: IdentifyResult['outcome'] }) {
 function TargetResult({
   result, detail, imageUrl,
 }: { result: IdentifyResult; detail: SpeciesDetail; imageUrl: string | null }) {
+  // Compact header + confidence + side-by-side visual compare with the native
+  // look-alike. Removal steps + do-not-dos + safety copy live in the shared
+  // PlantGuidancePanel below so we don't duplicate them here.
   return (
     <>
       <div style={{ marginTop: 16 }}>
@@ -186,66 +189,93 @@ function TargetResult({
 
       <ConfidenceBand confidence={result.confidence} />
 
-      <Section title="Key traits">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {detail.traits.map((t) => (
-            <div key={t.label} style={{ fontSize: 13, lineHeight: 1.5 }}>
-              <span style={{ fontWeight: 600 }}>{t.label}:</span>{' '}
-              <span style={{ color: 'var(--body)' }}>{t.value}</span>
-            </div>
-          ))}
-        </div>
-      </Section>
-
       {detail.nativeTwin && (
-        <Section title="Check the native look-alike" icon="Leaf">
+        <Section title="Compare with the native look-alike" icon="Leaf">
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 10 }}>
-            <div style={{ overflow: 'hidden', borderRadius: 'var(--r-input)', background: 'var(--red-light)' }}>
-              {imageUrl && <img src={imageUrl} alt="Your scanned plant" style={{ width: '100%', aspectRatio: '4 / 3', objectFit: 'cover', display: 'block' }} />}
-              <div style={{ padding: '10px 11px' }}>
-                <strong style={{ fontSize: 12.5 }}>Your scan</strong>
-                <p style={{ marginTop: 2, color: 'var(--red-text)', fontSize: 11.5 }}>Possible invasive</p>
-              </div>
-            </div>
-            <div style={{ padding: '12px', borderRadius: 'var(--r-input)', background: 'var(--green-light)' }}>
-              <Icon name="Leaf" size={22} color="var(--green)" />
-              <div style={{ marginTop: 8, fontSize: 13.5, fontWeight: 650 }}>{detail.nativeTwin.name}</div>
-              <div style={{ fontSize: 11.5, color: 'var(--muted)', fontStyle: 'italic' }}>{detail.nativeTwin.latinName}</div>
-              <p style={{ marginTop: 7, color: 'var(--green-dark)', fontSize: 11.5, fontWeight: 650 }}>Native — do not remove</p>
-            </div>
+            <ComparisonCard
+              tone="warn"
+              badge="Your scan"
+              imageUrl={imageUrl}
+              imageAlt="Your scanned plant"
+              title={detail.name}
+              subtitle={detail.latinName}
+              caption="Possible invasive"
+            />
+            <ComparisonCard
+              tone="ok"
+              badge="Native"
+              imageUrl={detail.nativeTwin.referenceImageUrl}
+              imageCredit={detail.nativeTwin.referenceImageCredit}
+              imageAlt={`Reference photo of ${detail.nativeTwin.name}`}
+              title={detail.nativeTwin.name}
+              subtitle={detail.nativeTwin.latinName}
+              caption="Native — do not remove"
+            />
           </div>
+          {detail.referenceImageUrl && (
+            <div style={{ marginTop: 12 }}>
+              <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>
+                Reference photo of {detail.name} for comparison
+              </p>
+              <ReferenceImage src={detail.referenceImageUrl} alt={`Reference photo of ${detail.name}`}
+                credit={detail.referenceImageCredit} />
+            </div>
+          )}
           <ul style={{ marginTop: 10, paddingLeft: 18, fontSize: 13, color: 'var(--body)', lineHeight: 1.65 }}>
             {detail.nativeTwin.distinguishingTraits.map((trait) => <li key={trait}>{trait}</li>)}
           </ul>
         </Section>
       )}
-
-      <Section title={detail.actionGuide?.title ?? 'Safe action guide'} icon="ShieldCheck">
-        <p style={{ marginBottom: 8, color: 'var(--body)', fontSize: 13, lineHeight: 1.55 }}>
-          {detail.actionGuide?.summary ?? 'Follow the approved steps for this species. If the plant is seeding, report it and do not disturb it.'}
-        </p>
-        <ol style={{ paddingLeft: 20, fontSize: 13, color: 'var(--body)', lineHeight: 1.7 }}>
-          {(detail.actionGuide?.steps ?? detail.removalSteps).map((s) => (
-            <li key={s.order}>{s.action}</li>
-          ))}
-        </ol>
-      </Section>
-
-      {(detail.actionGuide?.doNotDo ?? detail.doNotDo).length > 0 && (
-        <Section title="Do NOT do" icon="XOctagon">
-          <div style={{
-            padding: '10px 14px', borderRadius: 'var(--r-input)',
-            background: 'var(--red-light)', border: '1px solid var(--red-border)',
-          }}>
-            <ul style={{ paddingLeft: 16, fontSize: 13, color: 'var(--red)', lineHeight: 1.7 }}>
-              {(detail.actionGuide?.doNotDo ?? detail.doNotDo).map((d) => (
-                <li key={d}>{d}</li>
-              ))}
-            </ul>
-          </div>
-        </Section>
-      )}
     </>
+  )
+}
+
+function ComparisonCard({
+  tone, badge, imageUrl, imageAlt, imageCredit, title, subtitle, caption,
+}: {
+  tone: 'warn' | 'ok'; badge: string; imageUrl?: string | null; imageAlt: string;
+  imageCredit?: string; title: string; subtitle?: string; caption: string
+}) {
+  const bg = tone === 'warn' ? 'var(--red-light)' : 'var(--green-light)'
+  const captionColor = tone === 'warn' ? 'var(--red-text)' : 'var(--green-dark)'
+  return (
+    <div style={{ overflow: 'hidden', borderRadius: 'var(--r-input)', background: bg }}>
+      {imageUrl ? (
+        <img src={imageUrl} alt={imageAlt} loading="lazy" style={{
+          width: '100%', aspectRatio: '4 / 3', objectFit: 'cover', display: 'block',
+        }} />
+      ) : (
+        <div aria-hidden style={{
+          width: '100%', aspectRatio: '4 / 3',
+          background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: 'var(--muted)', fontSize: 11,
+        }}>No reference photo</div>
+      )}
+      <div style={{ padding: '10px 11px' }}>
+        <span style={{
+          display: 'inline-block', fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4,
+          textTransform: 'uppercase', color: captionColor,
+        }}>{badge}</span>
+        <div style={{ marginTop: 4, fontSize: 13, fontWeight: 650 }}>{title}</div>
+        {subtitle && <div style={{ fontSize: 11.5, color: 'var(--muted)', fontStyle: 'italic' }}>{subtitle}</div>}
+        <p style={{ marginTop: 6, color: captionColor, fontSize: 11.5, fontWeight: 600 }}>{caption}</p>
+        {imageCredit && (
+          <p style={{ marginTop: 4, fontSize: 10, color: 'var(--muted)' }}>{imageCredit}</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function ReferenceImage({ src, alt, credit }: { src: string; alt: string; credit?: string }) {
+  return (
+    <figure style={{ margin: 0 }}>
+      <img src={src} alt={alt} loading="lazy" style={{
+        width: '100%', maxHeight: 260, objectFit: 'cover',
+        borderRadius: 'var(--r-input)', display: 'block',
+      }} />
+      {credit && <figcaption style={{ marginTop: 4, fontSize: 10.5, color: 'var(--muted)' }}>{credit}</figcaption>}
+    </figure>
   )
 }
 
@@ -379,7 +409,7 @@ function ModelInfo({ version }: { version: string }) {
         </span>
       </div>
       <p style={{ marginTop: 6, fontSize: 11, color: 'var(--muted)', lineHeight: 1.5 }}>
-        This result is model-generated. Confirm key features before acting.
+        Automated identification. Check the plant in person before acting on it.
       </p>
     </div>
   )
