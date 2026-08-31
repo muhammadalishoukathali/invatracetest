@@ -22,6 +22,7 @@ interface Props {
 }
 
 type PermissionContext = 'unknown' | 'explicit_permission'
+type PermissionChoice = PermissionContext | 'none'
 
 const MODE_COPY: Record<GuidanceMode, { label: string; tone: 'info' | 'warn' | 'danger' | 'ok'; help: string }> = {
   general_information: {
@@ -61,7 +62,11 @@ export function PlantGuidancePanel({ scientificName, speciesName, plantId, actio
     () => findPlantGuidance({ scientificName, modelLabel: speciesName, plantId }),
     [scientificName, speciesName, plantId],
   )
-  const [permission, setPermission] = useState<PermissionContext>('unknown')
+  // AC 3.1.2: no default until the user actively picks one — until then, no
+  // action-path guidance is shown. This prevents the "protected land"
+  // instructions from being visible even when a user with permission opens
+  // the result.
+  const [permission, setPermission] = useState<PermissionChoice>('none')
   const [siteManagerConfirmed, setSiteManagerConfirmed] = useState(false)
   const [stopConditionsClear, setStopConditionsClear] = useState(false)
 
@@ -170,7 +175,7 @@ export function PlantGuidancePanel({ scientificName, speciesName, plantId, actio
           permission={permission}
           setPermission={(next) => {
             setPermission(next)
-            if (next === 'unknown') {
+            if (next !== 'explicit_permission') {
               setSiteManagerConfirmed(false)
               setStopConditionsClear(false)
             }
@@ -180,6 +185,20 @@ export function PlantGuidancePanel({ scientificName, speciesName, plantId, actio
           stopConditionsClear={stopConditionsClear}
           setStopConditionsClear={setStopConditionsClear}
         />
+      )}
+
+      {plant.actions && permission === 'none' && (
+        <div
+          role="note"
+          style={{
+            marginTop: 12, padding: '10px 12px',
+            borderRadius: 'var(--r-input)',
+            background: 'var(--bg-alt)', border: '1px dashed var(--border)',
+            fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.5,
+          }}
+        >
+          Pick one of the options above to see the matching guidance steps.
+        </div>
       )}
 
       {plant.actions && permission === 'unknown' && (
@@ -287,8 +306,8 @@ function PermissionGate({
   setStopConditionsClear,
 }: {
   plant: PlantGuidance
-  permission: PermissionContext
-  setPermission: (value: PermissionContext) => void
+  permission: PermissionChoice
+  setPermission: (value: PermissionChoice) => void
   siteManagerConfirmed: boolean
   setSiteManagerConfirmed: (value: boolean) => void
   stopConditionsClear: boolean
@@ -320,7 +339,7 @@ function PermissionGate({
         <RadioRow
           checked={permission === 'unknown'}
           onSelect={() => setPermission('unknown')}
-          label="Protected land or permission unknown (default)"
+          label="Protected land or permission unknown"
         />
         <RadioRow
           checked={permission === 'explicit_permission'}
