@@ -839,7 +839,11 @@ const SIGHTINGS: Sighting[] = SEED.map((sighting, index) => {
       trailName: PLACES[index].name.includes(' · ') ? PLACES[index].name.split(' · ')[1] : null,
       source: 'seed',
     },
-    thumbnailUrl: null,
+    // Stand-in per-sighting photo — real deployments store the user's
+    // uploaded capture at this URL. The mock reuses the species' curated
+    // reference photo so the sheet demonstrates "the reporter's photo" +
+    // "typical example" as two distinct blocks.
+    thumbnailUrl: `/reference-images/${sighting.speciesId.replaceAll('-', '_')}.jpg`,
     screeningMethod: 'deterministic_rules',
     lastReportedAt: new Date(Date.now() - (index + 1) * 3600 * 1000).toISOString(),
   }

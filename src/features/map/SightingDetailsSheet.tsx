@@ -106,8 +106,16 @@ export function SightingDetailsSheet() {
           ) : (
             <>
               {data.thumbnailUrl && (
-                <img className="pin-sheet__photo" src={data.thumbnailUrl}
-                  alt={`Rule-screened ${data.speciesName} sighting`} />
+                <figure style={{ margin: 0 }}>
+                  <img className="pin-sheet__photo" src={data.thumbnailUrl}
+                    alt={`Photo submitted with this ${data.speciesName} report`} />
+                  <figcaption style={{
+                    marginTop: 4, fontSize: 10.5, color: 'var(--muted)',
+                    padding: '0 var(--pin-sheet-x, 16px)',
+                  }}>
+                    Photo from this report
+                  </figcaption>
+                </figure>
               )}
               <header className="pin-sheet__heading">
                 <h2 tabIndex={-1} data-dialog-initial>{data.speciesName}</h2>
@@ -211,7 +219,7 @@ function PlantInfoBlock({ latinName, speciesName }: { latinName: string; species
             }}
           />
           <figcaption style={{ marginTop: 4, fontSize: 10.5, color: 'var(--muted)' }}>
-            Reference photo · {guidance.reference_image_credit ?? 'Wikimedia'}
+            Typical example of the species · {guidance.reference_image_credit ?? 'Wikimedia'}
           </figcaption>
         </figure>
       )}
