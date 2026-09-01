@@ -33,7 +33,7 @@ const MODE_COPY: Record<GuidanceMode, { label: string; tone: 'info' | 'warn' | '
   active_guidance: {
     label: 'Active guidance available',
     tone: 'warn',
-    help: 'Choose the correct action path based on land status and permission.',
+    help: 'Check the land status and your permission below before touching or removing the plant.',
   },
   site_manager_confirmation_required: {
     label: 'Site manager confirmation required',
@@ -114,7 +114,7 @@ export function PlantGuidancePanel({ scientificName, speciesName, plantId, actio
         <StatusChip status={plant.malaysia_status} />
       </header>
 
-      <ModeBanner mode={plant.guidance_mode} help={modeInfo.help} tone={modeInfo.tone} label={modeInfo.label} />
+      <ModeBanner help={modeInfo.help} tone={modeInfo.tone} label={modeInfo.label} />
 
       {plant.reference_image && (
         <figure style={{ margin: '12px 0 0' }}>
@@ -187,13 +187,13 @@ export function PlantGuidancePanel({ scientificName, speciesName, plantId, actio
         <div
           role="note"
           style={{
-            marginTop: 12, padding: '10px 12px',
+            marginTop: 12, padding: '12px 14px',
             borderRadius: 'var(--r-input)',
-            background: 'var(--bg-alt)', border: '1px dashed var(--border)',
-            fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.5,
+            background: '#FFF9ED', border: '1px solid #E8C879',
+            fontSize: 13, color: 'var(--body)', lineHeight: 1.55,
           }}
         >
-          Pick one of the options above to see the matching guidance steps.
+          Choose your permission status above. InvaTrace will only show steps that are appropriate for that site.
         </div>
       )}
 
@@ -318,20 +318,35 @@ function PermissionGate({
       role="group"
       aria-label="Permission and safety gate"
       style={{
-        marginTop: 16,
-        padding: '12px 14px',
-        borderRadius: 'var(--r-input)',
-        background: 'var(--bg-alt)',
-        border: '1px solid var(--border)',
+        marginTop: 18,
+        padding: '16px',
+        borderRadius: 'var(--r-card)',
+        background: '#FFF9ED',
+        border: '2px solid #E8C879',
+        boxShadow: '0 8px 22px rgb(136 93 12 / 10%)',
       }}
     >
-      <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--body)' }}>
-        Do you have explicit permission to act at this site?
+      <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+        <span style={{
+          width: 34, height: 34, flex: '0 0 34px', borderRadius: 10,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          background: '#F7E4B7',
+        }}>
+          <Icon name="Shield" size={19} color="var(--amber)" />
+        </span>
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 750, color: 'var(--amber)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Before you act
+          </div>
+          <div style={{ marginTop: 1, fontSize: 16, fontWeight: 750, color: 'var(--heading)', lineHeight: 1.3 }}>
+            Do you have permission at this site?
+          </div>
+        </div>
       </div>
-      <p style={{ marginTop: 4, fontSize: 12, color: 'var(--muted)', lineHeight: 1.55 }}>
-        Being outside a mapped protected area does not grant permission. Nearby OpenStreetMap features do not grant permission.
+      <p style={{ marginTop: 10, fontSize: 13.5, color: 'var(--body)', lineHeight: 1.6 }}>
+        If the land is protected—or you are unsure—do not touch or remove the plant. Photograph it and report the sighting instead. A map boundary alone is not proof of permission.
       </p>
-      <div role="radiogroup" style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div role="radiogroup" style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
         <RadioRow
           checked={permission === 'unknown'}
           onSelect={() => setPermission('unknown')}
@@ -409,9 +424,13 @@ function RadioRow({
   return (
     <label
       style={{
-        display: 'flex', gap: 8, alignItems: 'flex-start',
-        fontSize: 12.5, color: disabled ? 'var(--muted)' : 'var(--body)',
-        lineHeight: 1.5, cursor: disabled ? 'not-allowed' : 'pointer',
+        display: 'flex', gap: 10, alignItems: 'center', minHeight: 48,
+        padding: '10px 12px', borderRadius: 'var(--r-input)',
+        border: checked ? '1.5px solid var(--amber)' : '1px solid #E6D8B8',
+        background: checked ? '#FFF3D7' : 'var(--surface)',
+        fontSize: 13, fontWeight: checked ? 650 : 500,
+        color: disabled ? 'var(--muted)' : 'var(--body)',
+        lineHeight: 1.45, cursor: disabled ? 'not-allowed' : 'pointer',
       }}
     >
       <input
@@ -419,7 +438,7 @@ function RadioRow({
         checked={checked}
         onChange={onSelect}
         disabled={disabled}
-        style={{ marginTop: 2 }}
+        style={{ width: 18, height: 18, flex: '0 0 18px', accentColor: 'var(--amber)' }}
       />
       <span>{label}</span>
     </label>
@@ -456,12 +475,10 @@ function StatusChip({ status }: { status: MalaysiaStatus }) {
 }
 
 function ModeBanner({
-  mode: _mode,
   label,
   help,
   tone,
 }: {
-  mode: GuidanceMode
   label: string
   help: string
   tone: 'info' | 'warn' | 'danger' | 'ok'

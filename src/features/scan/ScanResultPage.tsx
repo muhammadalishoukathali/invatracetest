@@ -6,6 +6,7 @@ import { PlantGuidancePanel } from '@/features/scan/PlantGuidancePanel'
 import { deriveMalaysiaStatusState, isReportEligible } from '@/features/scan/malaysia-status'
 import { findPlantGuidance } from '@/data/plant-guidance'
 import type { IdentifyResult, SpeciesDetail } from '@/types'
+import './scan-result.css'
 
 export function ScanResultPage() {
   const navigate = useNavigate()
@@ -54,7 +55,7 @@ export function ScanResultPage() {
     && (result.outcome === 'uncertain' || (result.outcome === 'target' && result.reportable))
 
   return (
-    <div style={{ padding: 16, maxWidth: 520, margin: '0 auto', paddingBottom: 32 }}>
+    <div className="scan-result">
       <OutcomeBadge outcome={result.outcome} />
 
       {imageUrl && (
@@ -113,30 +114,27 @@ export function ScanResultPage() {
         </p>
       )}
 
-      <ModelInfo version={result.modelVersion} />
+      <div className="scan-result__action-dock" role="group" aria-label="Scan result actions">
+        {canReport && (
+          <div className="scan-result__action-copy">
+            <strong>Help confirm this sighting</strong>
+            <span>Send the photo and location for review.</span>
+          </div>
+        )}
 
-      <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-        <button type="button" onClick={scanAgain} style={{
-          flex: 1, height: 'var(--h-primary)', borderRadius: 'var(--r-button)',
-          border: '1px solid var(--border)', background: 'var(--surface)',
-          fontWeight: 600, fontSize: 14, cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-        }}>
+        <div className="scan-result__action-buttons">
+          <button type="button" onClick={scanAgain} className="scan-result__secondary-action">
           <Icon name="RotateCcw" size={16} color="var(--body)" />
           Scan again
-        </button>
-
-        {canReport && (
-          <button type="button" onClick={startReport} style={{
-            flex: 1, height: 'var(--h-primary)', borderRadius: 'var(--r-button)',
-            border: 'none', background: 'var(--green)', color: '#fff',
-            fontWeight: 600, fontSize: 14, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          }}>
-            <Icon name="Send" size={16} color="#fff" />
-            Report sighting
           </button>
-        )}
+
+          {canReport && (
+            <button type="button" onClick={startReport} className="scan-result__report-action">
+              <Icon name="Send" size={17} color="#fff" />
+              Report sighting
+            </button>
+          )}
+        </div>
       </div>
 
     </div>
@@ -420,17 +418,5 @@ function Section({ title, icon, children }: { title: string; icon?: string; chil
       </div>
       {children}
     </div>
-  )
-}
-
-function ModelInfo({ version }: { version: string }) {
-  // Written as a single caption, not a label:value admin row. Prevents the
-  // "data-field output" feel the earlier bordered card had.
-  return (
-    <p style={{
-      marginTop: 16, fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.55,
-    }}>
-      Identified by the InvaTrace model ({version}). Check the plant in person before acting on it.
-    </p>
   )
 }
