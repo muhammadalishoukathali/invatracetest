@@ -305,9 +305,8 @@ export function ScanCapturePage() {
             <span aria-hidden className="scan-capture__corner scan-capture__corner--bl" />
             <span aria-hidden className="scan-capture__corner scan-capture__corner--br" />
             <span className="scan-capture__camera-icon" aria-hidden>
-              {checking || cameraStarting ? <Spinner /> : <Icon name="Camera" size={30} color="#fff" />}
+              {checking || cameraStarting ? <Spinner /> : <Icon name="Camera" size={30} color="var(--ink)" />}
             </span>
-            {!checking && !cameraStarting && <span className="scan-capture__recommended">Recommended</span>}
             <strong>{checking ? 'Preparing photo…' : cameraStarting ? 'Starting camera…' : 'Open camera'}</strong>
             <span>{checking ? 'Checking image quality' : cameraStarting ? 'Waiting for camera access' : 'Uses your phone’s rear camera'}</span>
             <small>Fill the frame with the plant feature</small>

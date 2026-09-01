@@ -38,11 +38,11 @@
   aspect-ratio: 4 / 3;
   padding: 42px;
   overflow: hidden;
-  border: 0;
+  border: 1px solid var(--control-border);
   border-radius: 16px;
-  background: var(--deep-surface);
-  color: #fff;
-  box-shadow: 0 14px 34px rgba(13, 44, 30, 0.17);
+  background: #EEF1EF;
+  color: var(--ink);
+  box-shadow: 0 8px 24px rgba(25, 38, 31, 0.07);
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -57,22 +57,12 @@
 }
 .scan-capture__camera:disabled { cursor: wait; opacity: .82; }
 .scan-capture__camera-icon { width: 52px; height: 52px; display: grid; place-items: center; }
-.scan-capture__recommended {
-  margin-top: 3px;
-  padding: 4px 9px;
-  border: 1px solid rgba(220, 244, 230, .24);
-  border-radius: 999px;
-  background: rgba(220, 244, 230, .1);
-  color: #E2F3E9 !important;
-  font-size: 10.5px !important;
-  font-weight: 650;
-  line-height: 1;
-  letter-spacing: .02em;
-}
+.scan-capture__camera .scan-capture__spinner circle { stroke: rgba(30, 44, 36, .22); }
+.scan-capture__camera .scan-capture__spinner path { stroke: var(--ink); }
 .scan-capture__camera strong { margin-top: 11px; font-size: 20px; line-height: 1.2; letter-spacing: -0.02em; }
 .scan-capture__camera > span:not(.scan-capture__corner):not(.scan-capture__camera-icon) {
   margin-top: 7px;
-  color: #C5D8CD;
+  color: var(--body);
   font-size: 13px;
 }
 .scan-capture__camera small {
@@ -80,16 +70,16 @@
   right: 24px;
   bottom: 22px;
   left: 24px;
-  color: #B3C8BC;
+  color: var(--muted);
   font-size: 11.5px;
   font-weight: 550;
   letter-spacing: .01em;
 }
 .scan-capture__corner { position: absolute; width: 42px; height: 42px; opacity: .72; pointer-events: none; }
-.scan-capture__corner--tl { top: 22px; left: 22px; border-top: 2px solid #B3C8BC; border-left: 2px solid #B3C8BC; }
-.scan-capture__corner--tr { top: 22px; right: 22px; border-top: 2px solid #B3C8BC; border-right: 2px solid #B3C8BC; }
-.scan-capture__corner--bl { bottom: 22px; left: 22px; border-bottom: 2px solid #B3C8BC; border-left: 2px solid #B3C8BC; }
-.scan-capture__corner--br { right: 22px; bottom: 22px; border-right: 2px solid #B3C8BC; border-bottom: 2px solid #B3C8BC; }
+.scan-capture__corner--tl { top: 22px; left: 22px; border-top: 2px solid #9AA59F; border-left: 2px solid #9AA59F; }
+.scan-capture__corner--tr { top: 22px; right: 22px; border-top: 2px solid #9AA59F; border-right: 2px solid #9AA59F; }
+.scan-capture__corner--bl { bottom: 22px; left: 22px; border-bottom: 2px solid #9AA59F; border-left: 2px solid #9AA59F; }
+.scan-capture__corner--br { right: 22px; bottom: 22px; border-right: 2px solid #9AA59F; border-bottom: 2px solid #9AA59F; }
 
 .scan-capture__gallery {
   width: 100%;
@@ -313,7 +303,7 @@
 @keyframes scan-spinner { to { transform: rotate(360deg); } }
 
 @media (hover: hover) and (pointer: fine) {
-  .scan-capture__camera:not(:disabled):hover { background: #174C35; }
+  .scan-capture__camera:not(:disabled):hover { border-color: #AEB8B2; background: #E8ECE9; }
   .scan-capture__gallery:not(:disabled):hover { border-color: var(--green-border); background: var(--hover); transform: translateY(-1px); }
   .scan-capture__analyse:not(:disabled):hover { background: var(--green-hover); }
   .scan-capture__shutter:hover { background: var(--green-hover); }
