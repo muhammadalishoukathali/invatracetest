@@ -168,6 +168,7 @@ export function SightingDetailsSheet() {
                 scientificName={data.latinName}
                 speciesName={data.speciesName}
                 plantId={data.speciesId}
+                decisionContext={{ id: `sighting:${data.id}`, kind: 'sighting' }}
               />
             </>
           )}

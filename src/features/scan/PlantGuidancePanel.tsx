@@ -1,5 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Icon } from '@/components/Icon'
+import {
+  getGuidanceDecision,
+  saveGuidanceDecision,
+  type GuidanceDecision,
+} from '@/features/scan/guidance-decision-store'
 import {
   findPlantGuidance,
   getSources,
@@ -19,6 +24,9 @@ interface Props {
    *  regardless of the user's permission selection. Undefined = no server
    *  gate; the panel's own permission logic applies. */
   actionEligible?: boolean
+  /** A scan capture or map sighting key. Permission choices are private safety
+   *  notes stored on this device; they never change official land status. */
+  decisionContext?: { id: string; kind: 'scan' | 'sighting' }
 }
 
 type PermissionContext = 'unknown' | 'explicit_permission'
@@ -57,7 +65,13 @@ const TONE_STYLES: Record<
   ok: { bg: 'var(--green-light)', border: 'var(--green-border)', color: 'var(--green)' },
 }
 
-export function PlantGuidancePanel({ scientificName, speciesName, plantId, actionEligible }: Props) {
+export function PlantGuidancePanel({
+  scientificName,
+  speciesName,
+  plantId,
+  actionEligible,
+  decisionContext,
+}: Props) {
   const plant = useMemo(
     () => findPlantGuidance({ scientificName, modelLabel: speciesName, plantId }),
     [scientificName, speciesName, plantId],
@@ -66,9 +80,24 @@ export function PlantGuidancePanel({ scientificName, speciesName, plantId, actio
   // action-path guidance is shown. This prevents the "protected land"
   // instructions from being visible even when a user with permission opens
   // the result.
-  const [permission, setPermission] = useState<PermissionChoice>('none')
+  const decisionContextId = decisionContext?.id
+  const initialDecision = useMemo(
+    () => decisionContextId ? getGuidanceDecision(decisionContextId) : null,
+    [decisionContextId],
+  )
+  const [permission, setPermission] = useState<PermissionChoice>(() => decisionToPermission(initialDecision))
+  const [savedDecision, setSavedDecision] = useState<GuidanceDecision | null>(initialDecision)
+  const [saveFailed, setSaveFailed] = useState(false)
   const [siteManagerConfirmed, setSiteManagerConfirmed] = useState(false)
   const [stopConditionsClear, setStopConditionsClear] = useState(false)
+
+  useEffect(() => {
+    setPermission(decisionToPermission(initialDecision))
+    setSavedDecision(initialDecision)
+    setSaveFailed(false)
+    setSiteManagerConfirmed(false)
+    setStopConditionsClear(false)
+  }, [initialDecision])
 
   if (!plant) {
     return <MissingGuidanceFallback speciesName={speciesName ?? scientificName ?? null} />
@@ -173,6 +202,15 @@ export function PlantGuidancePanel({ scientificName, speciesName, plantId, actio
           permission={permission}
           setPermission={(next) => {
             setPermission(next)
+            if (decisionContext && next !== 'none') {
+              const saved = saveGuidanceDecision({
+                contextId: decisionContext.id,
+                choice: next === 'unknown' ? 'protected_or_unsure' : 'manager_permission',
+                plantId: plant.plant_id,
+              })
+              setSavedDecision(saved)
+              setSaveFailed(!saved)
+            }
             if (next !== 'explicit_permission') {
               setSiteManagerConfirmed(false)
               setStopConditionsClear(false)
@@ -182,6 +220,14 @@ export function PlantGuidancePanel({ scientificName, speciesName, plantId, actio
           setSiteManagerConfirmed={setSiteManagerConfirmed}
           stopConditionsClear={stopConditionsClear}
           setStopConditionsClear={setStopConditionsClear}
+        />
+      )}
+
+      {plant.actions && decisionContext && permission !== 'none' && (
+        <DecisionSaveNote
+          contextKind={decisionContext.kind}
+          decision={savedDecision}
+          saveFailed={saveFailed}
         />
       )}
 
@@ -301,6 +347,44 @@ function naturalIdentificationNote(note: string): string {
   return note
 }
 
+function decisionToPermission(decision: GuidanceDecision | null): PermissionChoice {
+  if (!decision) return 'none'
+  return decision.choice === 'protected_or_unsure' ? 'unknown' : 'explicit_permission'
+}
+
+function DecisionSaveNote({
+  contextKind,
+  decision,
+  saveFailed,
+}: {
+  contextKind: 'scan' | 'sighting'
+  decision: GuidanceDecision | null
+  saveFailed: boolean
+}) {
+  if (saveFailed || !decision) {
+    return (
+      <p role="status" style={{ marginTop: 10, fontSize: 12, color: 'var(--red-text)', lineHeight: 1.5 }}>
+        This choice is active for now, but this browser could not save it.
+      </p>
+    )
+  }
+  const choice = decision.choice === 'protected_or_unsure'
+    ? 'Protected land or unsure'
+    : 'Land manager permission confirmed'
+  return (
+    <div role="status" style={{
+      marginTop: 10, padding: '10px 12px', borderRadius: 'var(--r-input)',
+      background: 'var(--green-light)', border: '1px solid var(--green-border)',
+      fontSize: 12, color: 'var(--body)', lineHeight: 1.5,
+    }}>
+      <strong>Saved on this device for this {contextKind}:</strong> {choice}.
+      {decision.choice === 'protected_or_unsure' && (
+        <> This records that you chose the cautious path; it does not mark the land as officially protected.</>
+      )}
+    </div>
+  )
+}
+
 function PermissionGate({
   plant,
   permission,
@@ -335,21 +419,12 @@ function PermissionGate({
         boxShadow: '0 8px 22px rgb(136 93 12 / 10%)',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-        <span style={{
-          width: 34, height: 34, flex: '0 0 34px', borderRadius: 10,
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          background: '#F7E4B7',
-        }}>
-          <Icon name="Shield" size={19} color="var(--amber)" />
-        </span>
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 750, color: 'var(--amber)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            Before you act
-          </div>
-          <div style={{ marginTop: 1, fontSize: 16, fontWeight: 750, color: 'var(--heading)', lineHeight: 1.3 }}>
-            Do you have permission at this site?
-          </div>
+      <div>
+        <div style={{ fontSize: 11, fontWeight: 750, color: 'var(--amber)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          Before you act
+        </div>
+        <div style={{ marginTop: 2, fontSize: 16, fontWeight: 750, color: 'var(--heading)', lineHeight: 1.3 }}>
+          Do you have permission at this site?
         </div>
       </div>
       <p style={{ marginTop: 10, fontSize: 13.5, color: 'var(--body)', lineHeight: 1.6 }}>

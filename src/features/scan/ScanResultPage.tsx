@@ -11,7 +11,7 @@ import './scan-result.css'
 export function ScanResultPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { imageUrl, result, speciesDetail, captureSource } = useScan()
+  const { imageUrl, result, speciesDetail, captureSource, captureId } = useScan()
 
   if (!result) {
     return <Navigate to="/scan" replace state={location.state} />
@@ -96,6 +96,7 @@ export function ScanResultPage() {
           // action, the guidance panel must never expose the active-removal
           // path regardless of the user's permission selection.
           actionEligible={speciesDetail?.actionEligible}
+          decisionContext={captureId ? { id: `scan:${captureId}`, kind: 'scan' } : undefined}
         />
       )}
 
