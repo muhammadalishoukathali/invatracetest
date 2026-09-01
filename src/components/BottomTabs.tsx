@@ -1,16 +1,17 @@
 import { NavLink } from 'react-router-dom'
 import { Icon } from './Icon'
-import type { Role } from '@/types'
+import { scanStateFromPath } from '@/features/scan/scan-navigation'
 import './bottom-tabs.css'
 
 // Iteration 1: map is always the underlying view, so only Scan appears here.
 // Other destinations (trail, sessions, impact, verify) return in later iterations.
-export function BottomTabs({ role: _role }: { role: Role }) {
+export function BottomTabs() {
   return (
     <div className="bottom-tabs-shell">
       <nav aria-label="Primary" className="bottom-tabs bottom-tabs--scan-only">
         <NavLink
           to="/scan"
+          state={scanStateFromPath('/map')}
           aria-label="Scan a plant"
           className="bottom-tabs__scan"
         >

@@ -1,9 +1,11 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { Icon } from './Icon'
 import { Logo } from './Logo'
 import { isEnabled, visibleNav, type NavItem } from '@/app/nav'
 import { safeDisplayName } from '@/features/private-access/pages/AccessManagementPage'
 import type { PseudonymousProfile } from '@/types'
+import { scanStateFromPath } from '@/features/scan/scan-navigation'
+import { profileStateFromPath } from '@/features/private-access/profile-navigation'
 
 const LATER = 'Available in a later iteration'
 
@@ -43,6 +45,7 @@ function Row({ item, role }: { item: NavItem; role: PseudonymousProfile['role'] 
 
 export function Sidebar({ profile }: { profile: PseudonymousProfile }) {
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   return (
     <aside style={{
       width: 'var(--sidebar-w)', flex: '0 0 var(--sidebar-w)', background: 'var(--surface)',
@@ -61,7 +64,7 @@ export function Sidebar({ profile }: { profile: PseudonymousProfile }) {
         </div>
       </div>
 
-      <button type="button" onClick={() => navigate('/scan')} style={{
+      <button type="button" onClick={() => navigate('/scan', { state: scanStateFromPath(pathname) })} style={{
         height: 'var(--h-primary)', borderRadius: 'var(--r-button)', border: 'none',
         background: 'var(--green)', color: '#fff', fontWeight: 600, fontSize: 14,
         cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -75,11 +78,15 @@ export function Sidebar({ profile }: { profile: PseudonymousProfile }) {
       </nav>
 
       <div style={{ marginTop: 'auto', borderTop: '1px solid var(--border)', paddingTop: 16 }}>
-        <button type="button" onClick={() => navigate('/access')} style={{
-          width: '100%', minHeight: 52, display: 'flex', alignItems: 'center', gap: 10,
-          padding: '6px 8px', margin: '-6px -8px', border: 0,
-          borderRadius: 'var(--r-input)', background: 'transparent', cursor: 'pointer', textAlign: 'left',
-        }}>
+        <button
+          type="button"
+          aria-label={`Open profile for ${safeDisplayName(profile.displayName)}`}
+          onClick={() => navigate('/profile', { state: profileStateFromPath(pathname) })}
+          style={{
+            width: '100%', minHeight: 52, display: 'flex', alignItems: 'center', gap: 10,
+            padding: '6px 8px', margin: '-6px -8px', border: 0,
+            borderRadius: 'var(--r-input)', background: 'transparent', cursor: 'pointer', textAlign: 'left',
+          }}>
           <div style={{
             width: 32, height: 32, borderRadius: '50%', background: 'var(--green-light)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
@@ -92,9 +99,6 @@ export function Sidebar({ profile }: { profile: PseudonymousProfile }) {
               textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>
               {safeDisplayName(profile.displayName)}
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--muted)' }}>
-              {profile.role} · {profile.trustLevel} trust
             </div>
           </div>
           <Icon name="ChevronRight" size={16} color="var(--icon)" />

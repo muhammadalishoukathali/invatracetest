@@ -28,7 +28,7 @@ export default defineConfig({
       // autoUpdate so a fresh deploy always wins over a stale cached shell —
       // prompt-based updates silently strand demo laptops on an old build.
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg'],
+      includeAssets: ['invatrace-logo-192.png', 'invatrace-logo-512.png'],
       manifest: {
         name: 'InvaTrace',
         short_name: 'InvaTrace',
@@ -38,10 +38,9 @@ export default defineConfig({
         display: 'standalone',
         start_url: '/',
         icons: [
-          // Browsers can scale this SVG for the installed-app icon. PNG versions
-          // can be added later if a platform requires fixed raster sizes.
-          { src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
-          { src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
+          { src: 'invatrace-logo-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: 'invatrace-logo-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: 'invatrace-logo-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
       workbox: {

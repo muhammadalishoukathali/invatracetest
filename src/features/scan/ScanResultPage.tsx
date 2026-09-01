@@ -1,4 +1,4 @@
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { Icon } from '@/components/Icon'
 import { useScan } from '@/features/scan/scan-store'
 import { useReportDraft } from '@/features/report/report-draft-store'
@@ -9,15 +9,16 @@ import type { IdentifyResult, SpeciesDetail } from '@/types'
 
 export function ScanResultPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { imageUrl, result, speciesDetail, captureSource } = useScan()
 
   if (!result) {
-    return <Navigate to="/scan" replace />
+    return <Navigate to="/scan" replace state={location.state} />
   }
 
   const scanAgain = () => {
     useScan.getState().reset()
-    navigate('/scan', { replace: true })
+    navigate('/scan', { replace: true, state: location.state })
   }
 
   const startReport = () => {
@@ -30,7 +31,7 @@ export function ScanResultPage() {
     useReportDraft.getState().beginFromScan({
       result, imageBlob, imageUrl: url, observedAt, captureId, captureSource: source,
     })
-    navigate('/report')
+    navigate('/report', { state: location.state })
   }
 
   const statusState = deriveMalaysiaStatusState(result)
@@ -291,9 +292,10 @@ function OtherPlantResult({ result }: { result: IdentifyResult }) {
 
 function UncertainResult({ result }: { result: IdentifyResult }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const retake = () => {
     useScan.getState().reset()
-    navigate('/scan', { replace: true })
+    navigate('/scan', { replace: true, state: location.state })
   }
   return (
     <div style={{ marginTop: 16, padding: '16px 18px', borderRadius: 'var(--r-card)', background: 'var(--surface)', border: '1px solid var(--border)' }}>

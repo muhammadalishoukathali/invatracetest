@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Icon } from '@/components/Icon'
 import { useReportDraft, REPORT_STEPS } from '@/features/report/report-draft-store'
 import { useScan } from '@/features/scan/scan-store'
@@ -18,11 +18,12 @@ const STEP_LABEL: Record<string, string> = {
 
 export function ReportWizardPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { step, draft, outcome, back, reset } = useReportDraft()
 
   useEffect(() => {
-    if (!draft && !outcome) navigate('/scan', { replace: true })
-  }, [draft, outcome, navigate])
+    if (!draft && !outcome) navigate('/scan', { replace: true, state: location.state })
+  }, [draft, outcome, location.state, navigate])
 
   if (!draft && !outcome) return null
 
@@ -38,7 +39,7 @@ export function ReportWizardPage() {
       // blank camera. Fall back to the map so back always goes somewhere useful.
       const hasScan = !!useScan.getState().result
       reset()
-      navigate(hasScan ? '/scan/result' : '/map')
+      navigate(hasScan ? '/scan/result' : '/map', { state: location.state })
     } else {
       back()
     }

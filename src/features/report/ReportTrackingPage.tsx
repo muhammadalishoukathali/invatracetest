@@ -78,7 +78,7 @@ export function ReportTrackingPage() {
           <p>We could not load this report. Check the connection and try again.</p>
           <div className="report-tracking__actions">
             <button type="button" onClick={() => void query.refetch()}>Try again</button>
-            <Link to="/map" className="report-tracking__secondary">Back to map</Link>
+            <Link to="/reports" className="report-tracking__secondary">Back to my records</Link>
           </div>
         </section>
       </section>
@@ -110,9 +110,9 @@ export function ReportTrackingPage() {
           </p>
         )}
         <div className="report-tracking__actions">
-          {report.status === 'needs_rescan' && <Link to="/scan">Retake scan</Link>}
+          {report.status === 'needs_rescan' && <Link to="/scan" state={{ returnTo: '/reports' }}>Retake scan</Link>}
           {report.sightingId && <Link to={`/map`}>View shared map</Link>}
-          <Link to="/map" className="report-tracking__secondary">Back to map</Link>
+          <Link to="/reports" className="report-tracking__secondary">Back to my records</Link>
         </div>
       </section>
     </section>

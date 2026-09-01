@@ -17,7 +17,7 @@ export interface NavItem {
  *  destinations keep their position so navigation does not move between releases. */
 export const NAV: NavItem[] = [
   { id: 'map',      path: '/map',      label: 'Map',      full: 'Threat map',   icon: 'MapPinned',    iteration: 1 },
-  { id: 'reports',  path: '/reports',  label: 'Reports',  full: 'My reports',   icon: 'ClipboardList', iteration: 1 },
+  { id: 'reports',  path: '/reports',  label: 'Records',  full: 'My records',   icon: 'ClipboardList', iteration: 1 },
   // Trail / Sessions / Impact hidden until a later iteration ships the real
   // features. Keeping the constants around so re-enabling them is one edit.
 ]

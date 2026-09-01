@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Icon } from '@/components/Icon'
 import { captureScanLocation, useScan } from '@/features/scan/scan-store'
 import { resizeImage } from '@/features/scan/image-processing'
@@ -13,6 +13,7 @@ import './scan-capture.css'
  *  rear camera, while the other input opens the normal file picker. */
 export function ScanCapturePage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const cameraRef = useRef<HTMLInputElement>(null)
   const galleryRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -217,7 +218,7 @@ export function ScanCapturePage() {
       }
 
       setResult({ ...result, reportable: Boolean(detail?.reportable ?? detail) }, detail)
-      navigate('/scan/result', { replace: true })
+      navigate('/scan/result', { replace: true, state: location.state })
     } catch {
       if (requestId === analysisRequestRef.current) {
         cancelProcessing()

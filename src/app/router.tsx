@@ -59,7 +59,8 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/map" replace /> },
       { path: 'map', element: loadRoute(<ThreatMapPage />) },
-      { path: 'access', element: loadRoute(<AccessManagementPage />) },
+      { path: 'profile', element: loadRoute(<AccessManagementPage />) },
+      { path: 'access', element: <Navigate to="/profile" replace /> },
       { path: 'reports', element: loadRoute(<MyReportsPage />) },
       { path: 'reports/:reportId', element: loadRoute(<ReportTrackingPage />) },
       { path: '*', element: <Navigate to="/map" replace /> },

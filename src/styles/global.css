@@ -31,18 +31,21 @@ body {
 .brand-mark {
   display: block;
   flex-shrink: 0;
-  color: var(--green);
+  border-radius: 24%;
+  border: 1px solid var(--green-border);
+  background: var(--surface);
+  object-fit: cover;
 }
 
 .brand-lockup {
   display: inline-flex;
   align-items: center;
-  gap: 11px;
+  gap: 12px;
   color: var(--ink);
 }
 
 .brand-wordmark {
-  font-size: 19px;
+  font-size: 20px;
   font-weight: 650;
   line-height: 1;
   letter-spacing: -0.045em;

@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { Icon } from '@/components/Icon'
 import { api } from '@/services/api-client'
 import { useOnline } from '@/hooks/useOnline'
+import { scanStateFromPath } from '@/features/scan/scan-navigation'
+import { profileStateFromPath } from '@/features/private-access/profile-navigation'
 import type { Report, ReportListResponse, ReportStatus } from '@/types'
 import './my-reports.css'
 
@@ -28,6 +30,13 @@ function shortId(id: string): string {
   return id.slice(0, 8).toUpperCase()
 }
 
+function speciesName(speciesId: string | null): string {
+  if (!speciesId) return 'Uncertain species'
+  return speciesId
+    .replace(/[-_]+/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
+}
+
 export function MyReportsPage() {
   const online = useOnline()
   const query = useQuery({
@@ -37,16 +46,56 @@ export function MyReportsPage() {
     staleTime: 15_000,
   })
   const count = query.data?.items.length ?? 0
+  const hasRecords = query.isSuccess && count > 0
+  const hasNoRecords = query.isSuccess && count === 0
+  const publishedCount = query.data?.items.filter((report) =>
+    report.status === 'screened' || report.status === 'merged').length ?? 0
+  const attentionCount = query.data?.items.filter((report) =>
+    report.status === 'needs_rescan' || report.status === 'rejected').length ?? 0
 
   return (
-    <section className="my-reports" aria-label="My reports">
-      <p className="my-reports__lede">
-        {query.isSuccess
-          ? count === 0
-            ? 'Nothing submitted yet.'
-            : `${count} report${count === 1 ? '' : 's'} from this profile, newest first.`
-          : 'Everything you have submitted from this profile.'}
-      </p>
+    <section className="my-reports" aria-label="My records">
+      <nav className="my-reports__toolbar" aria-label="Record actions">
+        <Link className="my-reports__back" to="/profile" state={profileStateFromPath('/reports')}>
+          <Icon name="ChevronLeft" size={17} />
+          <span>Profile</span>
+        </Link>
+        <Link className="my-reports__cta" to="/scan" state={scanStateFromPath('/reports')}>
+          <Icon name="ScanLine" size={16} />
+          <span>New scan</span>
+        </Link>
+      </nav>
+
+
+      <div className="my-reports__overview">
+        <div className="my-reports__overview-copy">
+          <span className="my-reports__eyebrow">Field record</span>
+          <h2>{hasNoRecords ? 'Your first record starts with a scan.' : 'Your sightings, kept in one place.'}</h2>
+          <p>
+            {hasRecords
+              ? 'Follow screening progress and open any submission for its latest result.'
+              : hasNoRecords
+                ? 'Photograph a plant, add its location and submit it for screening.'
+                : 'Review screening progress and return to any submission from this private profile.'}
+          </p>
+        </div>
+        {hasRecords && (
+          <dl className="my-reports__stats" aria-label="Record summary">
+            <div>
+              <dt>All</dt>
+              <dd>{count}</dd>
+            </div>
+            <div>
+              <dt>Published</dt>
+              <dd>{publishedCount}</dd>
+            </div>
+            <div>
+              <dt>Action needed</dt>
+              <dd>{attentionCount}</dd>
+            </div>
+          </dl>
+        )}
+      </div>
 
       {!online && (
         <p className="my-reports__notice" role="status">
@@ -78,21 +127,32 @@ export function MyReportsPage() {
 
       {online && query.data && query.data.items.length === 0 && (
         <div className="my-reports__empty">
-          <Icon name="ClipboardList" size={26} color="var(--icon)" />
-          <p>You have not submitted a report yet.</p>
-          <Link className="my-reports__cta" to="/scan">
-            <Icon name="ScanLine" size={16} />
-            <span>Start a scan</span>
-          </Link>
+          <span className="my-reports__empty-icon" aria-hidden>
+            <Icon name="ClipboardList" size={24} />
+          </span>
+          <div>
+            <h2>No field records yet</h2>
+            <p>Your submitted scans will appear here with their screening status and reference number.</p>
+            <Link className="my-reports__empty-cta" to="/scan" state={scanStateFromPath('/reports')}>
+              <Icon name="ScanLine" size={17} />
+              <span>Scan your first plant</span>
+            </Link>
+          </div>
         </div>
       )}
 
       {online && query.data && query.data.items.length > 0 && (
-        <ul className="my-reports__list">
-          {query.data.items.map((report) => (
-            <ReportRow key={report.id} report={report} />
-          ))}
-        </ul>
+        <div className="my-reports__results">
+          <div className="my-reports__results-heading">
+            <h2>Submitted records</h2>
+            <span>{count} total</span>
+          </div>
+          <ul className="my-reports__list">
+            {query.data.items.map((report) => (
+              <ReportRow key={report.id} report={report} />
+            ))}
+          </ul>
+        </div>
       )}
     </section>
   )
@@ -104,12 +164,15 @@ function ReportRow({ report }: { report: Report }) {
     <li className="my-reports__item">
       <Link to={`/reports/${report.id}`} className="my-reports__link">
         <div className="my-reports__row">
-          <span className={`my-reports__status my-reports__status--${status.tone}`}>{status.label}</span>
-          <span className="my-reports__date">{relativeDate(report.createdAt)}</span>
+          <span className={`my-reports__status my-reports__status--${status.tone}`}>
+            <span className="my-reports__status-dot" aria-hidden />
+            {status.label}
+          </span>
+          <time className="my-reports__date" dateTime={report.createdAt}>{relativeDate(report.createdAt)}</time>
         </div>
         <div className="my-reports__row my-reports__row--body">
           <span className="my-reports__species">
-            {report.submission.speciesId ?? 'Uncertain species'}
+            {speciesName(report.submission.speciesId)}
           </span>
           <span className="my-reports__ref">Ref {shortId(report.id)}</span>
         </div>

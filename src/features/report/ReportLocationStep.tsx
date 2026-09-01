@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Icon } from '@/components/Icon'
 import { useReportDraft } from '@/features/report/report-draft-store'
 import { useScan } from '@/features/scan/scan-store'
@@ -30,6 +30,7 @@ function inMalaysia(p: { lat: number; lng: number } | null): boolean {
 export function ReportLocationStep() {
   const { draft, setLocation, next, reset } = useReportDraft()
   const navigate = useNavigate()
+  const location = useLocation()
   const scanLoc = useScan((s) => s.location)
   const scanLocStatus = useScan((s) => s.locationStatus)
   const [status, setStatus] = useState<Status>('idle')
@@ -38,7 +39,7 @@ export function ReportLocationStep() {
     // AC 4.1.2: leaving the report keeps the valid scan around so the user can
     // retry from the result page without losing their identification.
     reset()
-    navigate('/scan/result')
+    navigate('/scan/result', { state: location.state })
   }
 
   const loc = draft?.location ?? null
