@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { GeoPoint, QualityResult, IdentifyResult, SpeciesDetail } from '@/types'
+import { saveScanHistoryRecord } from './scan-history-store'
 
 type ScanStep = 'capture' | 'processing' | 'result'
 
@@ -72,7 +73,22 @@ export const useScan = create<ScanState>((set, get) => ({
   cancelProcessing: () => set({ step: 'capture' }),
 
   setResult: (r, detail) => {
-    get().imageBitmap?.close()
+    const scan = get()
+    scan.imageBitmap?.close()
+    if (scan.captureId && scan.observedAt && scan.captureSource) {
+      saveScanHistoryRecord({
+        captureId: scan.captureId,
+        observedAt: scan.observedAt,
+        captureSource: scan.captureSource,
+        outcome: r.outcome,
+        speciesId: r.speciesId ?? null,
+        speciesName: r.speciesName ?? detail?.name ?? null,
+        scientificName: r.scientificName ?? detail?.latinName ?? null,
+        confidence: r.confidence,
+        modelVersion: r.modelVersion,
+        reportable: r.reportable,
+      })
+    }
     set({ step: 'result', imageBitmap: null, result: r, speciesDetail: detail })
   },
 

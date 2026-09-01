@@ -4,6 +4,7 @@ import { Icon } from '@/components/Icon'
 import { api } from '@/services/api-client'
 import { useOnline } from '@/hooks/useOnline'
 import { scanStateFromPath } from '@/features/scan/scan-navigation'
+import { listScanHistory, type ScanHistoryRecord } from '@/features/scan/scan-history-store'
 import { profileStateFromPath } from '@/features/private-access/profile-navigation'
 import type { Report, ReportListResponse, ReportStatus } from '@/types'
 import './my-reports.css'
@@ -39,19 +40,20 @@ function speciesName(speciesId: string | null): string {
 
 export function MyReportsPage() {
   const online = useOnline()
+  const scanHistory = listScanHistory()
   const query = useQuery({
     queryKey: ['my-reports'],
     queryFn: () => api<ReportListResponse>('/api/v1/reports/mine'),
     enabled: online,
     staleTime: 15_000,
   })
-  const count = query.data?.items.length ?? 0
-  const hasRecords = query.isSuccess && count > 0
+  const reports = query.data?.items ?? []
+  const submittedCaptureIds = new Set(reports.map((report) => report.submission.captureId))
+  const scanOnlyRecords = scanHistory.filter((scan) => !submittedCaptureIds.has(scan.captureId))
+  const submittedCount = reports.length
+  const count = submittedCount + scanOnlyRecords.length
+  const hasRecords = count > 0
   const hasNoRecords = query.isSuccess && count === 0
-  const publishedCount = query.data?.items.filter((report) =>
-    report.status === 'screened' || report.status === 'merged').length ?? 0
-  const attentionCount = query.data?.items.filter((report) =>
-    report.status === 'needs_rescan' || report.status === 'rejected').length ?? 0
 
   return (
     <section className="my-reports" aria-label="My records">
@@ -70,10 +72,10 @@ export function MyReportsPage() {
       <div className="my-reports__overview">
         <div className="my-reports__overview-copy">
           <span className="my-reports__eyebrow">Field record</span>
-          <h2>{hasNoRecords ? 'Your first record starts with a scan.' : 'Your sightings, kept in one place.'}</h2>
+          <h2>{hasNoRecords ? 'Your first record starts with a scan.' : 'Your scans and reports, kept in one place.'}</h2>
           <p>
             {hasRecords
-              ? 'Follow screening progress and open any submission for its latest result.'
+              ? 'Scans stay on this device. Submitted reports also show their screening progress.'
               : hasNoRecords
                 ? 'Photograph a plant, add its location and submit it for screening.'
                 : 'Review screening progress and return to any submission from this private profile.'}
@@ -86,12 +88,12 @@ export function MyReportsPage() {
               <dd>{count}</dd>
             </div>
             <div>
-              <dt>Published</dt>
-              <dd>{publishedCount}</dd>
+              <dt>Submitted</dt>
+              <dd>{submittedCount}</dd>
             </div>
             <div>
-              <dt>Action needed</dt>
-              <dd>{attentionCount}</dd>
+              <dt>Scan only</dt>
+              <dd>{scanOnlyRecords.length}</dd>
             </div>
           </dl>
         )}
@@ -125,19 +127,36 @@ export function MyReportsPage() {
         </div>
       )}
 
-      {online && query.data && query.data.items.length === 0 && (
+      {online && query.data && query.data.items.length === 0 && scanOnlyRecords.length === 0 && (
         <div className="my-reports__empty">
           <span className="my-reports__empty-icon" aria-hidden>
             <Icon name="ClipboardList" size={24} />
           </span>
           <div>
             <h2>No field records yet</h2>
-            <p>Your submitted scans will appear here with their screening status and reference number.</p>
+            <p>Completed scans are saved on this device. Reports also include their screening status and reference number.</p>
             <Link className="my-reports__empty-cta" to="/scan" state={scanStateFromPath('/reports')}>
               <Icon name="ScanLine" size={17} />
               <span>Scan your first plant</span>
             </Link>
           </div>
+        </div>
+      )}
+
+      {scanOnlyRecords.length > 0 && (
+        <div className="my-reports__results">
+          <div className="my-reports__results-heading">
+            <div>
+              <h2>Scan history</h2>
+              <p>Saved on this device. These have not been submitted as field reports.</p>
+            </div>
+            <span>{scanOnlyRecords.length} total</span>
+          </div>
+          <ul className="my-reports__list">
+            {scanOnlyRecords.map((scan) => (
+              <ScanHistoryRow key={scan.captureId} scan={scan} />
+            ))}
+          </ul>
         </div>
       )}
 
@@ -155,6 +174,27 @@ export function MyReportsPage() {
         </div>
       )}
     </section>
+  )
+}
+
+function ScanHistoryRow({ scan }: { scan: ScanHistoryRecord }) {
+  const name = scan.speciesName ?? scan.scientificName ?? speciesName(scan.speciesId)
+  return (
+    <li className="my-reports__item my-reports__item--scan">
+      <div className="my-reports__scan-record">
+        <div className="my-reports__row">
+          <span className="my-reports__status my-reports__status--muted">
+            <span className="my-reports__status-dot" aria-hidden />
+            Scan only
+          </span>
+          <time className="my-reports__date" dateTime={scan.observedAt}>{relativeDate(scan.observedAt)}</time>
+        </div>
+        <div className="my-reports__row my-reports__row--body">
+          <span className="my-reports__species">{name}</span>
+          <span className="my-reports__confidence">{Math.round(scan.confidence * 100)}% match</span>
+        </div>
+      </div>
+    </li>
   )
 }
 
