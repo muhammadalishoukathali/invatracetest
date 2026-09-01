@@ -53,21 +53,42 @@ export function ReportTrackingPage() {
     ),
   })
 
-  if (query.isLoading) return <main className="report-tracking"><p role="status">Loading report status…</p></main>
+  if (query.isLoading) {
+    return (
+      <section className="report-tracking" aria-label="Report status">
+        <section className="report-tracking__card report-tracking__card--loading" role="status" aria-label="Loading report status">
+          <span className="report-tracking__skeleton-icon invatrace-skeleton" aria-hidden />
+          <span className="report-tracking__skeleton-line report-tracking__skeleton-line--short invatrace-skeleton" aria-hidden />
+          <span className="report-tracking__skeleton-line report-tracking__skeleton-line--title invatrace-skeleton" aria-hidden />
+          <span className="report-tracking__skeleton-line invatrace-skeleton" aria-hidden />
+          <span className="report-tracking__skeleton-line report-tracking__skeleton-line--medium invatrace-skeleton" aria-hidden />
+          <span className="sr-only">Loading report status…</span>
+        </section>
+      </section>
+    )
+  }
   if (query.isError || !query.data) {
     return (
-      <main className="report-tracking">
-        <h1>Report unavailable</h1>
-        <p>We could not load this report. Check the connection and try again.</p>
-        <button type="button" onClick={() => void query.refetch()}>Try again</button>
-      </main>
+      <section className="report-tracking" aria-label="Report status">
+        <section className="report-tracking__card report-tracking__card--error" role="alert">
+          <span className="report-tracking__icon" aria-hidden>
+            <Icon name="WifiOff" size={32} color="currentColor" />
+          </span>
+          <h1>Report unavailable</h1>
+          <p>We could not load this report. Check the connection and try again.</p>
+          <div className="report-tracking__actions">
+            <button type="button" onClick={() => void query.refetch()}>Try again</button>
+            <Link to="/map" className="report-tracking__secondary">Back to map</Link>
+          </div>
+        </section>
+      </section>
     )
   }
 
   const report = query.data
   const copy = COPY[report.status]
   return (
-    <main className={`report-tracking report-tracking--${report.status}`}>
+    <section className={`report-tracking report-tracking--${report.status}`} aria-label="Report status">
       <section className="report-tracking__card" aria-live="polite">
         <span className="report-tracking__icon" aria-hidden>
           <Icon name={copy.icon} size={34} color="currentColor" />
@@ -94,7 +115,7 @@ export function ReportTrackingPage() {
           <Link to="/map" className="report-tracking__secondary">Back to map</Link>
         </div>
       </section>
-    </main>
+    </section>
   )
 }
 

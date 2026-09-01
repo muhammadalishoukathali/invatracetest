@@ -1,11 +1,11 @@
 .sighting-details-backdrop {
-  background: rgba(17, 29, 23, 0.38);
+  background: var(--scrim);
 }
 
 .pin-sheet {
   --risk-accent: var(--amber);
   position: fixed;
-  z-index: 9999;
+  z-index: var(--z-sheet);
   max-height: 70dvh;
   padding-bottom: env(safe-area-inset-bottom);
   overflow: hidden;
@@ -18,13 +18,13 @@
   animation: sighting-sheet-enter 280ms cubic-bezier(.2, .8, .2, 1) both;
 }
 
-.pin-sheet--hotspot   { --risk-accent: #C2412D; }
-.pin-sheet--spreading { --risk-accent: #D9880F; }
+.pin-sheet--hotspot   { --risk-accent: var(--red); }
+.pin-sheet--spreading { --risk-accent: var(--amber); }
 .pin-sheet--isolated  { --risk-accent: #2E7D3F; }
 .pin-sheet--removed   { --risk-accent: var(--icon); }
 /* Backwards-compat: earlier map code used "high" / "watch" class names. */
-.pin-sheet--high { --risk-accent: #C2412D; }
-.pin-sheet--watch { --risk-accent: #D9880F; }
+.pin-sheet--high { --risk-accent: var(--red); }
+.pin-sheet--watch { --risk-accent: var(--amber); }
 
 @keyframes sighting-sheet-enter {
   from { opacity: .72; translate: 0 18px; }
@@ -249,6 +249,20 @@
   justify-content: center;
 }
 
+.pin-sheet__skeleton-photo {
+  width: 100%;
+  height: 132px;
+  border-radius: var(--r-card);
+}
+.pin-sheet__skeleton-line {
+  width: 100%;
+  height: 12px;
+  margin-top: 12px;
+  border-radius: var(--r-chip);
+}
+.pin-sheet__skeleton-line--title { width: 68%; height: 26px; margin-top: 18px; }
+.pin-sheet__skeleton-line--short { width: 42%; }
+
 .pin-sheet__state strong { color: var(--red-text); font-size: 14px; }
 .pin-sheet__state p { max-width: 42ch; margin-top: 6px; line-height: 1.5; }
 
@@ -277,7 +291,7 @@
   height: var(--h-primary);
   border-radius: var(--r-button);
   background: var(--green);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 14px;
   font-weight: 650;
   text-decoration: none;
@@ -289,7 +303,7 @@
 
 @media (hover: hover) and (pointer: fine) {
   .pin-sheet__close:hover { background: var(--hover); }
-  .pin-sheet__directions:hover { background: var(--green-dark); }
+  .pin-sheet__directions:hover { background: var(--green-hover); }
   .pin-sheet__retry:hover { background: var(--hover); }
 }
 

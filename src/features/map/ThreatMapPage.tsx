@@ -16,6 +16,7 @@ import { useMapView as useMapStore } from '@/features/map/map-view-store'
 import type { Sighting } from '@/types'
 import { SightingDetailsSheet } from './SightingDetailsSheet'
 import { MapLegend } from './MapLegend'
+import { Icon } from '@/components/Icon'
 
 // Give MapLibre the worker file explicitly. Its automatic URL points beside
 // Vite's optimized dependency file during development, where the worker does
@@ -64,7 +65,7 @@ export function ThreatMapPage() {
   const isDesktop = useIsDesktop()
   const { species, statuses, risks, search, select } = useMapStore()
 
-  const { data } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['sightings', species, statuses, risks, search],
     queryFn: () => {
       const params = new URLSearchParams()
@@ -181,6 +182,25 @@ export function ThreatMapPage() {
           position: 'absolute', inset: 0,
           touchAction: 'none',   // MapLibre handles pinch, drag, and tap gestures.
         }} />
+        {isLoading && (
+          <div className="map-state map-state--loading" role="status" aria-live="polite">
+            <span className="map-state__pulse" aria-hidden />
+            Loading community reports…
+          </div>
+        )}
+        {isError && (
+          <div className="map-state map-state--error" role="alert">
+            <Icon name="WifiOff" size={18} color="var(--red-text)" />
+            <span>Reports could not load.</span>
+            <button type="button" onClick={() => void refetch()}>Try again</button>
+          </div>
+        )}
+        {!isLoading && !isError && data?.items.length === 0 && (
+          <div className="map-state map-state--empty" role="status">
+            <Icon name="MapPin" size={18} color="var(--green-dark)" />
+            No community reports are visible yet.
+          </div>
+        )}
         <MapLegend />
         <MapAttribution />
       </div>

@@ -12,7 +12,13 @@
   border: 1px solid var(--border);
   border-radius: var(--r-card);
   background: var(--surface);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-sm);
+  animation: report-card-enter 220ms cubic-bezier(.2,.8,.2,1) both;
+}
+
+@keyframes report-card-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .report-tracking__icon {
@@ -74,11 +80,34 @@
   padding: 0 18px;
   border: 1px solid var(--green);
   border-radius: var(--r-button);
-  color: #fff;
+  color: var(--on-accent);
   background: var(--green);
   font-weight: 600;
   text-decoration: none;
 }
+
+.report-tracking__card--error .report-tracking__icon {
+  color: var(--red-text);
+  background: var(--red-light);
+}
+
+.report-tracking__card--loading { min-height: 330px; }
+.report-tracking__skeleton-icon {
+  display: block;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+}
+.report-tracking__skeleton-line {
+  display: block;
+  width: 100%;
+  height: 13px;
+  margin-top: 13px;
+  border-radius: var(--r-chip);
+}
+.report-tracking__skeleton-line--short { width: 34%; margin-top: 22px; height: 10px; }
+.report-tracking__skeleton-line--title { width: 72%; height: 32px; margin-top: 10px; }
+.report-tracking__skeleton-line--medium { width: 82%; }
 
 .report-tracking__actions .report-tracking__secondary {
   color: var(--ink);
@@ -90,4 +119,8 @@
   .report-tracking { place-items: start stretch; padding: 18px 14px; }
   .report-tracking__card { padding: 24px 20px; }
   .report-tracking__actions { flex-direction: column; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .report-tracking__card { animation: none; }
 }

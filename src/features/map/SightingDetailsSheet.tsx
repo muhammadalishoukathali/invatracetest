@@ -101,7 +101,11 @@ export function SightingDetailsSheet() {
             </div>
           ) : isLoading || !data ? (
             <div role="status" tabIndex={-1} data-dialog-initial className="pin-sheet__state">
-              Loading sighting…
+              <span className="pin-sheet__skeleton-photo invatrace-skeleton" aria-hidden />
+              <span className="pin-sheet__skeleton-line pin-sheet__skeleton-line--title invatrace-skeleton" aria-hidden />
+              <span className="pin-sheet__skeleton-line pin-sheet__skeleton-line--short invatrace-skeleton" aria-hidden />
+              <span className="pin-sheet__skeleton-line invatrace-skeleton" aria-hidden />
+              <span className="sr-only">Loading sighting…</span>
             </div>
           ) : (
             <>
@@ -174,7 +178,7 @@ export function SightingDetailsSheet() {
             <a href={directionsHref} target="_blank" rel="noopener noreferrer"
               aria-label="Open directions in Google Maps (opens in a new tab)"
               className="pin-sheet__directions">
-              <Icon name="Navigation" size={16} color="#fff" />
+              <Icon name="Navigation" size={16} color="currentColor" />
               Open directions
             </a>
           </footer>
