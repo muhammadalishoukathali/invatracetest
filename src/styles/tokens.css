@@ -1,9 +1,12 @@
 /* Shared InvaTrace colors, spacing, sizes, corners, and shadows. Components
    use these values instead of adding slightly different one-off styles. */
 :root {
+  color-scheme: light;
   --green: #1B7A50;
   --green-dark: #166341;
+  --green-hover: #166341;
   --deep: #12402C;
+  --deep-surface: #12402C;
   --green-light: #EFF6F1;
   --green-border: #D3E7DA;
   --amber: #D9880F;
@@ -26,6 +29,13 @@
   --border: #E2E7E1;
   --control-border: #8B978F;
   --hover: #F1F4F0;
+  --on-accent: #FFFFFF;
+  --surface-raised: #FFFFFF;
+  --surface-translucent: rgba(255, 255, 255, 0.9);
+  --surface-translucent-strong: rgba(255, 255, 255, 0.97);
+  --scrim: rgba(17, 29, 23, 0.42);
+  --skeleton-base: #E5EAE5;
+  --skeleton-highlight: #F5F7F4;
 
   /* Inverted liquid-glass navigation surface. These stay green-tinted so the
      floating mobile island belongs to the conservation palette. */
@@ -53,7 +63,61 @@
 
   --sidebar-w: 248px;
   --tabbar-h: 60px;
+  --z-overlay: 80;
+  --z-sheet: 90;
 
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --green: #58C68D;
+    --green-dark: #8DE2B4;
+    --green-hover: #6DD49B;
+    --deep: #D7F5E4;
+    --deep-surface: #0A281A;
+    --green-light: #173A2A;
+    --green-border: #2B6548;
+    --amber: #E6A84D;
+    --amber-text: #F2C274;
+    --amber-light: #3B2C16;
+    --amber-border: #705225;
+    --red: #E47763;
+    --red-text: #F3A392;
+    --red-light: #41231F;
+    --red-border: #744037;
+
+    --ink: #F0F5F1;
+    --body: #C2CEC6;
+    --muted: #93A39A;
+    --icon: #819288;
+
+    --surface: #15231C;
+    --surface-raised: #1A2A21;
+    --bg: #0D1711;
+    --bg-alt: #1C2C23;
+    --border: #2B3D33;
+    --control-border: #71847A;
+    --hover: #21372B;
+    --on-accent: #07150E;
+    --surface-translucent: rgba(21, 35, 28, 0.9);
+    --surface-translucent-strong: rgba(21, 35, 28, 0.97);
+    --scrim: rgba(3, 9, 6, 0.62);
+    --skeleton-base: #263A2F;
+    --skeleton-highlight: #344A3E;
+
+    --nav-glass: rgba(7, 24, 16, 0.92);
+    --nav-glass-text: #F5FFF9;
+    --nav-glass-muted: #AFC6B9;
+    --nav-glass-accent: #72D8A3;
+    --nav-glass-focus: #C8F4DC;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.42);
+    --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.52);
+    --shadow-sheet: 0 -10px 30px rgba(0, 0, 0, 0.48);
+    --shadow-nav: 0 18px 46px rgba(0, 0, 0, 0.48), 0 3px 10px rgba(0, 0, 0, 0.36);
+  }
 }

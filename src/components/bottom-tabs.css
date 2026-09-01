@@ -136,7 +136,7 @@
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.3),
     0 6px 18px rgba(0, 0, 0, 0.3);
-  color: #fff;
+  color: var(--on-accent);
   cursor: pointer;
   text-decoration: none;
   display: flex;
@@ -165,7 +165,7 @@
   }
 
   .bottom-tabs .bottom-tabs__scan:hover {
-    background: #21885a;
+    background: var(--green-hover);
     transform: translateY(-2px);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.34),

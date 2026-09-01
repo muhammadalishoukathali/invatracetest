@@ -104,7 +104,7 @@
 .access-button--primary {
   border: 1px solid var(--green);
   background: var(--green);
-  color: #fff;
+  color: var(--on-accent);
   box-shadow: 0 3px 10px rgba(20, 64, 44, 0.18);
 }
 
@@ -124,7 +124,7 @@
 .access-button--danger {
   border: 1px solid var(--red);
   background: var(--red);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .access-button:not(:disabled):hover,
@@ -278,7 +278,7 @@
   display: grid;
   place-items: center;
   border-radius: 15px;
-  background: var(--deep);
+  background: var(--deep-surface);
   color: #fff;
   box-shadow: 0 5px 14px rgba(16, 55, 38, 0.18);
 }
