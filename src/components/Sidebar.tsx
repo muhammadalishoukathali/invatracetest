@@ -54,14 +54,9 @@ export function Sidebar({ profile }: { profile: PseudonymousProfile }) {
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 2 }}>
         <Logo size={34} />
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 18, fontWeight: 600, letterSpacing: '-0.032em', lineHeight: 1, color: 'var(--green)' }}>
-            inva<span style={{ fontWeight: 400, color: 'var(--ink)' }}>trace</span>
-          </div>
-          <div style={{ marginTop: 4, fontSize: 10.5, color: 'var(--muted)', letterSpacing: '0.16em', textTransform: 'uppercase' }}>
-            Bukit Kiara crew
-          </div>
-        </div>
+        <span style={{ fontSize: 18, fontWeight: 650, letterSpacing: '-0.032em', lineHeight: 1, color: 'var(--ink)' }}>
+          InvaTrace
+        </span>
       </div>
 
       <button
