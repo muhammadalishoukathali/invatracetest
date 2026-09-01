@@ -4,6 +4,11 @@ interface RecoveryKitInput {
   createdAt: Date
 }
 
+export interface CopyTextDependencies {
+  writeClipboard?: (text: string) => Promise<void>
+  legacyCopy?: (text: string) => boolean
+}
+
 export function recoveryKitText({ profileId, recoveryCodes, createdAt }: RecoveryKitInput): string {
   return [
     'InvaTrace private access recovery kit',
@@ -23,20 +28,69 @@ export function recoveryKitText({ profileId, recoveryCodes, createdAt }: Recover
   ].join('\n')
 }
 
-export async function copyText(text: string): Promise<void> {
-  if (!navigator.clipboard?.writeText) {
-    throw new Error('Clipboard access is unavailable in this browser.')
+function browserCopyDependencies(): CopyTextDependencies {
+  return {
+    writeClipboard: typeof navigator !== 'undefined' && navigator.clipboard?.writeText
+      ? (text) => navigator.clipboard.writeText(text)
+      : undefined,
+    legacyCopy: legacyCopyText,
   }
-  await navigator.clipboard.writeText(text)
 }
 
-export function downloadRecoveryKit(input: RecoveryKitInput): void {
-  const blob = new Blob([recoveryKitText(input)], { type: 'text/plain;charset=utf-8' })
+function legacyCopyText(text: string): boolean {
+  if (typeof document === 'undefined' || !document.body || typeof document.execCommand !== 'function') return false
+
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.setAttribute('readonly', '')
+  textarea.setAttribute('aria-hidden', 'true')
+  textarea.style.cssText = 'position:fixed;inset:0 auto auto:-9999px;opacity:0;pointer-events:none;'
+  document.body.appendChild(textarea)
+  textarea.select()
+  textarea.setSelectionRange(0, text.length)
+
+  try {
+    return document.execCommand('copy')
+  } finally {
+    textarea.remove()
+  }
+}
+
+export async function copyText(text: string, dependencies: CopyTextDependencies = browserCopyDependencies()): Promise<void> {
+  if (dependencies.writeClipboard) {
+    try {
+      await dependencies.writeClipboard(text)
+      return
+    } catch {
+      // Clipboard permission can be denied even after a user click. The
+      // selection-based fallback still works in browsers that allow it.
+    }
+  }
+
+  if (dependencies.legacyCopy?.(text)) return
+  throw new Error('Copy failed. Select the recovery information and copy it manually, or use Download recovery kit.')
+}
+
+export function recoveryKitFileName(profileId: string): string {
+  return `invatrace-recovery-kit-${profileId}.txt`
+}
+
+export function recoveryKitBlob(input: RecoveryKitInput): Blob {
+  // A UTF-8 BOM keeps the plain-text file readable in older Windows editors.
+  return new Blob(['\uFEFF', recoveryKitText(input)], { type: 'text/plain;charset=utf-8' })
+}
+
+export function downloadRecoveryKit(input: RecoveryKitInput): string {
+  const blob = recoveryKitBlob(input)
   const href = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = href
-  link.download = `invatrace-recovery-${input.profileId}.txt`
+  link.download = recoveryKitFileName(input.profileId)
   link.rel = 'noopener'
+  link.style.display = 'none'
+  document.body.appendChild(link)
   link.click()
-  URL.revokeObjectURL(href)
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(href), 0)
+  return link.download
 }

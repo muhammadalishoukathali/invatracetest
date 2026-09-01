@@ -35,9 +35,19 @@ export function RecoveryKitSetupPage() {
     setError(null)
     try {
       await copyText(kind === 'id' ? profile.id : recoveryKitText(kitInput))
-      setMessage(kind === 'id' ? 'Public profile ID copied.' : 'Recovery information copied. Keep it private.')
+      setMessage(kind === 'id' ? 'Public profile ID copied.' : 'Recovery kit copied. Keep it private.')
     } catch (copyError) {
       setError(copyError instanceof Error ? copyError.message : 'Copying is unavailable.')
+    }
+  }
+
+  const download = () => {
+    setError(null)
+    try {
+      const fileName = downloadRecoveryKit(kitInput)
+      setMessage(`Download started: ${fileName}`)
+    } catch {
+      setError('The recovery kit could not be downloaded. Copy the recovery kit instead and save it as a text file.')
     }
   }
 
@@ -63,10 +73,10 @@ export function RecoveryKitSetupPage() {
       <section className="recovery-setup">
         <div className="recovery-setup__heading">
           <div>
-            <h1 ref={headingRef} tabIndex={-1}>Save your recovery information</h1>
-            <p>This is the only time InvaTrace will show this recovery-code batch.</p>
+            <h1 ref={headingRef} tabIndex={-1}>Save your recovery kit</h1>
+            <p>Download or copy it now. You won't see these recovery codes again.</p>
           </div>
-          <span className="secret-badge">Secret</span>
+          <span className="secret-badge">Keep private</span>
         </div>
 
         {syncMessage && (
@@ -77,24 +87,24 @@ export function RecoveryKitSetupPage() {
             Setup was interrupted, so every previously shown code was invalidated. Save only the codes below.
           </PrivateAccessNotice>
         )}
-        {message && <PrivateAccessNotice tone="success" title="Saved action" live>{message}</PrivateAccessNotice>}
+        {message && <PrivateAccessNotice tone="success" title="Done" live>{message}</PrivateAccessNotice>}
         {error && <PrivateAccessNotice tone="error" title="Recovery setup needs attention" live>{error}</PrivateAccessNotice>}
 
         <div className="recovery-public-id">
           <div><span>Public profile ID</span><code>{profile.id}</code></div>
           <PrivateAccessButton kind="quiet" icon="Copy" onClick={() => void copy('id')}>Copy ID</PrivateAccessButton>
         </div>
-        <p className="recovery-public-id__note">This ID identifies your profile. It is public and is not enough to restore access.</p>
+        <p className="recovery-public-id__note">Your public ID identifies this profile. It cannot restore access by itself.</p>
 
         {codes ? (
           <>
             <div className="recovery-code-heading">
-              <div><h2>10 one-time recovery codes</h2><p>Each code restores one new installation, then becomes unusable.</p></div>
+              <div><h2>10 one-time recovery codes</h2><p>Use one unused code to restore this profile on another device. Each code works once.</p></div>
             </div>
             <RecoveryCodeGrid codes={codes} />
             <div className="recovery-kit-actions">
-              <PrivateAccessButton kind="secondary" icon="Copy" onClick={() => void copy('kit')}>Copy recovery information</PrivateAccessButton>
-              <PrivateAccessButton kind="secondary" icon="Download" onClick={() => downloadRecoveryKit(kitInput)}>Download recovery kit</PrivateAccessButton>
+              <PrivateAccessButton kind="secondary" icon="Copy" onClick={() => void copy('kit')}>Copy recovery kit</PrivateAccessButton>
+              <PrivateAccessButton kind="secondary" icon="Download" onClick={download}>Download recovery kit</PrivateAccessButton>
             </div>
           </>
         ) : (
@@ -107,7 +117,7 @@ export function RecoveryKitSetupPage() {
           <PrivateAccessField
             id="recovery-display-name"
             label="Display name (optional)"
-            hint="Stored with your pseudonymous profile. You can change or remove it later."
+            hint="Use a nickname, not your real name, email, or phone number. You can change it later."
             value={displayName}
             onChange={(event) => setDisplayName(event.target.value)}
             autoComplete="off"
@@ -116,7 +126,7 @@ export function RecoveryKitSetupPage() {
           />
           <label className="access-check">
             <input type="checkbox" checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} />
-            <span>I have saved my recovery information</span>
+            <span>I have saved my recovery kit</span>
           </label>
           <PrivateAccessButton onClick={() => void continueToApp()} disabled={!codes || !acknowledged || continuing}>
             {continuing ? 'Securing private access…' : 'Continue to InvaTrace'}
