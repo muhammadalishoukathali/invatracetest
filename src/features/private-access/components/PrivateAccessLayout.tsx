@@ -7,7 +7,7 @@ export function PrivateAccessLayout({ children, compact = false }: { children: R
   return (
     <div className={`private-access-shell${compact ? ' private-access-shell--compact' : ''}`}>
       <header className="private-access-brand">
-        <LogoWordmark size={16} />
+        <LogoWordmark />
         <span>Private field access</span>
       </header>
       <main id="main-content" className="private-access-main">{children}</main>

@@ -18,7 +18,11 @@ const queryClient = new QueryClient({
 })
 
 async function start() {
-  if (import.meta.env.DEV && import.meta.env.VITE_ENABLE_MOCKS === 'true') {
+  // Default to mocks in dev when the flag is unset so a fresh `npm run dev`
+  // works with no .env file. Set VITE_ENABLE_MOCKS=false to hit the real API.
+  const mocksEnabled = import.meta.env.DEV
+    && import.meta.env.VITE_ENABLE_MOCKS !== 'false'
+  if (mocksEnabled) {
     const { worker } = await import('@/mocks/browser')
     // The development mock service worker handles API calls only. Other files,
     // including MapLibre workers, map tiles, fonts, and Vite updates, must pass

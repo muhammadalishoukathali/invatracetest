@@ -1,7 +1,15 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import basicSsl from '@vitejs/plugin-basic-ssl'
 import { VitePWA } from 'vite-plugin-pwa'
 import { fileURLToPath, URL } from 'node:url'
+
+// Enable an in-memory self-signed cert whenever `VITE_HTTPS=true` is set.
+// Browsers block `getUserMedia` on non-localhost origins over plain http, so a
+// phone or projector viewing the dev server via its LAN IP (`http://192.168…`)
+// cannot open the camera. Serving over https via this plugin unblocks that path
+// without adding a certificate to the OS trust store.
+const httpsEnabled = process.env.VITE_HTTPS === 'true'
 
 export default defineConfig({
   // Prebundle MapLibre into a self-contained worker. Without this, its worker
@@ -15,8 +23,11 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    ...(httpsEnabled ? [basicSsl()] : []),
     VitePWA({
-      registerType: 'prompt',
+      // autoUpdate so a fresh deploy always wins over a stale cached shell —
+      // prompt-based updates silently strand demo laptops on an old build.
+      registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
       manifest: {
         name: 'InvaTrace',

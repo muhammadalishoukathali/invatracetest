@@ -13,6 +13,7 @@ import './app-shell.css'
 const TITLES: Record<string, [string, string]> = {
   '/map': ['Live threat map', 'Bukit Kiara · updated 2 hours ago'],
   '/access': ['Private access', 'Recovery codes and devices'],
+  '/reports': ['My reports', 'Everything you have submitted from this profile'],
 }
 
 export function AppShell() {

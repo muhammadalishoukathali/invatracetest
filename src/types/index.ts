@@ -173,7 +173,7 @@ export interface ReportDraft {
   modelVersion: string
   observedAt: string
   captureId: string
-  captureSource: 'camera'
+  captureSource: 'camera' | 'gallery'
   location: GeoPoint | null
   locationAccuracyM: number | null  // GPS accuracy in metres; null until a fix is available.
   extent: ExtentSize
@@ -195,7 +195,7 @@ export interface ReportSubmission {
   modelVersion: string
   observedAt: string
   captureId: string
-  captureSource: 'camera'
+  captureSource: 'camera' | 'gallery'
   location: GeoPoint
   locationAccuracyM: number | null
   extent: ExtentSize
@@ -218,6 +218,11 @@ export interface Report {
   sightingId: string | null
   /** AC 2.3.1 / 2.3.2 — server-scoped owner used for same-identity dedup. */
   ownerProfileId?: string
+}
+
+export interface ReportListResponse {
+  items: Report[]
+  nextCursor?: string | null
 }
 
 /** Item held in the IndexedDB offline queue when submission fails. */

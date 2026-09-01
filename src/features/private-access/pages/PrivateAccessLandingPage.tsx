@@ -2,15 +2,14 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PrivateAccessLayout } from '@/features/private-access/components/PrivateAccessLayout'
 import { PrivateAccessButton, PrivateAccessLink, PrivateAccessNotice } from '@/features/private-access/components/PrivateAccessControls'
-import { Icon } from '@/components/Icon'
 import { usePrivateAccess } from '@/features/private-access/private-access-store'
 import { useOnline } from '@/hooks/useOnline'
 import { usePageHeadingFocus } from '@/hooks/usePageHeadingFocus'
 
 const PRIVATE_STEPS = [
-  ['Shield', 'Pseudonymous by default', 'No email, phone number, or legal name is required.'],
-  ['ClipboardList', 'Connected evidence', 'Reports and activity stay linked to one opaque public profile ID.'],
-  ['KeyRound', 'Recovery is in your hands', 'Saved one-time codes let another device restore the same profile.'],
+  ['No personal account', 'We do not ask for your email, phone number, or legal name.'],
+  ['One field identity', 'Reports and verification history stay connected through a public profile ID.'],
+  ['Recovery stays with you', 'One-time recovery codes let you bring that profile to another device.'],
 ] as const
 
 export function PrivateAccessLandingPage() {
@@ -38,13 +37,15 @@ export function PrivateAccessLandingPage() {
     <PrivateAccessLayout>
       <div className="access-landing">
         <section className="access-intro">
-          <h1 ref={headingRef} tabIndex={-1}>Use InvaTrace without email, phone, or a legal name</h1>
+          <p className="access-intro__eyebrow">Private by design</p>
+          <h1 ref={headingRef} tabIndex={-1}>Field reporting without a personal account.</h1>
           <p className="access-intro__lead">
-            Private access creates a pseudonymous profile for field reports and verification history—without conventional registration.
+            Create a private field identity for invasive-species reports and verification history. No conventional registration required.
           </p>
           <div className="access-trust-line">
-            <Icon name="Shield" size={18} color="var(--green)" />
-            <span>No email. No phone number. No legal name.</span>
+            <span>No email</span><span aria-hidden="true">·</span>
+            <span>No phone number</span><span aria-hidden="true">·</span>
+            <span>No legal name</span>
           </div>
 
           {!online && (
@@ -63,10 +64,10 @@ export function PrivateAccessLandingPage() {
           {error && <PrivateAccessNotice tone="error" title="Private access did not start" live>{error}</PrivateAccessNotice>}
 
           <div className="access-actions" aria-live="polite">
-            <PrivateAccessButton onClick={() => void start()} disabled={!online || starting || status === 'storage-error'} icon="Leaf">
+            <PrivateAccessButton onClick={() => void start()} disabled={!online || starting || status === 'storage-error'}>
               {starting ? 'Creating private access…' : 'Start privately'}
             </PrivateAccessButton>
-            <PrivateAccessLink href="/private-access/restore" icon="RefreshCw">Restore existing access</PrivateAccessLink>
+            <PrivateAccessLink href="/private-access/restore">Restore existing access</PrivateAccessLink>
           </div>
           {status === 'storage-error' && (
             <PrivateAccessButton kind="quiet" onClick={() => void initialize()}>Check storage again</PrivateAccessButton>
@@ -74,11 +75,14 @@ export function PrivateAccessLandingPage() {
         </section>
 
         <section className="access-trail" aria-labelledby="private-access-explained">
-          <h2 id="private-access-explained">How private access works</h2>
+          <div className="access-trail__heading">
+            <p>Before you begin</p>
+            <h2 id="private-access-explained">Your identity stays separate from your personal details.</h2>
+          </div>
           <ol>
-            {PRIVATE_STEPS.map(([icon, title, detail]) => (
+            {PRIVATE_STEPS.map(([title, detail], index) => (
               <li key={title}>
-                <span className="access-trail__marker"><Icon name={icon} size={19} /></span>
+                <span className="access-trail__marker" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
                 <div><h3>{title}</h3><p>{detail}</p></div>
               </li>
             ))}

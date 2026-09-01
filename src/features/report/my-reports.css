@@ -1,0 +1,194 @@
+.my-reports {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: min(720px, 100%);
+  margin: 0 auto;
+}
+
+.my-reports__lede {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.my-reports__notice {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--amber-border);
+  border-radius: var(--r-input);
+  background: var(--amber-light);
+  color: var(--amber-text);
+  font-size: 13px;
+}
+
+.my-reports__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.my-reports__item {
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.my-reports__item--skeleton {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.my-reports__skeleton-line {
+  height: 12px;
+  border-radius: 6px;
+}
+.my-reports__skeleton-line--short { width: 40%; }
+
+.my-reports__link {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 40px 14px 14px;
+  color: inherit;
+  text-decoration: none;
+  border-radius: var(--r-card);
+  transition: background 120ms ease;
+}
+.my-reports__link:hover { background: var(--hover); }
+.my-reports__link:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+.my-reports__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.my-reports__row--body {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.my-reports__status {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: var(--r-chip);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+}
+.my-reports__status--progress {
+  background: var(--bg-alt);
+  color: var(--body);
+  border-color: var(--border);
+}
+.my-reports__status--ok {
+  background: var(--green-light);
+  color: var(--green-dark);
+  border-color: var(--green-border);
+}
+.my-reports__status--warn {
+  background: var(--amber-light);
+  color: var(--amber-text);
+  border-color: var(--amber-border);
+}
+.my-reports__status--error {
+  background: var(--red-light);
+  color: var(--red-text);
+  border-color: var(--red-border);
+}
+.my-reports__status--muted {
+  background: var(--bg-alt);
+  color: var(--muted);
+  border-color: var(--border);
+}
+
+.my-reports__date { font-size: 12px; color: var(--muted); }
+.my-reports__species {
+  font-weight: 500;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.my-reports__ref {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.my-reports__chevron {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--icon);
+}
+
+.my-reports__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 36px 16px;
+  border: 1px dashed var(--border);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  color: var(--muted);
+  text-align: center;
+}
+.my-reports__empty p { margin: 0; font-size: 14px; }
+
+.my-reports__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border-radius: var(--r-button);
+  background: var(--green);
+  color: var(--on-accent);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 13px;
+  height: var(--h-primary);
+  box-sizing: border-box;
+}
+.my-reports__cta:hover { background: var(--green-hover); }
+
+.my-reports__error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--red-border);
+  border-radius: var(--r-input);
+  background: var(--red-light);
+  color: var(--red-text);
+}
+.my-reports__error strong { display: block; color: var(--ink); }
+.my-reports__error p { margin: 2px 0 0; color: var(--body); font-size: 13px; }
+.my-reports__error button {
+  margin-left: auto;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: var(--r-input);
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--ink);
+}
+.my-reports__error button:hover { background: var(--hover); }

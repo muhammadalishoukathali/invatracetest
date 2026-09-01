@@ -11,20 +11,21 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: max(12px, env(safe-area-inset-top)) 20px 12px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  padding: max(14px, env(safe-area-inset-top)) 20px 14px;
+  background: transparent;
+  border-bottom: 0;
 }
 
 .private-access-brand > span {
   color: var(--muted);
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 550;
+  letter-spacing: 0.02em;
 }
 
 .private-access-main {
   width: 100%;
-  padding: 30px 20px 40px;
+  padding: 34px 20px 52px;
   align-self: center;
 }
 
@@ -32,67 +33,76 @@
 .access-profile-summary h2[tabindex='-1']:focus { outline: none; }
 
 .private-access-footer {
-  padding: 18px 20px max(18px, env(safe-area-inset-bottom));
+  padding: 18px 20px max(22px, env(safe-area-inset-bottom));
   color: var(--muted);
   font-size: 12px;
   text-align: center;
-  border-top: 1px solid var(--border);
+  border-top: 0;
 }
 
 .access-landing {
-  width: min(1040px, 100%);
+  width: min(1160px, 100%);
   margin: 0 auto;
   display: grid;
-  gap: 40px;
+  gap: 52px;
 }
 
-.access-intro { max-width: 620px; }
+.access-intro { max-width: 680px; }
+.access-intro__eyebrow {
+  margin-bottom: 20px;
+  color: var(--green-dark);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
 .access-intro h1,
 .access-form-panel h1,
 .recovery-setup h1 {
-  max-width: 18ch;
+  max-width: 14ch;
   color: var(--ink);
-  font-size: clamp(30px, 9vw, 48px);
-  line-height: 1.08;
-  letter-spacing: -0.035em;
+  font-size: clamp(38px, 9vw, 56px);
+  line-height: 0.98;
+  letter-spacing: -0.055em;
   text-wrap: balance;
 }
 
 .access-intro__lead,
 .access-form-panel__lead {
   max-width: 64ch;
-  margin-top: 18px;
+  margin-top: 24px;
   color: var(--body);
-  font-size: 16px;
-  line-height: 1.65;
+  font-size: 17px;
+  line-height: 1.62;
 }
 
 .access-trust-line {
   display: inline-flex;
   align-items: center;
-  gap: 9px;
+  flex-wrap: wrap;
+  gap: 5px 9px;
   min-height: 44px;
   margin-top: 18px;
-  color: var(--green-dark);
-  font-size: 13px;
-  font-weight: 650;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .access-actions {
   display: grid;
   gap: 10px;
-  margin-top: 28px;
+  margin-top: 34px;
 }
 
 .access-button,
 .access-link-button {
-  min-height: 46px;
+  min-height: 50px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 9px;
   padding: 0 18px;
-  border-radius: var(--r-button);
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 650;
   line-height: 1.2;
@@ -102,16 +112,16 @@
 }
 
 .access-button--primary {
-  border: 1px solid var(--green);
-  background: var(--green);
-  color: var(--on-accent);
-  box-shadow: 0 3px 10px rgba(20, 64, 44, 0.18);
+  border: 1px solid var(--deep-surface);
+  background: var(--deep-surface);
+  color: #f4f7f3;
+  box-shadow: none;
 }
 
 .access-button--secondary,
 .access-link-button {
-  border: 1px solid var(--control-border);
-  background: var(--surface);
+  border: 1px solid var(--border);
+  background: transparent;
   color: var(--ink);
 }
 
@@ -134,44 +144,34 @@
 
 .access-trail {
   position: relative;
-  padding: 24px 22px;
-  background: var(--surface);
-  border-radius: var(--r-card);
-  box-shadow: var(--shadow-sm);
+  padding: 34px 30px 28px;
+  background: var(--deep-surface);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  box-shadow: none;
   overflow: hidden;
 }
 
-.access-trail::before {
-  content: '';
-  position: absolute;
-  top: 79px;
-  bottom: 92px;
-  left: 42px;
-  width: 1px;
-  background: var(--green-border);
-  transform-origin: top;
-  animation: access-line-grow 520ms cubic-bezier(.2,.8,.2,1) both;
+.access-trail__heading p {
+  color: var(--amber);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
-
-@keyframes access-line-grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
-
-.access-trail h2 { font-size: 18px; letter-spacing: -0.02em; }
-.access-trail ol { list-style: none; margin-top: 24px; display: grid; gap: 23px; }
-.access-trail li { position: relative; display: grid; grid-template-columns: 40px 1fr; gap: 13px; }
+.access-trail h2 { max-width: 23ch; margin-top: 10px; color: #f4f7f3; font-size: 22px; line-height: 1.2; letter-spacing: -0.035em; }
+.access-trail ol { list-style: none; margin-top: 30px; display: grid; }
+.access-trail li { position: relative; display: grid; grid-template-columns: 34px 1fr; gap: 14px; padding: 18px 0; border-top: 1px solid rgba(255, 255, 255, 0.12); }
 .access-trail__marker {
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--green-light);
-  color: var(--green);
-  box-shadow: 0 1px 3px rgba(20, 64, 44, 0.14);
-  z-index: 1;
+  padding-top: 1px;
+  color: var(--amber);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
 }
-.access-trail h3 { font-size: 14px; line-height: 1.3; }
-.access-trail li p { margin-top: 4px; color: var(--body); font-size: 13px; line-height: 1.55; }
-.access-trail__note { margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--border); color: var(--body); font-size: 12.5px; line-height: 1.55; }
+.access-trail h3 { color: #f4f7f3; font-size: 14px; line-height: 1.3; }
+.access-trail li p { margin-top: 5px; color: rgba(244, 247, 243, 0.66); font-size: 12.5px; line-height: 1.55; }
+.access-trail__note { margin-top: 5px; padding: 16px 0 0 48px; border-top: 1px solid rgba(255, 255, 255, 0.12); color: rgba(244, 247, 243, 0.58); font-size: 11.5px; line-height: 1.55; }
 
 .access-notice {
   display: grid;
@@ -265,6 +265,28 @@
 .access-check input { width: 20px; height: 20px; margin-top: 1px; accent-color: var(--green); }
 
 .access-management { width: min(780px, 100%); margin: 0 auto; padding-bottom: 24px; }
+.access-management__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 0 12px;
+}
+.access-back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px 6px 6px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--r-input);
+  color: var(--body);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.access-back-button:hover { background: var(--green-light); color: var(--green-dark); }
+.access-back-button:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 .access-profile-summary {
   display: grid;
   grid-template-columns: 52px minmax(0, 1fr);
@@ -385,16 +407,15 @@
 
 @media (min-width: 900px) {
   .private-access-brand { padding-inline: 36px; }
-  .access-landing { grid-template-columns: minmax(0, 1.18fr) minmax(340px, .82fr); align-items: center; gap: 72px; }
-  .access-intro h1 { font-size: 52px; }
+  .access-landing { grid-template-columns: minmax(0, 1.2fr) minmax(360px, .8fr); align-items: center; gap: clamp(64px, 7vw, 112px); }
+  .access-intro h1 { font-size: clamp(58px, 5.2vw, 72px); }
   .access-form-panel { padding: 34px; }
 }
 
 @media (max-width: 479.98px) {
   .private-access-brand > span { display: none; }
   .private-access-main { padding-inline: 16px; }
-  .access-trail { padding-inline: 18px; }
-  .access-trail::before { left: 38px; }
+  .access-trail { padding: 28px 20px 22px; border-radius: 14px; }
   .access-form-panel { padding: 20px 16px; }
   .recovery-setup__heading { display: grid; }
   .secret-badge { justify-self: start; }
@@ -413,6 +434,5 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .access-trail::before { animation: none; }
   .access-button, .access-link-button { transition: none; }
 }

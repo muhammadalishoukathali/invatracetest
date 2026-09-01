@@ -437,9 +437,36 @@ export const handlers = [
     })),
 
   http.get(url('/api/v1/species/:id'), ({ params }) => {
-    const detail = SPECIES_DETAIL[params.id as string]
-    if (!detail) return HttpResponse.json({ detail: 'Not found' }, { status: 404 })
-    return HttpResponse.json(detail)
+    const id = params.id as string
+    const detail = SPECIES_DETAIL[id]
+    if (detail) return HttpResponse.json(detail)
+    // Fallback for any species the ONNX model can classify but that we have
+    // not yet written full field guidance for. Returning a minimal reportable
+    // record lets the demo submit sightings for the full 31-class set instead
+    // of dead-ending on 14 of them with an "unsupported" screen. Real backend
+    // curation still gates this via reportable/reportEligible on the server.
+    const humanName = id.split('-').map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(' ')
+    return HttpResponse.json({
+      id,
+      name: humanName,
+      latinName: humanName,
+      commonNames: [],
+      isInvasive: true,
+      risk: 'medium',
+      reportable: true,
+      reportEligible: true,
+      actionEligible: false,
+      statusReviewedAt: null,
+      statusSourceId: null,
+      referenceImageUrl: null,
+      referenceImageCredit: null,
+      traits: [],
+      nativeTwin: null,
+      removalSteps: [],
+      doNotDo: [
+        'Detailed field guidance for this plant is not yet available in InvaTrace.',
+      ],
+    })
   }),
 
   http.get(url('/api/v1/notifications'), ({ request }) => {

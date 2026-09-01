@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { AccessOverview, AuthorizedInstallation, RecoveryCodeBatchResponse } from '@/types'
-import { PrivateAccessButton, PrivateAccessField, RecoveryCodeGrid, PrivateAccessNotice } from '@/features/private-access/components/PrivateAccessControls'
+import { PrivateAccessButton, PrivateAccessField, PrivateAccessLink, RecoveryCodeGrid, PrivateAccessNotice } from '@/features/private-access/components/PrivateAccessControls'
 import { Icon } from '@/components/Icon'
 import { api } from '@/services/api-client'
 import { usePrivateAccess } from '@/features/private-access/private-access-store'
@@ -45,9 +46,12 @@ export function looksLikeContactDetail(value: string): boolean {
 
 export function AccessManagementPage() {
   const headingRef = usePageHeadingFocus()
+  const navigate = useNavigate()
   const online = useOnline()
   const profile = usePrivateAccess((state) => state.profile)!
   const updateDisplayName = usePrivateAccess((state) => state.updateDisplayName)
+  const signOut = usePrivateAccess((state) => state.signOut)
+  const [confirmSignOut, setConfirmSignOut] = useState(false)
   const [overview, setOverview] = useState<AccessOverview | null>(null)
   const [displayName, setDisplayName] = useState(profile.displayName ?? '')
   const [loading, setLoading] = useState(true)
@@ -132,8 +136,37 @@ export function AccessManagementPage() {
     catch { setError('Clipboard access is unavailable in this browser.') }
   }
 
+  const goBack = () => {
+    if (window.history.length > 1) navigate(-1)
+    else navigate('/map')
+  }
+
+  const handleSignOut = async () => {
+    setBusy('sign-out')
+    try {
+      await signOut()
+      // After clearing local identity the private-access guard sends the
+      // browser to the landing screen automatically.
+    } finally {
+      setBusy(null)
+      setConfirmSignOut(false)
+    }
+  }
+
   return (
     <div className="access-management">
+      <div className="access-management__toolbar">
+        <button
+          type="button"
+          className="access-back-button"
+          onClick={goBack}
+          aria-label="Go back"
+        >
+          <Icon name="ChevronLeft" size={18} />
+          <span>Back</span>
+        </button>
+        <PrivateAccessLink href="/reports" icon="ClipboardList">My reports</PrivateAccessLink>
+      </div>
       <header className="access-profile-summary">
         <span className="access-profile-summary__avatar" aria-hidden>
           <Icon name="User" size={24} />
@@ -211,6 +244,34 @@ export function AccessManagementPage() {
               </li>
             ))}
           </ul>
+        )}
+      </section>
+
+      <section className="access-management__section" aria-labelledby="sign-out-heading">
+        <div className="section-heading-row">
+          <div>
+            <h3 id="sign-out-heading">Sign out of this device</h3>
+            <p>Removes this browser's private profile. You can restore it later with your profile ID and a recovery code.</p>
+          </div>
+        </div>
+        {confirmSignOut ? (
+          <div className="destructive-confirmation">
+            <Icon name="AlertTriangle" size={22} color="var(--amber-text)" />
+            <div>
+              <strong>Sign out?</strong>
+              <p>Queued reports on this device stay only until you sign out. Make sure they are uploaded first.</p>
+            </div>
+            <div>
+              <PrivateAccessButton kind="danger" onClick={() => void handleSignOut()} disabled={busy === 'sign-out'}>
+                {busy === 'sign-out' ? 'Signing out…' : 'Yes, sign out'}
+              </PrivateAccessButton>
+              <PrivateAccessButton kind="quiet" onClick={() => setConfirmSignOut(false)}>Cancel</PrivateAccessButton>
+            </div>
+          </div>
+        ) : (
+          <PrivateAccessButton kind="secondary" icon="LogOut" onClick={() => setConfirmSignOut(true)}>
+            Sign out
+          </PrivateAccessButton>
         )}
       </section>
 

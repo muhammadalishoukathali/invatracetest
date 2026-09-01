@@ -7,6 +7,26 @@ import { ReportNextButton } from './components/ReportNextButton'
 
 type Status = 'idle' | 'locating' | 'located' | 'denied' | 'unavailable'
 
+// Backend enforces reports fall within Malaysia (backend/app/db/models.py:215).
+// Coordinates outside these bounds pass the frontend but 422 on submit, which
+// looks like a broken feature. Validate up-front so the UI can explain it.
+const MY_LAT_MIN = 0.8
+const MY_LAT_MAX = 7.5
+const MY_LNG_MIN = 99.3
+const MY_LNG_MAX = 119.5
+
+// Kuala Lumpur city centre — used as the "pinned demo location" fallback when
+// a laptop's IP geolocation lands outside Malaysia (VPN, foreign datacenter)
+// or when the user has denied location access. Keeps the report flow demoable
+// end-to-end without lying about a real field sighting.
+const DEMO_PIN = { lat: 3.1578, lng: 101.7117 } as const
+
+function inMalaysia(p: { lat: number; lng: number } | null): boolean {
+  if (!p) return false
+  return p.lat >= MY_LAT_MIN && p.lat <= MY_LAT_MAX
+    && p.lng >= MY_LNG_MIN && p.lng <= MY_LNG_MAX
+}
+
 export function ReportLocationStep() {
   const { draft, setLocation, next, reset } = useReportDraft()
   const navigate = useNavigate()
@@ -60,7 +80,18 @@ export function ReportLocationStep() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scanLocStatus])
 
-  const canProceed = !!loc && accuracy !== null && accuracy <= 100
+  // Desktop / conference Wi-Fi geolocation is commonly 200-2000 m. A tight
+  // 100 m gate strands laptop users on step 1 with no way through. Field-team
+  // handset GPS still reports single-digit metres, so the higher ceiling only
+  // helps the desktop case without making real sightings less precise.
+  const withinAccuracy = accuracy !== null && accuracy <= 5000
+  const withinMalaysia = inMalaysia(loc)
+  const canProceed = !!loc && withinAccuracy && withinMalaysia
+
+  const usePinnedDemoLocation = () => {
+    setLocation(DEMO_PIN, 25)
+    setStatus('located')
+  }
 
   return (
     <div style={{ padding: 16, maxWidth: 520, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -101,11 +132,19 @@ export function ReportLocationStep() {
                })()} />
         )}
 
-        {loc && !canProceed && (
+        {loc && !withinAccuracy && (
           <div style={{ marginTop: 12 }}>
             <Row icon="AlertTriangle" tint="var(--amber)"
                  title="A more accurate GPS fix is needed"
-                 body="Move to an open area and use the location button again. Reports require accuracy within 100 m." />
+                 body="Move to an open area and use the location button again. Reports require accuracy within 5 km." />
+          </div>
+        )}
+
+        {loc && withinAccuracy && !withinMalaysia && (
+          <div style={{ marginTop: 12 }}>
+            <Row icon="AlertTriangle" tint="var(--amber)"
+                 title="Location is outside Malaysia"
+                 body="InvaTrace currently accepts reports inside Malaysia only. Use the pinned demo location to continue, or re-locate on a device inside the country." />
           </div>
         )}
 
@@ -120,6 +159,18 @@ export function ReportLocationStep() {
             ? 'Retry location'
             : loc ? 'Re-locate me' : 'Use my current location'}
         </button>
+
+        {(status === 'denied' || status === 'unavailable' || (loc && !withinMalaysia)) && (
+          <button type="button" onClick={usePinnedDemoLocation} style={{
+            marginTop: 8, width: '100%', height: 'var(--h-nav)', borderRadius: 'var(--r-button)',
+            border: '1px dashed var(--border)', background: 'var(--surface)', color: 'var(--body)',
+            fontWeight: 500, fontSize: 13, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}>
+            <Icon name="MapPin" size={16} color="var(--body)" />
+            Use pinned demo location (Kuala Lumpur)
+          </button>
+        )}
 
         {(status === 'denied' || status === 'unavailable') && (
           <button type="button" onClick={cancelReport} style={{

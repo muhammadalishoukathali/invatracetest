@@ -28,6 +28,26 @@ body {
   overflow-wrap: anywhere;
 }
 
+.brand-mark {
+  display: block;
+  flex-shrink: 0;
+  color: var(--green);
+}
+
+.brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  color: var(--ink);
+}
+
+.brand-wordmark {
+  font-size: 19px;
+  font-weight: 650;
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
 h1, h2, h3 { text-wrap: balance; }
 p, li { text-wrap: pretty; }
 

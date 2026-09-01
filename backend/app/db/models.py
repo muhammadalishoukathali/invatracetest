@@ -217,7 +217,7 @@ class Report(Base):
         CheckConstraint("location_accuracy_m IS NULL OR location_accuracy_m >= 0", name="accuracy"),
         CheckConstraint("char_length(notes) <= 280", name="notes_length"),
         CheckConstraint("submitter_trust IN ('New','Trusted','Steward')", name="submitter_trust"),
-        CheckConstraint("capture_source = 'camera'", name="capture_source"),
+        CheckConstraint("capture_source IN ('camera','gallery')", name="capture_source"),
         UniqueConstraint("profile_id", "idempotency_key", name="uq_report_idempotency"),
     )
 

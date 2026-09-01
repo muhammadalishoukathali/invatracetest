@@ -56,12 +56,24 @@ It uses `http://localhost:8000` and the local Compose database by default. Set
 With the Compose dependencies running, a host process can use
 `backend/.env.example`:
 
+macOS / Linux:
+
 ```bash
 cp backend/.env.example backend/.env
 cd backend
 .venv/bin/alembic upgrade head
 .venv/bin/python -m app.cli seed
 .venv/bin/uvicorn app.main:app --reload --port 8000
+```
+
+Windows (PowerShell):
+
+```powershell
+Copy-Item backend\.env.example backend\.env
+cd backend
+.venv\Scripts\alembic.exe upgrade head
+.venv\Scripts\python.exe -m app.cli seed
+.venv\Scripts\uvicorn.exe app.main:app --reload --port 8000
 ```
 
 The container path is simpler and is the supported full-stack workflow.

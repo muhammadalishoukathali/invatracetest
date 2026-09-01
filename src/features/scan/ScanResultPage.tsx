@@ -28,7 +28,7 @@ export function ScanResultPage() {
     const trusted = source === 'camera' || source === 'gallery'
     if (!trusted) return
     useReportDraft.getState().beginFromScan({
-      result, imageBlob, imageUrl: url, observedAt, captureId,
+      result, imageBlob, imageUrl: url, observedAt, captureId, captureSource: source,
     })
     navigate('/report')
   }

@@ -194,8 +194,14 @@ export function ScanCapturePage() {
       const result = await Promise.race<Awaited<ReturnType<typeof adapter.identify>>>([
         identifyPromise,
         new Promise((_, reject) => setTimeout(
-          () => reject(new Error('Plant analysis timed out after 15 seconds. Retake the photo and try again.')),
-          15_000,
+          // The first scan on a cold cache also downloads the ONNX weights
+          // (~30 MiB split across two chunks) and initialises the WASM runtime.
+          // On conference / hotel Wi-Fi the original 15 s budget was routinely
+          // blown before the model even loaded, surfacing a scary "analysis
+          // could not finish" message. 60 s gives the cold path room to breathe
+          // while still bounding a genuinely stuck inference.
+          () => reject(new Error('Plant analysis timed out. Retake the photo and try again.')),
+          60_000,
         )),
       ])
       if (!mountedRef.current || requestId !== analysisRequestRef.current) return

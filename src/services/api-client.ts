@@ -1,6 +1,10 @@
 /** Shared HTTP client. It adds the current access token, retries a request once
  *  after session recovery, and converts failed responses into `ApiError`. */
-const BASE = import.meta.env.VITE_ENABLE_MOCKS === 'true'
+// Mocks are on by default in dev (see main.tsx). Only fall through to the
+// real API base URL when the developer has explicitly opted out.
+const MOCKS_ON = import.meta.env.DEV
+  && import.meta.env.VITE_ENABLE_MOCKS !== 'false'
+const BASE = MOCKS_ON
   ? ''
   : (import.meta.env.VITE_API_BASE_URL ?? '')
 
