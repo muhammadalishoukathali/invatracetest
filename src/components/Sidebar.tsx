@@ -52,9 +52,9 @@ export function Sidebar({ profile }: { profile: PseudonymousProfile }) {
       borderRight: '1px solid var(--border)', padding: '22px 16px',
       display: 'flex', flexDirection: 'column', gap: 22,
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 2 }}>
-        <Logo size={34} />
-        <span style={{ fontSize: 18, fontWeight: 650, letterSpacing: '-0.032em', lineHeight: 1, color: 'var(--ink)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingLeft: 2 }}>
+        <Logo size={36} />
+        <span style={{ fontSize: 21, fontWeight: 700, letterSpacing: '-0.038em', lineHeight: 1, color: 'var(--ink)' }}>
           InvaTrace
         </span>
       </div>

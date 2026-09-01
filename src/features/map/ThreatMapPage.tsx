@@ -62,6 +62,11 @@ export function ThreatMapPage() {
   const container = useRef<HTMLDivElement>(null)
   const map = useRef<Map | null>(null)
   const markers = useRef<Marker[]>([])
+  const latestVisibleSightings = useRef<Sighting[]>([])
+  const reportsHaveLoaded = useRef(false)
+  const locationFailed = useRef(false)
+  const initialViewApplied = useRef(false)
+  const fitReportsFallback = useRef<(() => void) | null>(null)
   const isDesktop = useIsDesktop()
   const { species, statuses, risks, search, select } = useMapStore()
   const [locationNotice, setLocationNotice] = useState<{
@@ -108,18 +113,24 @@ export function ThreatMapPage() {
     // the scan button on small screens; a plain link chip stays predictable.
     m.addControl(new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }), 'top-right')
     const geolocate = new maplibregl.GeolocateControl({
-      positionOptions: { enableHighAccuracy: true },
+      positionOptions: { enableHighAccuracy: true, timeout: 8_000, maximumAge: 300_000 },
       showUserLocation: true, trackUserLocation: false,
     })
     m.addControl(geolocate, 'top-right')
+    const showReportsFallback = (text: string) => {
+      locationFailed.current = true
+      fitReportsFallback.current?.()
+      setLocationNotice({ tone: 'error', text })
+    }
     geolocate.on('geolocate', () => {
+      initialViewApplied.current = true
       setLocationNotice({ tone: 'success', text: 'Map centred on your current location.' })
     })
     geolocate.on('error', () => {
-      setLocationNotice({
-        tone: 'error',
-        text: 'Your location is unavailable. Allow location access in your browser settings, then reload this page.',
-      })
+      showReportsFallback('Your location is unavailable, so the map is showing the visible community reports instead.')
+    })
+    geolocate.on('outofmaxbounds', () => {
+      showReportsFallback('Your location is outside the current Malaysia map area, so the visible community reports are shown instead.')
     })
     const locationButton = container.current.querySelector<HTMLButtonElement>('.maplibregl-ctrl-geolocate')
     const onLocationRequest = () => {
@@ -129,12 +140,59 @@ export function ThreatMapPage() {
     map.current = m
     if (import.meta.env.DEV) (window as unknown as { __map?: Map }).__map = m
 
+    fitReportsFallback.current = () => {
+      if (initialViewApplied.current || !reportsHaveLoaded.current) return
+      const visible = latestVisibleSightings.current
+      if (visible.length === 0) {
+        m.jumpTo({ center: CENTRE, zoom: isDesktop ? INITIAL_ZOOM : INITIAL_ZOOM_MOBILE })
+        initialViewApplied.current = true
+        return
+      }
+
+      if (visible.length === 1) {
+        const only = visible[0]
+        m.easeTo({
+          center: [only.location.lng, only.location.lat],
+          zoom: isDesktop ? 14 : 14.5,
+          duration: 650,
+        })
+        initialViewApplied.current = true
+        return
+      }
+
+      const bounds = new maplibregl.LngLatBounds()
+      visible.forEach((sighting) => bounds.extend([sighting.location.lng, sighting.location.lat]))
+      m.fitBounds(bounds, {
+        padding: isDesktop ? 88 : 54,
+        maxZoom: isDesktop ? 14 : 14.5,
+        duration: 650,
+      })
+      initialViewApplied.current = true
+    }
+
     // Some MapLibre v6 sessions parse the style before the container has its
     // final size and then request no tiles. Resizing and resetting the camera
     // after `style.load` makes MapLibre calculate the visible tile area again.
+    let locationReadyTimer: number | undefined
     m.once('style.load', () => {
       m.resize()
       m.jumpTo({ center: CENTRE, zoom: isDesktop ? INITIAL_ZOOM : INITIAL_ZOOM_MOBILE })
+      setLocationNotice({ tone: 'pending', text: 'Finding your location…' })
+      let checks = 0
+      const triggerWhenReady = () => {
+        const button = container.current?.querySelector<HTMLButtonElement>('.maplibregl-ctrl-geolocate')
+        if (button && !button.disabled) {
+          geolocate.trigger()
+          return
+        }
+        checks += 1
+        if (checks < 20) {
+          locationReadyTimer = window.setTimeout(triggerWhenReady, 100)
+          return
+        }
+        showReportsFallback('Location access is not available in this browser, so the visible community reports are shown instead.')
+      }
+      triggerWhenReady()
     })
 
     // The app shell may resize after the map mounts. ResizeObserver keeps the
@@ -144,7 +202,9 @@ export function ThreatMapPage() {
 
     return () => {
       locationButton?.removeEventListener('click', onLocationRequest)
+      if (locationReadyTimer !== undefined) window.clearTimeout(locationReadyTimer)
       ro.disconnect()
+      fitReportsFallback.current = null
       m.remove()
       map.current = null
     }
@@ -166,6 +226,8 @@ export function ThreatMapPage() {
       if (q && !s.speciesName.toLowerCase().includes(q) && !s.latinName.toLowerCase().includes(q)) return false
       return true
     })
+    latestVisibleSightings.current = filtered
+    reportsHaveLoaded.current = true
 
     for (const s of filtered) {
       const el = pinElement(s)
@@ -175,6 +237,8 @@ export function ThreatMapPage() {
         .addTo(map.current!)
       markers.current.push(marker)
     }
+
+    if (locationFailed.current) fitReportsFallback.current?.()
   }, [data, species, statuses, risks, search, select])
 
   const filtered = data
