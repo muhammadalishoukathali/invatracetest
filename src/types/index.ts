@@ -220,6 +220,11 @@ export interface Report {
   ownerProfileId?: string
 }
 
+export interface ReportListResponse {
+  items: Report[]
+  nextCursor?: string | null
+}
+
 /** Item held in the IndexedDB offline queue when submission fails. */
 export interface QueuedReport {
   id: string           // Stable idempotency key created before the first network attempt.

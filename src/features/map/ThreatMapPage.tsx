@@ -5,6 +5,7 @@
  */
 import { useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router-dom'
 import * as maplibregl from 'maplibre-gl'
 import type { Map, Marker } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -61,8 +62,12 @@ export function ThreatMapPage() {
   const container = useRef<HTMLDivElement>(null)
   const map = useRef<Map | null>(null)
   const markers = useRef<Marker[]>([])
+  const targetSightingId = useRef<string | null>(null)
   const isDesktop = useIsDesktop()
-  const { species, statuses, risks, search, select } = useMapStore()
+  const [searchParams] = useSearchParams()
+  const requestedSightingId = searchParams.get('sighting')
+  targetSightingId.current = requestedSightingId
+  const { species, statuses, risks, search, select, clearFilters } = useMapStore()
 
   const { data } = useQuery({
     queryKey: ['sightings', species, statuses, risks, search],
@@ -76,8 +81,14 @@ export function ThreatMapPage() {
       return api<{ items: Sighting[] }>(`/api/v1/sightings${query ? `?${query}` : ''}`)
     },
     staleTime: 60_000,
+    refetchOnMount: 'always',
     refetchInterval: 15_000,
   })
+
+  useEffect(() => {
+    if (!requestedSightingId) return
+    clearFilters()
+  }, [clearFilters, requestedSightingId])
 
   // Create one MapLibre instance for this page and remove it when the page closes.
   useEffect(() => {
@@ -114,7 +125,9 @@ export function ThreatMapPage() {
     // after `style.load` makes MapLibre calculate the visible tile area again.
     m.once('style.load', () => {
       m.resize()
-      m.jumpTo({ center: CENTRE, zoom: isDesktop ? INITIAL_ZOOM : INITIAL_ZOOM_MOBILE })
+      if (!targetSightingId.current) {
+        m.jumpTo({ center: CENTRE, zoom: isDesktop ? INITIAL_ZOOM : INITIAL_ZOOM_MOBILE })
+      }
     })
 
     // The app shell may resize after the map mounts. ResizeObserver keeps the
@@ -154,7 +167,19 @@ export function ThreatMapPage() {
         .addTo(map.current!)
       markers.current.push(marker)
     }
-  }, [data, species, statuses, risks, search, select])
+
+    if (requestedSightingId) {
+      const requested = filtered.find((sighting) => sighting.id === requestedSightingId)
+      if (requested) {
+        select(requested.id)
+        map.current.easeTo({
+          center: [requested.location.lng, requested.location.lat],
+          zoom: isDesktop ? 16 : 16.5,
+          duration: 650,
+        })
+      }
+    }
+  }, [data, species, statuses, risks, search, select, requestedSightingId, isDesktop])
 
   const filtered = data
     ? data.items.filter((s) => {

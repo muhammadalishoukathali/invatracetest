@@ -51,6 +51,7 @@ interface PrivateAccessState {
   updateDisplayName: (displayName: string | null) => Promise<void>
   clearRecoveryCodes: () => void
   markOffline: () => void
+  signOut: () => Promise<void>
 }
 
 let initializePromise: Promise<void> | null = null
@@ -378,6 +379,21 @@ export const usePrivateAccess = create<PrivateAccessState>((set, get) => ({
   },
 
   clearRecoveryCodes: () => set({ recoveryCodes: null, recoveryBatchCreatedAt: null, recoveryWasReissued: false }),
+
+  signOut: async () => {
+    setAccessToken(null)
+    await safelyClearInstallation()
+    pendingInstallation = null
+    set({
+      status: 'needs-access',
+      installation: null,
+      profile: null,
+      recoveryCodes: null,
+      recoveryBatchCreatedAt: null,
+      recoveryWasReissued: false,
+      syncMessage: null,
+    })
+  },
 
   markOffline: () => {
     setAccessToken(null)

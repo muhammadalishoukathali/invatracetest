@@ -19,6 +19,9 @@ interface Props {
    *  regardless of the user's permission selection. Undefined = no server
    *  gate; the panel's own permission logic applies. */
   actionEligible?: boolean
+  /** The map sheet uses this image as its hero, so it can suppress the
+   *  duplicate here. Scan results keep the existing default. */
+  showReferenceImage?: boolean
 }
 
 type PermissionContext = 'unknown' | 'explicit_permission'
@@ -57,7 +60,13 @@ const TONE_STYLES: Record<
   ok: { bg: 'var(--green-light)', border: 'var(--green-border)', color: 'var(--green)' },
 }
 
-export function PlantGuidancePanel({ scientificName, speciesName, plantId, actionEligible }: Props) {
+export function PlantGuidancePanel({
+  scientificName,
+  speciesName,
+  plantId,
+  actionEligible,
+  showReferenceImage = true,
+}: Props) {
   const plant = useMemo(
     () => findPlantGuidance({ scientificName, modelLabel: speciesName, plantId }),
     [scientificName, speciesName, plantId],
@@ -116,7 +125,7 @@ export function PlantGuidancePanel({ scientificName, speciesName, plantId, actio
 
       <ModeBanner mode={plant.guidance_mode} help={modeInfo.help} tone={modeInfo.tone} label={modeInfo.label} />
 
-      {plant.reference_image && (
+      {showReferenceImage && plant.reference_image && (
         <figure style={{ margin: '12px 0 0' }}>
           <img
             src={plant.reference_image}

@@ -23,6 +23,8 @@ const ReportWizardPage = lazy(() => import('@/features/report/ReportWizardPage')
   .then((module) => ({ default: module.ReportWizardPage })))
 const ReportTrackingPage = lazy(() => import('@/features/report/ReportTrackingPage')
   .then((module) => ({ default: module.ReportTrackingPage })))
+const MyReportsPage = lazy(() => import('@/features/report/MyReportsPage')
+  .then((module) => ({ default: module.MyReportsPage })))
 
 function loadRoute(content: ReactNode) {
   return <Suspense fallback={<RouteLoadingState />}>{content}</Suspense>
@@ -58,6 +60,7 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="/map" replace /> },
       { path: 'map', element: loadRoute(<ThreatMapPage />) },
       { path: 'access', element: loadRoute(<AccessManagementPage />) },
+      { path: 'reports', element: loadRoute(<MyReportsPage />) },
       { path: 'reports/:reportId', element: loadRoute(<ReportTrackingPage />) },
       { path: '*', element: <Navigate to="/map" replace /> },
     ],

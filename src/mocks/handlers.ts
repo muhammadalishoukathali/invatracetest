@@ -608,7 +608,7 @@ export const handlers = [
         policyVersion: 'deterministic-rules-v1.0',
         screeningMethod: 'deterministic_rules',
       }
-      report.sightingId = SIGHTINGS[0].id
+      report.sightingId = publishReportSighting(report)
     }, 750)
     return HttpResponse.json(report, { status: 201 })
   }),
@@ -839,15 +839,57 @@ const SIGHTINGS: Sighting[] = SEED.map((sighting, index) => {
       trailName: PLACES[index].name.includes(' · ') ? PLACES[index].name.split(' · ')[1] : null,
       source: 'seed',
     },
-    // Stand-in per-sighting photo — real deployments store the user's
-    // uploaded capture at this URL. The mock reuses the species' curated
-    // reference photo so the sheet demonstrates "the reporter's photo" +
-    // "typical example" as two distinct blocks.
+    // Stand-in per-sighting upload retained in the API contract. The public
+    // detail sheet intentionally ignores it and uses reviewed species media.
     thumbnailUrl: `/reference-images/${sighting.speciesId.replaceAll('-', '_')}.jpg`,
     screeningMethod: 'deterministic_rules',
     lastReportedAt: new Date(Date.now() - (index + 1) * 3600 * 1000).toISOString(),
   }
 })
+
+const SIGHTING_SPECIES: Record<string, Pick<Sighting, 'speciesName' | 'latinName' | 'risk'>> = {
+  'mikania-micrantha': { speciesName: 'Mikania micrantha', latinName: 'Mikania micrantha', risk: 'high' },
+  'chromolaena-odorata': { speciesName: 'Siam weed', latinName: 'Chromolaena odorata', risk: 'high' },
+  'eichhornia-crassipes': { speciesName: 'Water hyacinth', latinName: 'Eichhornia crassipes', risk: 'high' },
+  'clidemia-hirta': { speciesName: "Koster's curse", latinName: 'Clidemia hirta', risk: 'watch' },
+}
+
+/** Publish a screened report as its own map sighting at the submitted point. */
+function publishReportSighting(report: Report): string {
+  const sightingId = `report-${report.id}`
+  if (SIGHTINGS.some((sighting) => sighting.id === sightingId)) return sightingId
+
+  const speciesId = report.submission.speciesId ?? 'unknown-species'
+  const species = SIGHTING_SPECIES[speciesId] ?? {
+    speciesName: 'Reported plant', latinName: 'Identification unavailable', risk: 'watch' as const,
+  }
+  const closestPlace = PLACES
+    .map((place) => ({ place, distance: haversineMetres(report.submission.location, place) }))
+    .sort((a, b) => a.distance - b.distance)[0]
+  const hasNearbyPlace = closestPlace && closestPlace.distance <= 2_000
+
+  SIGHTINGS.unshift({
+    id: sightingId,
+    speciesId,
+    ...species,
+    status: 'screened',
+    location: report.submission.location,
+    precisionReduced: false,
+    reportCount: 1,
+    lastReportedAt: report.createdAt,
+    place: hasNearbyPlace ? {
+      displayName: closestPlace.place.name,
+      areaName: closestPlace.place.name.split(' · ')[0] ?? null,
+      trailName: closestPlace.place.name.includes(' · ') ? closestPlace.place.name.split(' · ')[1] : null,
+      source: 'seed',
+    } : {
+      displayName: '', areaName: null, trailName: null, source: 'fallback',
+    },
+    thumbnailUrl: null,
+    screeningMethod: 'deterministic_rules',
+  })
+  return sightingId
+}
 
 const SPECIES_DETAIL: Record<string, unknown> = {
   'mikania-micrantha': {

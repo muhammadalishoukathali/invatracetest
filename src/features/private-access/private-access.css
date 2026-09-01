@@ -265,6 +265,28 @@
 .access-check input { width: 20px; height: 20px; margin-top: 1px; accent-color: var(--green); }
 
 .access-management { width: min(780px, 100%); margin: 0 auto; padding-bottom: 24px; }
+.access-management__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 0 12px;
+}
+.access-back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px 6px 6px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--r-input);
+  color: var(--body);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.access-back-button:hover { background: var(--green-light); color: var(--green-dark); }
+.access-back-button:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 .access-profile-summary {
   display: grid;
   grid-template-columns: 52px minmax(0, 1fr);
