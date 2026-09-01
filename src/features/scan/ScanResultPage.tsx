@@ -81,8 +81,8 @@ export function ScanResultPage() {
         }}>
           <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--amber)' }}>Status uncertain</div>
           <p style={{ marginTop: 4, fontSize: 12.5, color: 'var(--body)', lineHeight: 1.55 }}>
-            InvaTrace cannot confirm the Malaysian status of this identification from the current reference data.
-            Do not act on this plant and do not submit a sighting report from this result.
+            Our reviewed sources do not clearly show how Malaysia classifies this plant.
+            Leave it where it is, and do not report it from this result.
           </p>
         </div>
       )}
@@ -144,7 +144,7 @@ export function ScanResultPage() {
 const OUTCOME_CONFIG = {
   target: { label: 'Invasive species detected', bg: 'var(--red-light)', border: 'var(--red-border)', color: 'var(--red)', icon: 'AlertTriangle' },
   other_plant: { label: 'Not a target species', bg: 'var(--green-light)', border: 'var(--green-border)', color: 'var(--green)', icon: 'Check' },
-  uncertain: { label: 'Uncertain — another photo is needed', bg: '#FEF3E2', border: '#F0D9A8', color: 'var(--amber)', icon: 'HelpCircle' },
+  uncertain: { label: 'Uncertain result. Take another photo.', bg: '#FEF3E2', border: '#F0D9A8', color: 'var(--amber)', icon: 'HelpCircle' },
 } as const
 
 function OutcomeBadge({ outcome }: { outcome: IdentifyResult['outcome'] }) {
@@ -202,7 +202,7 @@ function TargetResult({
               imageAlt={`Reference photo of ${detail.nativeTwin.name}`}
               title={detail.nativeTwin.name}
               subtitle={detail.nativeTwin.latinName}
-              caption="Native — do not remove"
+              caption="Native. Do not remove."
             />
           </div>
           {detail.referenceImageUrl && (
@@ -280,8 +280,8 @@ function OtherPlantResult({ result }: { result: IdentifyResult }) {
         <p style={{ color: 'var(--muted)', fontSize: 12.5, fontStyle: 'italic' }}>{result.scientificName}</p>
       )}
       <p style={{ fontSize: 13.5, color: 'var(--body)', marginTop: 8, lineHeight: 1.6 }}>
-        This identification is not listed as a target invasive for field removal. Do not remove it based on this result.
-        If the plant still looks suspicious, capture another angle.
+        This plant is not on InvaTrace's removal list. Leave it in place.
+        If it still looks suspicious, take another photo from a different angle.
       </p>
       <ConfidenceBand confidence={result.confidence} />
     </div>
@@ -299,13 +299,12 @@ function UncertainResult({ result }: { result: IdentifyResult }) {
     <div style={{ marginTop: 16, padding: '16px 18px', borderRadius: 'var(--r-card)', background: 'var(--surface)', border: '1px solid var(--border)' }}>
       <h2 style={{ fontSize: 16, fontWeight: 600 }}>Could not determine species</h2>
       <p style={{ fontSize: 13.5, color: 'var(--body)', marginTop: 8, lineHeight: 1.6 }}>
-        The model is not confident enough to identify this plant.
-        The automated trust pipeline cannot validate this photo. Try again with:
+        We could not identify the plant from this photo. Try again with:
       </p>
       <ul style={{ marginTop: 8, paddingLeft: 18, fontSize: 13, color: 'var(--body)', lineHeight: 1.7 }}>
-        <li>Better lighting conditions</li>
-        <li>A closer, sharper photograph</li>
-        <li>A clear view of the leaf or flower</li>
+        <li>Even lighting without harsh shadows</li>
+        <li>A closer photo with the plant in focus</li>
+        <li>One leaf or flower clearly visible</li>
       </ul>
       <ConfidenceBand confidence={result.confidence} />
       <button type="button" onClick={retake} style={{
@@ -359,7 +358,7 @@ function UnsupportedTargetResult({ result }: { result: IdentifyResult }) {
       <p style={{ marginTop: 8, color: 'var(--body)', fontSize: 13.5, lineHeight: 1.6 }}>
         {guidance?.general_information
           ? firstSentence(guidance.general_information)
-          : 'Detailed field guidance for this plant is not yet available in InvaTrace.'}
+          : 'We do not have reviewed field advice for this plant yet. Leave it in place.'}
       </p>
       <ConfidenceBand confidence={result.confidence} />
     </div>

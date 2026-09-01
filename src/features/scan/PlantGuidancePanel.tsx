@@ -26,24 +26,24 @@ type PermissionChoice = PermissionContext | 'none'
 
 const MODE_COPY: Record<GuidanceMode, { label: string; tone: 'info' | 'warn' | 'danger' | 'ok'; help: string }> = {
   general_information: {
-    label: 'General information only',
+    label: 'Identification only',
     tone: 'ok',
-    help: 'InvaTrace provides identification background. No removal action is recommended.',
+    help: 'Use this result to learn about the plant. Do not remove it based on this scan.',
   },
   active_guidance: {
-    label: 'Active guidance available',
+    label: 'Check before acting',
     tone: 'warn',
-    help: 'Check the land status and your permission below before touching or removing the plant.',
+    help: 'Before touching the plant, check who manages the land and whether you have permission.',
   },
   site_manager_confirmation_required: {
-    label: 'Site manager confirmation required',
+    label: 'Land manager approval needed',
     tone: 'warn',
-    help: 'Do not act until the responsible land manager has explicitly authorised the site.',
+    help: 'Leave the plant alone until the land manager approves work at this exact site.',
   },
   report_only: {
-    label: 'Report only — do not remove',
+    label: 'Report this plant. Do not remove it.',
     tone: 'danger',
-    help: 'Record and report the sighting. Removal is out of scope for this species in InvaTrace.',
+    help: 'Take clear photos and report the sighting. InvaTrace does not provide removal steps for this species.',
   },
 }
 
@@ -109,7 +109,7 @@ export function PlantGuidancePanel({ scientificName, speciesName, plantId, actio
     >
       <header style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8 }}>
         <h3 id="plant-guidance-heading" style={{ fontSize: 15, fontWeight: 700 }}>
-          Malaysia plant guidance
+          Guidance for Malaysia
         </h3>
         <StatusChip status={plant.malaysia_status} />
       </header>
@@ -138,12 +138,14 @@ export function PlantGuidancePanel({ scientificName, speciesName, plantId, actio
         <SourceLine ids={plant.general_information_source_ids} />
       </Block>
 
-      <Block title="Identification note" icon="Info">
-        <p style={{ fontSize: 13, color: 'var(--body)', lineHeight: 1.6 }}>{plant.identification_note}</p>
+      <Block title="Check the match" icon="Info">
+        <p style={{ fontSize: 13, color: 'var(--body)', lineHeight: 1.6 }}>
+          {naturalIdentificationNote(plant.identification_note)}
+        </p>
       </Block>
 
       {plant.risk_flags.length > 0 && (
-        <Block title="Risk flags" icon="AlertTriangle">
+        <Block title="Things to watch for" icon="AlertTriangle">
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {plant.risk_flags.map((flag) => (
               <span
@@ -193,13 +195,13 @@ export function PlantGuidancePanel({ scientificName, speciesName, plantId, actio
             fontSize: 13, color: 'var(--body)', lineHeight: 1.55,
           }}
         >
-          Choose your permission status above. InvaTrace will only show steps that are appropriate for that site.
+          Choose one option above to see what you can safely do here.
         </div>
       )}
 
       {plant.actions && permission === 'unknown' && (
         <ActionPathBlock
-          title="If protected or permission is unknown"
+          title="Protected land or no permission"
           icon="Shield"
           path={plant.actions.protected_or_permission_unknown}
           tone="danger"
@@ -209,7 +211,7 @@ export function PlantGuidancePanel({ scientificName, speciesName, plantId, actio
 
       {plant.actions && activePathAllowed && (
         <ActionPathBlock
-          title="Only on an authorised site"
+          title="If the land manager has approved it"
           icon="ShieldCheck"
           path={plant.actions.authorised_site}
           tone="warn"
@@ -231,15 +233,15 @@ export function PlantGuidancePanel({ scientificName, speciesName, plantId, actio
             lineHeight: 1.55,
           }}
         >
-          Active steps stay hidden until every stop condition is cleared
-          {plant.guidance_mode === 'site_manager_confirmation_required' && ' and the site-manager designation is confirmed'}.
+          Removal steps will appear after you confirm every safety check
+          {plant.guidance_mode === 'site_manager_confirmation_required' && ' and the land manager has approved this plant for removal'}.
         </div>
       )}
 
       <SpreadPreventionBlock items={plant.spread_prevention} />
 
       {plant.do_not_do.length > 0 && (
-        <Block title="Do NOT do" icon="XOctagon" tone="danger">
+        <Block title="Avoid these actions" icon="XOctagon" tone="danger">
           <SourcedList items={plant.do_not_do} tone="danger" />
         </Block>
       )}
@@ -268,7 +270,7 @@ function MissingGuidanceFallback({ speciesName }: { speciesName: string | null }
       }}
     >
       <h3 id="plant-guidance-heading" style={{ fontSize: 15, fontWeight: 700 }}>
-        Malaysia plant guidance
+        Guidance for Malaysia
       </h3>
       <div
         role="note"
@@ -283,13 +285,20 @@ function MissingGuidanceFallback({ speciesName }: { speciesName: string | null }
         <div style={{ fontSize: 12.5, fontWeight: 700, color: TONE_STYLES.warn.color }}>Observe and report only</div>
         <p style={{ marginTop: 4, fontSize: 12.5, color: 'var(--body)', lineHeight: 1.55 }}>
           {speciesName
-            ? `No reviewed guidance record is available for ${speciesName} in this Malaysia dataset.`
-            : 'No reviewed guidance record is available for this identification.'}{' '}
-          Do not disturb the plant. Record it, photograph it and report the sighting so a reviewer can act.
+            ? `We do not have reviewed guidance for ${speciesName} yet.`
+            : 'We do not have reviewed guidance for this plant yet.'}{' '}
+          Leave it where it is. Take clear photos and report the sighting for review.
         </p>
       </div>
     </section>
   )
+}
+
+function naturalIdentificationNote(note: string): string {
+  if (note === 'Treat the model result as a suggestion. Check diagnostic features and obtain site approval before acting.') {
+    return 'A photo is not enough to confirm the species. Compare the leaves, stems and flowers before doing anything, and ask the land manager first.'
+  }
+  return note
 }
 
 function PermissionGate({
@@ -344,13 +353,13 @@ function PermissionGate({
         </div>
       </div>
       <p style={{ marginTop: 10, fontSize: 13.5, color: 'var(--body)', lineHeight: 1.6 }}>
-        If the land is protected—or you are unsure—do not touch or remove the plant. Photograph it and report the sighting instead. A map boundary alone is not proof of permission.
+        If the land is protected, or you are unsure, do not touch or remove the plant. Photograph it and report the sighting instead. A map boundary does not prove that you have permission.
       </p>
       <div role="radiogroup" style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
         <RadioRow
           checked={permission === 'unknown'}
           onSelect={() => setPermission('unknown')}
-          label="Protected land or permission unknown"
+          label="This is protected land, or I am not sure"
         />
         <RadioRow
           checked={permission === 'explicit_permission'}
@@ -358,8 +367,8 @@ function PermissionGate({
           disabled={!canActEver}
           label={
             canActEver
-              ? 'I have explicit permission to act on this site'
-              : 'Explicit-permission path is not available for this species'
+              ? 'I have permission from the land manager'
+              : 'Removal is not allowed for this species'
           }
         />
       </div>
@@ -377,7 +386,7 @@ function PermissionGate({
             onChange={(event) => setSiteManagerConfirmed(event.target.checked)}
           />
           <span>
-            The site manager has designated <em>{plant.scientific_name}</em> for action at this exact site.
+            The land manager has approved removal of <em>{plant.scientific_name}</em> at this exact site.
           </span>
         </label>
       )}
@@ -385,7 +394,7 @@ function PermissionGate({
       {permission === 'explicit_permission' && stopConditions.length > 0 && (
         <div style={{ marginTop: 12 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--red)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Stop conditions — read before acting
+            Stop and leave the plant if any of these apply
           </div>
           <SourcedList items={stopConditions} tone="danger" />
           <label
@@ -402,7 +411,7 @@ function PermissionGate({
             <span>I have read the stop conditions and none of them apply here.</span>
           </label>
           <p style={{ marginTop: 6, fontSize: 11.5, color: 'var(--muted)' }}>
-            If any condition applies, leave this unchecked. The panel switches back to observation and reporting only.
+            If any item applies, leave this unchecked and report the plant without disturbing it.
           </p>
         </div>
       )}
@@ -551,7 +560,7 @@ function ActionPathBlock({
       {renderSteps && path.stop_conditions.length > 0 && (
         <div style={{ marginTop: 10 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--red)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Stop conditions (recap)
+            Stop if any of these apply
           </div>
           <SourcedList items={path.stop_conditions} tone="danger" />
         </div>
@@ -675,23 +684,23 @@ function SafetyPolicyFooter({ plant }: { plant: PlantGuidance }) {
       }}
     >
       <summary style={{ cursor: 'pointer', fontSize: 12.5, fontWeight: 600, color: 'var(--body)' }}>
-        Safety policy &amp; sources
+        Safety notes and sources
       </summary>
       <div style={{ marginTop: 10, fontSize: 12, color: 'var(--body)', lineHeight: 1.6 }}>
-        <p><strong>Model:</strong> {policy.model_rule}</p>
-        <p style={{ marginTop: 6 }}><strong>Permission:</strong> {policy.permission_rule}</p>
+        <p><strong>Identification:</strong> A photo can suggest a species, but it cannot confirm one. If the result is unclear, photograph and report the plant without disturbing it.</p>
+        <p style={{ marginTop: 6 }}><strong>Permission:</strong> Being outside a mapped protected area does not give you permission to remove a plant. Removal steps only appear after you confirm approval from the land or waterbody manager.</p>
         {policy.protected_land_rule && (
-          <p style={{ marginTop: 6 }}><strong>Protected land:</strong> {policy.protected_land_rule}</p>
+          <p style={{ marginTop: 6 }}><strong>Protected land:</strong> Do not touch, collect, cut or remove plants on protected land. Take photos from a safe place and report the sighting.</p>
         )}
         {policy.never_recommend?.length > 0 && (
           <>
-            <p style={{ marginTop: 8, fontWeight: 700 }}>Never recommend</p>
+            <p style={{ marginTop: 8, fontWeight: 700 }}>InvaTrace does not provide instructions for</p>
             <ul style={{ paddingLeft: 18 }}>
               {policy.never_recommend.map((item) => <li key={item}>{item}</li>)}
             </ul>
           </>
         )}
-        <p style={{ marginTop: 10, fontWeight: 700 }}>Cited sources for this plant</p>
+        <p style={{ marginTop: 10, fontWeight: 700 }}>Sources used for this plant</p>
         <ul style={{ paddingLeft: 18 }}>
           {getSources(collectSourceIds(plant)).map((src) => (
             <li key={src.source_id}>
