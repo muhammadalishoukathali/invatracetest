@@ -64,13 +64,19 @@ export function Sidebar({ profile }: { profile: PseudonymousProfile }) {
         </div>
       </div>
 
-      <button type="button" onClick={() => navigate('/scan', { state: scanStateFromPath(pathname) })} style={{
-        height: 'var(--h-primary)', borderRadius: 'var(--r-button)', border: 'none',
-        background: 'var(--green)', color: '#fff', fontWeight: 600, fontSize: 14,
-        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-      }}>
-        <Icon name="ScanLine" size={18} color="#fff" />
-        New scan
+      <button
+        type="button"
+        onClick={() => navigate('/scan', { state: scanStateFromPath(pathname) })}
+        className="sidebar-scan-button"
+      >
+        <span className="sidebar-scan-button__icon" aria-hidden>
+          <Icon name="ScanLine" size={19} color="#fff" strokeWidth={2.2} />
+        </span>
+        <span>
+          <strong>Scan a plant</strong>
+          <small>Camera or library</small>
+        </span>
+        <Icon name="ChevronRight" size={17} color="rgba(255,255,255,.76)" />
       </button>
 
       <nav aria-label="Primary" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>

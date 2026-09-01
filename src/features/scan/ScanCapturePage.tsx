@@ -288,8 +288,9 @@ export function ScanCapturePage() {
       ) : !imageUrl ? (
         <section className="scan-capture__start" aria-labelledby="capture-heading">
           <div className="scan-capture__intro">
+            <span className="scan-capture__eyebrow">Plant identification</span>
             <h2 id="capture-heading">Photograph a clear plant feature</h2>
-            <p>A close, well-lit view of one leaf or flower cluster gives the model useful evidence.</p>
+            <p>A close, well-lit view of one leaf or flower cluster gives the clearest result.</p>
           </div>
 
           <button
@@ -306,6 +307,7 @@ export function ScanCapturePage() {
             <span className="scan-capture__camera-icon" aria-hidden>
               {checking || cameraStarting ? <Spinner /> : <Icon name="Camera" size={30} color="#fff" />}
             </span>
+            {!checking && !cameraStarting && <span className="scan-capture__recommended">Recommended</span>}
             <strong>{checking ? 'Preparing photo…' : cameraStarting ? 'Starting camera…' : 'Open camera'}</strong>
             <span>{checking ? 'Checking image quality' : cameraStarting ? 'Waiting for camera access' : 'Uses your phone’s rear camera'}</span>
             <small>Fill the frame with the plant feature</small>
@@ -318,14 +320,21 @@ export function ScanCapturePage() {
             onClick={() => { captureScanLocation(); galleryRef.current?.click() }}
             disabled={checking}
             className="scan-capture__gallery"
+            aria-describedby="gallery-photo-note"
           >
-            <Icon name="ImagePlus" size={16} color="var(--body)" />
-            Choose a photo instead
+            <span className="scan-capture__gallery-icon" aria-hidden>
+              <Icon name="ImagePlus" size={19} color="var(--green)" />
+            </span>
+            <span>
+              <strong>Choose from library</strong>
+              <small>JPEG, PNG or WebP</small>
+            </span>
+            <Icon name="ChevronRight" size={18} color="var(--muted)" />
           </button>
-          <p className="scan-capture__gallery-note">
-            Use this when the camera isn't available — e.g. on a desktop
-            browser or if camera permission is blocked.
-          </p>
+          <div className="scan-capture__gallery-note" id="gallery-photo-note">
+            <Icon name="Info" size={16} color="var(--green-dark)" />
+            <p><strong>About library photos</strong> Cropped, compressed or older photos may return a lower-confidence result. Choosing from your library does not make a plant more likely to be marked high risk.</p>
+          </div>
         </section>
       ) : (
         <div className="scan-capture__preview">
