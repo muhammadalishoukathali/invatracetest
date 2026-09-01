@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Icon } from '@/components/Icon'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
 import './map-controls.css'
@@ -12,6 +12,8 @@ import './map-controls.css'
 export function MapLegend() {
   const isDesktop = useIsDesktop()
   const [open, setOpen] = useState(isDesktop)
+  const toggleRef = useRef<HTMLButtonElement>(null)
+  const closeRef = useRef<HTMLButtonElement>(null)
 
   // If the viewport crosses the desktop breakpoint, keep the legend visible on
   // desktop and collapsed on mobile so the state matches what the layout expects.
@@ -20,20 +22,28 @@ export function MapLegend() {
   // Close the mobile popover when the user presses Escape.
   useEffect(() => {
     if (isDesktop || !open) return
+    closeRef.current?.focus()
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false)
+      if (event.key === 'Escape') close()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [isDesktop, open])
 
+  const close = () => {
+    setOpen(false)
+    window.requestAnimationFrame(() => toggleRef.current?.focus())
+  }
+
   if (!isDesktop && !open) {
     return (
       <button
         type="button"
+        ref={toggleRef}
         onClick={() => setOpen(true)}
         aria-label="Show map legend"
         aria-expanded="false"
+        aria-controls="map-legend-card"
         className="map-legend-toggle"
       >
         <Icon name="Info" size={14} color="var(--body)" />
@@ -47,6 +57,7 @@ export function MapLegend() {
       role={isDesktop ? undefined : 'dialog'}
       aria-label={isDesktop ? undefined : 'Map legend'}
       aria-modal={isDesktop ? undefined : 'false'}
+      id="map-legend-card"
       className={`map-legend-card${isDesktop ? '' : ' map-legend-card--popover'}`}
     >
       <div className="map-legend-card__header">
@@ -54,7 +65,8 @@ export function MapLegend() {
         {!isDesktop && (
           <button
             type="button"
-            onClick={() => setOpen(false)}
+            ref={closeRef}
+            onClick={close}
             aria-label="Hide legend"
             className="map-legend-card__close"
           >
@@ -80,7 +92,7 @@ export function MapLegend() {
       <>
         <button
           type="button"
-          onClick={() => setOpen(false)}
+          onClick={close}
           aria-hidden
           tabIndex={-1}
           className="map-legend-scrim"

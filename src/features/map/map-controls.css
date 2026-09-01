@@ -10,6 +10,70 @@
   border-bottom: 1px solid var(--border);
 }
 
+/* MapLibre owns the control markup, so the map stylesheet supplies the visual
+   treatment. Solid surfaces and green glyphs stay visible over busy tiles. */
+.maplibregl-ctrl-group {
+  border-color: var(--green-border) !important;
+  background: var(--surface-raised) !important;
+  box-shadow: 0 10px 28px rgba(20, 40, 30, 0.22) !important;
+}
+.maplibregl-ctrl-group button {
+  background-color: var(--surface-raised) !important;
+  color: var(--green-dark) !important;
+}
+.maplibregl-ctrl-group button:hover { background-color: var(--green-light) !important; }
+.maplibregl-ctrl-group button:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--green) !important;
+}
+.maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon,
+.maplibregl-ctrl-zoom-out .maplibregl-ctrl-icon {
+  position: relative;
+  background-image: none !important;
+}
+.maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon::before,
+.maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon::after,
+.maplibregl-ctrl-zoom-out .maplibregl-ctrl-icon::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 18px;
+  height: 2.5px;
+  border-radius: 99px;
+  background: var(--green-dark);
+  transform: translate(-50%, -50%);
+}
+.maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon::after {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+.maplibregl-ctrl-geolocate .maplibregl-ctrl-icon {
+  background-image: radial-gradient(
+    circle at center,
+    var(--green-dark) 0 3px,
+    var(--surface-raised) 3.5px 6px,
+    var(--green-dark) 6.5px 8px,
+    transparent 8.5px
+  ) !important;
+}
+.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-active,
+.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-waiting {
+  background-color: var(--green-light) !important;
+}
+.maplibregl-ctrl-geolocate:disabled {
+  opacity: 1;
+  background-color: var(--bg-alt) !important;
+}
+.maplibregl-ctrl-geolocate:disabled .maplibregl-ctrl-icon {
+  opacity: 1 !important;
+  background-image: radial-gradient(
+    circle at center,
+    var(--muted) 0 3px,
+    var(--bg-alt) 3.5px 6px,
+    var(--muted) 6.5px 8px,
+    transparent 8.5px
+  ) !important;
+}
+
 .map-state {
   position: absolute;
   z-index: 5;
@@ -262,12 +326,57 @@
   background: var(--surface-translucent);
   color: var(--muted);
   font-size: 11px;
+  font-weight: 600;
   line-height: 1.2;
   text-decoration: none;
   box-shadow: 0 6px 16px rgba(20, 40, 30, 0.1);
   backdrop-filter: saturate(1.1) blur(10px);
   -webkit-backdrop-filter: saturate(1.1) blur(10px);
 }
+
+.map-location-notice {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  z-index: 6;
+  width: max-content;
+  max-width: min(520px, calc(100% - 160px));
+  min-height: 44px;
+  padding: 8px 8px 8px 12px;
+  border: 1px solid var(--green-border);
+  border-radius: var(--r-card);
+  background: var(--surface-translucent-strong);
+  color: var(--green-dark);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: saturate(1.1) blur(12px);
+  -webkit-backdrop-filter: saturate(1.1) blur(12px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.map-location-notice--error {
+  border-color: var(--red-border);
+  background: var(--red-light);
+  color: var(--red-text);
+}
+.map-location-notice button {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.map-location-notice button:hover,
+.map-location-notice button:focus-visible { background: rgba(255, 255, 255, 0.55); }
 
 .map-attribution:hover,
 .map-attribution:focus-visible {
@@ -458,6 +567,19 @@
     background: var(--surface);
     box-shadow: 0 1px 2px rgba(20, 40, 30, 0.08);
   }
+
+  .map-location-notice {
+    top: 10px;
+    right: 68px;
+    left: 10px;
+    width: auto;
+    max-width: none;
+    transform: none;
+  }
+}
+
+@media (max-width: 380px) {
+  .map-attribution { bottom: calc(var(--map-legend-bottom) + 54px); }
 }
 
 @media (max-width: 350px) {

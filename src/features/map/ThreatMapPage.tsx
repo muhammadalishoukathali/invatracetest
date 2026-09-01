@@ -3,7 +3,7 @@
  * basemap so the risk-coloured markers stay readable. Camera bounds keep users
  * inside Malaysia, and provider attribution remains visible on every screen.
  */
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import * as maplibregl from 'maplibre-gl'
 import type { Map, Marker } from 'maplibre-gl'
@@ -64,6 +64,10 @@ export function ThreatMapPage() {
   const markers = useRef<Marker[]>([])
   const isDesktop = useIsDesktop()
   const { species, statuses, risks, search, select } = useMapStore()
+  const [locationNotice, setLocationNotice] = useState<{
+    tone: 'pending' | 'success' | 'error'
+    text: string
+  } | null>(null)
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['sightings', species, statuses, risks, search],
@@ -103,10 +107,25 @@ export function ThreatMapPage() {
     // AttributionControl. The built-in control auto-opens on load and covers
     // the scan button on small screens; a plain link chip stays predictable.
     m.addControl(new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }), 'top-right')
-    m.addControl(new maplibregl.GeolocateControl({
+    const geolocate = new maplibregl.GeolocateControl({
       positionOptions: { enableHighAccuracy: true },
       showUserLocation: true, trackUserLocation: false,
-    }), 'top-right')
+    })
+    m.addControl(geolocate, 'top-right')
+    geolocate.on('geolocate', () => {
+      setLocationNotice({ tone: 'success', text: 'Map centred on your current location.' })
+    })
+    geolocate.on('error', () => {
+      setLocationNotice({
+        tone: 'error',
+        text: 'Your location is unavailable. Allow location access in your browser settings, then reload this page.',
+      })
+    })
+    const locationButton = container.current.querySelector<HTMLButtonElement>('.maplibregl-ctrl-geolocate')
+    const onLocationRequest = () => {
+      setLocationNotice({ tone: 'pending', text: 'Finding your location…' })
+    }
+    locationButton?.addEventListener('click', onLocationRequest)
     map.current = m
     if (import.meta.env.DEV) (window as unknown as { __map?: Map }).__map = m
 
@@ -124,6 +143,7 @@ export function ThreatMapPage() {
     ro.observe(container.current)
 
     return () => {
+      locationButton?.removeEventListener('click', onLocationRequest)
       ro.disconnect()
       m.remove()
       map.current = null
@@ -203,6 +223,23 @@ export function ThreatMapPage() {
         )}
         <MapLegend />
         <MapAttribution />
+        {locationNotice && (
+          <div
+            className={`map-location-notice map-location-notice--${locationNotice.tone}`}
+            role={locationNotice.tone === 'error' ? 'alert' : 'status'}
+            aria-live="polite"
+          >
+            <Icon
+              name={locationNotice.tone === 'error' ? 'MapPinOff' : 'LocateFixed'}
+              size={17}
+              color="currentColor"
+            />
+            <span>{locationNotice.text}</span>
+            <button type="button" onClick={() => setLocationNotice(null)} aria-label="Dismiss location message">
+              <Icon name="X" size={15} color="currentColor" />
+            </button>
+          </div>
+        )}
       </div>
       <AccessibleSightingList items={filtered} onSelect={select} />
       <SightingDetailsSheet />
@@ -219,11 +256,11 @@ function MapAttribution() {
     <a
       href="https://openstreetmap.org/copyright"
       target="_blank"
-      rel="noopener"
+      rel="noopener noreferrer"
       className="map-attribution"
       aria-label="OpenStreetMap contributors — data license"
     >
-      © OpenStreetMap
+      © OpenStreetMap contributors
     </a>
   )
 }
