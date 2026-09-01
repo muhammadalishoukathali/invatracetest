@@ -6,6 +6,7 @@ import { useOnline } from '@/hooks/useOnline'
 import { scanStateFromPath } from '@/features/scan/scan-navigation'
 import { listScanHistory, type ScanHistoryRecord } from '@/features/scan/scan-history-store'
 import { profileStateFromPath } from '@/features/private-access/profile-navigation'
+import { mapStateForLocation } from '@/features/map/map-location-link'
 import type { Report, ReportListResponse, ReportStatus } from '@/types'
 import './my-reports.css'
 
@@ -92,7 +93,7 @@ export function MyReportsPage() {
               <dd>{submittedCount}</dd>
             </div>
             <div>
-              <dt>Scan only</dt>
+              <dt>Not submitted</dt>
               <dd>{scanOnlyRecords.length}</dd>
             </div>
           </dl>
@@ -148,7 +149,7 @@ export function MyReportsPage() {
           <div className="my-reports__results-heading">
             <div>
               <h2>Scan history</h2>
-              <p>Saved on this device. These have not been submitted as field reports.</p>
+              <p>Scanned on this device, but not submitted as community reports.</p>
             </div>
             <span>{scanOnlyRecords.length} total</span>
           </div>
@@ -185,7 +186,7 @@ function ScanHistoryRow({ scan }: { scan: ScanHistoryRecord }) {
         <div className="my-reports__row">
           <span className="my-reports__status my-reports__status--muted">
             <span className="my-reports__status-dot" aria-hidden />
-            Scan only
+            Not submitted
           </span>
           <time className="my-reports__date" dateTime={scan.observedAt}>{relativeDate(scan.observedAt)}</time>
         </div>
@@ -194,12 +195,39 @@ function ScanHistoryRow({ scan }: { scan: ScanHistoryRecord }) {
           <span className="my-reports__confidence">{Math.round(scan.confidence * 100)}% match</span>
         </div>
       </div>
+      {scan.location && (
+        <Link
+          className="my-reports__map-link"
+          to="/map"
+          state={mapStateForLocation(scan.location, `${name} scan`, {
+            kind: 'scan',
+            statusLabel: 'Not submitted',
+            observedAt: scan.observedAt,
+            locationAccuracyM: scan.locationAccuracyM ?? null,
+          })}
+          aria-label={`View ${name} scan location on map`}
+        >
+          <Icon name="MapPin" size={15} />
+          <span>View on map</span>
+        </Link>
+      )}
     </li>
   )
 }
 
 function ReportRow({ report }: { report: Report }) {
   const status = STATUS_COPY[report.status]
+  const name = speciesName(report.submission.speciesId)
+  const mapHref = report.sightingId ? `/map?sighting=${encodeURIComponent(report.sightingId)}` : '/map'
+  const mapState = report.sightingId
+    ? undefined
+    : mapStateForLocation(report.submission.location, `${name} report`, {
+        kind: 'report',
+        statusLabel: status.label,
+        observedAt: report.submission.observedAt,
+        locationAccuracyM: report.submission.locationAccuracyM,
+        recordId: report.id,
+      })
   return (
     <li className="my-reports__item">
       <Link to={`/reports/${report.id}`} className="my-reports__link">
@@ -212,13 +240,22 @@ function ReportRow({ report }: { report: Report }) {
         </div>
         <div className="my-reports__row my-reports__row--body">
           <span className="my-reports__species">
-            {speciesName(report.submission.speciesId)}
+            {name}
           </span>
           <span className="my-reports__ref">Ref {shortId(report.id)}</span>
         </div>
         <span className="my-reports__chevron" aria-hidden>
           <Icon name="ChevronRight" size={16} color="var(--icon)" />
         </span>
+      </Link>
+      <Link
+        className="my-reports__map-link"
+        to={mapHref}
+        state={mapState}
+        aria-label={`View ${name} report on map`}
+      >
+        <Icon name="MapPin" size={15} />
+        <span>{report.sightingId ? 'View report on map' : 'View report location'}</span>
       </Link>
     </li>
   )

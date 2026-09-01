@@ -1,0 +1,78 @@
+.report-submission-result {
+  min-height: 100dvh;
+  padding: max(88px, 17vh) max(20px, env(safe-area-inset-right))
+    max(24px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+  background: var(--surface);
+  display: grid;
+  align-items: start;
+  justify-items: center;
+}
+
+.report-submission-result__body {
+  width: min(100%, 420px);
+}
+
+.report-submission-result h1 {
+  color: var(--ink);
+  font-size: clamp(30px, 7vw, 38px);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -.035em;
+  text-wrap: balance;
+}
+
+.report-submission-result p {
+  max-width: 46ch;
+  margin-top: 16px;
+  color: var(--body);
+  font-size: 15px;
+  line-height: 1.65;
+  text-wrap: pretty;
+}
+
+.report-submission-result__actions {
+  margin-top: 34px;
+  display: grid;
+  gap: 6px;
+}
+
+@media (max-width: 560px) {
+  .report-submission-result {
+    padding-top: max(64px, env(safe-area-inset-top));
+  }
+}
+
+.report-submission-result__actions button {
+  min-height: 48px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--r-button);
+  background: var(--green);
+  color: var(--on-accent);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 160ms ease, transform 120ms ease;
+}
+
+.report-submission-result__actions .report-submission-result__secondary {
+  background: transparent;
+  color: var(--body);
+}
+
+.report-submission-result__actions button:focus-visible {
+  outline: 3px solid var(--green-border);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .report-submission-result__actions button:not(.report-submission-result__secondary):hover {
+    background: var(--green-hover);
+  }
+  .report-submission-result__secondary:hover { background: var(--hover); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .report-submission-result__actions button { transition: none; }
+}

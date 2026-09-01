@@ -3,8 +3,10 @@
  * basemap so the risk-coloured markers stay readable. Camera bounds keep users
  * inside Malaysia, and provider attribution remains visible on every screen.
  */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useQuery } from '@tanstack/react-query'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import * as maplibregl from 'maplibre-gl'
 import type { Map, Marker } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -12,11 +14,13 @@ import mapLibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 
 import { api } from '@/services/api-client'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
+import { useDialogA11y } from '@/hooks/useDialogA11y'
 import { useMapView as useMapStore } from '@/features/map/map-view-store'
 import type { Sighting } from '@/types'
 import { SightingDetailsSheet } from './SightingDetailsSheet'
 import { MapLegend } from './MapLegend'
 import { Icon } from '@/components/Icon'
+import { parseMapLocationTarget, type MapLocationTarget } from './map-location-link'
 
 // Give MapLibre the worker file explicitly. Its automatic URL points beside
 // Vite's optimized dependency file during development, where the worker does
@@ -62,17 +66,38 @@ export function ThreatMapPage() {
   const container = useRef<HTMLDivElement>(null)
   const map = useRef<Map | null>(null)
   const markers = useRef<Marker[]>([])
+  const recordLocationMarker = useRef<Marker | null>(null)
   const latestVisibleSightings = useRef<Sighting[]>([])
   const reportsHaveLoaded = useRef(false)
   const locationFailed = useRef(false)
   const initialViewApplied = useRef(false)
+  const targetSightingId = useRef<string | null>(null)
   const fitReportsFallback = useRef<(() => void) | null>(null)
   const isDesktop = useIsDesktop()
-  const { species, statuses, risks, search, select } = useMapStore()
+  const routeLocation = useLocation()
+  const [searchParams] = useSearchParams()
+  const requestedSightingId = searchParams.get('sighting')
+  const requestedLocation = useMemo(
+    () => parseMapLocationTarget(routeLocation.state),
+    [routeLocation.state],
+  )
+  targetSightingId.current = requestedSightingId
+  const { species, statuses, risks, search, select, clearFilters } = useMapStore()
   const [locationNotice, setLocationNotice] = useState<{
     tone: 'pending' | 'success' | 'error'
     text: string
   } | null>(null)
+  const [recordDetailsOpen, setRecordDetailsOpen] = useState(false)
+
+  // A successful recenter is confirmation, not a permanent obstruction.
+  // Errors remain until dismissed because they explain the fallback map view.
+  useEffect(() => {
+    if (locationNotice?.tone !== 'success') return
+    const timer = window.setTimeout(() => {
+      setLocationNotice((current) => current?.tone === 'success' ? null : current)
+    }, 3_500)
+    return () => window.clearTimeout(timer)
+  }, [locationNotice])
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['sightings', species, statuses, risks, search],
@@ -86,8 +111,14 @@ export function ThreatMapPage() {
       return api<{ items: Sighting[] }>(`/api/v1/sightings${query ? `?${query}` : ''}`)
     },
     staleTime: 60_000,
+    refetchOnMount: 'always',
     refetchInterval: 15_000,
   })
+
+  useEffect(() => {
+    if (!requestedSightingId) return
+    clearFilters()
+  }, [clearFilters, requestedSightingId])
 
   // Create one MapLibre instance for this page and remove it when the page closes.
   useEffect(() => {
@@ -124,7 +155,7 @@ export function ThreatMapPage() {
     }
     geolocate.on('geolocate', () => {
       initialViewApplied.current = true
-      setLocationNotice({ tone: 'success', text: 'Map centred on your current location.' })
+      setLocationNotice({ tone: 'success', text: 'Map centred on your location' })
     })
     geolocate.on('error', () => {
       showReportsFallback('Your location is unavailable, so the map is showing the visible community reports instead.')
@@ -176,6 +207,7 @@ export function ThreatMapPage() {
     let locationReadyTimer: number | undefined
     m.once('style.load', () => {
       m.resize()
+      if (targetSightingId.current || requestedLocation) return
       m.jumpTo({ center: CENTRE, zoom: isDesktop ? INITIAL_ZOOM : INITIAL_ZOOM_MOBILE })
       setLocationNotice({ tone: 'pending', text: 'Finding your location…' })
       let checks = 0
@@ -211,6 +243,42 @@ export function ThreatMapPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // A My Reports link can target a private scan/report coordinate even when
+  // no public sighting exists yet. Keep this marker separate from API markers
+  // so refreshes and filters cannot remove it.
+  useEffect(() => {
+    if (!map.current) return
+    setRecordDetailsOpen(false)
+    recordLocationMarker.current?.remove()
+    recordLocationMarker.current = null
+    if (!requestedLocation) return
+
+    const el = document.createElement('button')
+    el.type = 'button'
+    el.className = 'map-record-location-marker'
+    el.setAttribute('aria-label', `Open details for ${requestedLocation.label}`)
+    el.title = requestedLocation.label
+    el.addEventListener('click', () => setRecordDetailsOpen(true))
+    const pin = document.createElement('div')
+    pin.className = 'map-record-location-pin'
+    el.append(pin)
+    recordLocationMarker.current = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+      .setLngLat([requestedLocation.point.lng, requestedLocation.point.lat])
+      .addTo(map.current)
+    initialViewApplied.current = true
+    map.current.easeTo({
+      center: [requestedLocation.point.lng, requestedLocation.point.lat],
+      zoom: isDesktop ? 16 : 16.5,
+      duration: 650,
+    })
+    setLocationNotice({ tone: 'success', text: `Showing ${requestedLocation.label}` })
+
+    return () => {
+      recordLocationMarker.current?.remove()
+      recordLocationMarker.current = null
+    }
+  }, [requestedLocation, isDesktop])
+
   // Remove the old markers and rebuild them whenever the data or filters change.
   useEffect(() => {
     if (!map.current || !data) return
@@ -238,8 +306,21 @@ export function ThreatMapPage() {
       markers.current.push(marker)
     }
 
+    if (requestedSightingId) {
+      const requested = filtered.find((sighting) => sighting.id === requestedSightingId)
+      if (requested) {
+        initialViewApplied.current = true
+        select(requested.id)
+        map.current.easeTo({
+          center: [requested.location.lng, requested.location.lat],
+          zoom: isDesktop ? 16 : 16.5,
+          duration: 650,
+        })
+      }
+    }
+
     if (locationFailed.current) fitReportsFallback.current?.()
-  }, [data, species, statuses, risks, search, select])
+  }, [data, species, statuses, risks, search, select, requestedSightingId, isDesktop])
 
   const filtered = data
     ? data.items.filter((s) => {
@@ -294,8 +375,8 @@ export function ThreatMapPage() {
             aria-live="polite"
           >
             <Icon
-              name={locationNotice.tone === 'error' ? 'MapPinOff' : 'LocateFixed'}
-              size={17}
+              name={locationNotice.tone === 'error' ? 'MapPin' : 'Crosshair'}
+              size={16}
               color="currentColor"
             />
             <span>{locationNotice.text}</span>
@@ -307,8 +388,96 @@ export function ThreatMapPage() {
       </div>
       <AccessibleSightingList items={filtered} onSelect={select} />
       <SightingDetailsSheet />
+      <SavedRecordDetailsSheet
+        target={requestedLocation}
+        open={recordDetailsOpen}
+        onClose={() => setRecordDetailsOpen(false)}
+      />
     </div>
   )
+}
+
+function SavedRecordDetailsSheet({
+  target,
+  open,
+  onClose,
+}: {
+  target: MapLocationTarget | null
+  open: boolean
+  onClose: () => void
+}) {
+  const dialogRef = useRef<HTMLElement>(null)
+  useDialogA11y(dialogRef, onClose, {
+    active: open && !!target,
+    returnFocus: () => document.querySelector<HTMLElement>('.map-record-location-marker'),
+  })
+
+  if (!open || !target) return null
+  const details = target.details
+  const coordinate = `${target.point.lat.toFixed(5)}, ${target.point.lng.toFixed(5)}`
+
+  return createPortal(
+    <>
+      <div onClick={onClose} aria-hidden className="app-sheet-backdrop sighting-details-backdrop" />
+      <aside
+        ref={dialogRef}
+        tabIndex={-1}
+        className="pin-sheet pin-sheet--isolated saved-record-sheet"
+        role="dialog"
+        aria-label="Saved record details"
+        aria-modal="true"
+      >
+        <div className="pin-sheet__handle" aria-hidden />
+        <button type="button" onClick={onClose} aria-label="Close saved record details"
+          className="pin-sheet__close">
+          <Icon name="X" size={18} color="var(--body)" />
+        </button>
+        <div className="pin-sheet__content">
+          <header className="saved-record-sheet__heading" tabIndex={-1} data-dialog-initial>
+            <span>{details?.kind === 'scan' ? 'Saved scan' : 'Saved report'}</span>
+            <h2>{target.label}</h2>
+            <p>
+              This is the location saved with your private record. It is separate from public community sightings until the report is published.
+            </p>
+          </header>
+          <dl className="saved-record-sheet__facts">
+            {details && <SavedRecordFact label="Status" value={details.statusLabel} />}
+            {details && <SavedRecordFact label="Recorded" value={formatSavedRecordTime(details.observedAt)} />}
+            <SavedRecordFact label="Coordinates" value={coordinate} mono />
+            {details?.locationAccuracyM != null && (
+              <SavedRecordFact label="GPS accuracy" value={`±${Math.round(details.locationAccuracyM)} m`} />
+            )}
+          </dl>
+          {details?.kind === 'report' && details.recordId && (
+            <Link className="saved-record-sheet__link" to={`/reports/${encodeURIComponent(details.recordId)}`}>
+              View full report
+            </Link>
+          )}
+        </div>
+      </aside>
+    </>,
+    document.body,
+  )
+}
+
+function SavedRecordFact({ label, value, mono = false }: {
+  label: string
+  value: string
+  mono?: boolean
+}) {
+  return (
+    <div>
+      <dt>{label}</dt>
+      <dd className={mono ? 'mono' : undefined}>{value}</dd>
+    </div>
+  )
+}
+
+function formatSavedRecordTime(iso: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(iso))
 }
 
 /**

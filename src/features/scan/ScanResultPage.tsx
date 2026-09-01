@@ -5,6 +5,7 @@ import { useReportDraft } from '@/features/report/report-draft-store'
 import { PlantGuidancePanel } from '@/features/scan/PlantGuidancePanel'
 import { deriveMalaysiaStatusState, isReportEligible } from '@/features/scan/malaysia-status'
 import { findPlantGuidance } from '@/data/plant-guidance'
+import { findModelSpecies, modelReferenceImageUrl } from '@/data/model-species-catalog'
 import type { IdentifyResult, SpeciesDetail } from '@/types'
 import './scan-result.css'
 
@@ -164,6 +165,12 @@ function OutcomeBadge({ outcome }: { outcome: IdentifyResult['outcome'] }) {
 function TargetResult({
   result, detail, imageUrl,
 }: { result: IdentifyResult; detail: SpeciesDetail; imageUrl: string | null }) {
+  const modelSpecies = findModelSpecies({
+    speciesId: result.speciesId ?? null,
+    scientificName: result.scientificName ?? detail.latinName,
+  })
+  const referenceImage = detail.referenceImageUrl
+    ?? (modelSpecies ? modelReferenceImageUrl(modelSpecies) : null)
   // Compact header + confidence + side-by-side visual compare with the native
   // look-alike. Removal steps + do-not-dos + safety copy live in the shared
   // PlantGuidancePanel below so we don't duplicate them here.
@@ -206,18 +213,16 @@ function TargetResult({
               caption="Native. Do not remove."
             />
           </div>
-          {detail.referenceImageUrl && (
-            <div style={{ marginTop: 12 }}>
-              <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>
-                Reference photo of {detail.name} for comparison
-              </p>
-              <ReferenceImage src={detail.referenceImageUrl} alt={`Reference photo of ${detail.name}`}
-                credit={detail.referenceImageCredit} />
-            </div>
-          )}
           <ul style={{ marginTop: 10, paddingLeft: 18, fontSize: 13, color: 'var(--body)', lineHeight: 1.65 }}>
             {detail.nativeTwin.distinguishingTraits.map((trait) => <li key={trait}>{trait}</li>)}
           </ul>
+        </Section>
+      )}
+
+      {referenceImage && (
+        <Section title="Typical appearance" icon="ImagePlus">
+          <ReferenceImage src={referenceImage} alt={`Reference photo of ${detail.name}`}
+            credit={detail.referenceImageCredit} />
         </Section>
       )}
     </>
@@ -274,6 +279,10 @@ function ReferenceImage({ src, alt, credit }: { src: string; alt: string; credit
 }
 
 function OtherPlantResult({ result }: { result: IdentifyResult }) {
+  const modelSpecies = findModelSpecies({
+    speciesId: result.speciesId ?? null,
+    scientificName: result.scientificName ?? null,
+  })
   return (
     <div style={{ marginTop: 16, padding: '16px 18px', borderRadius: 'var(--r-card)', background: 'var(--surface)', border: '1px solid var(--border)' }}>
       <h2 style={{ fontSize: 18, fontWeight: 650 }}>{result.speciesName ?? 'Not a tracked invasive'}</h2>
@@ -284,6 +293,13 @@ function OtherPlantResult({ result }: { result: IdentifyResult }) {
         This plant is not on InvaTrace's removal list. Leave it in place.
         If it still looks suspicious, take another photo from a different angle.
       </p>
+      {modelSpecies && (
+        <ReferenceImage
+          src={modelReferenceImageUrl(modelSpecies)}
+          alt={`Reference photo of ${modelSpecies.scientific_name}`}
+          credit="Species reference image"
+        />
+      )}
       <ConfidenceBand confidence={result.confidence} />
     </div>
   )
@@ -331,16 +347,23 @@ function UnsupportedTargetResult({ result }: { result: IdentifyResult }) {
     modelLabel: result.speciesName ?? null,
     plantId: result.speciesId ?? null,
   })
+  const modelSpecies = findModelSpecies({
+    speciesId: result.speciesId ?? null,
+    scientificName: result.scientificName ?? null,
+  })
+  const referenceImage = guidance?.reference_image
+    ?? (modelSpecies ? modelReferenceImageUrl(modelSpecies) : null)
+  const referenceCredit = guidance?.reference_image_credit ?? 'Species reference image'
   return (
     <div style={{ marginTop: 16, padding: '16px 18px', borderRadius: 'var(--r-card)', background: 'var(--amber-light)' }}>
       <h2 style={{ fontSize: 18, fontWeight: 650 }}>{displayName}</h2>
       {scientific && (
         <p style={{ color: 'var(--muted)', fontSize: 12.5, fontStyle: 'italic', marginTop: 2 }}>{scientific}</p>
       )}
-      {guidance?.reference_image && (
+      {referenceImage && (
         <figure style={{ margin: '10px 0 0' }}>
           <img
-            src={guidance.reference_image}
+            src={referenceImage}
             alt={`Reference photo of ${scientific ?? displayName}`}
             loading="lazy"
             style={{
@@ -349,7 +372,7 @@ function UnsupportedTargetResult({ result }: { result: IdentifyResult }) {
             }}
           />
           <figcaption style={{ marginTop: 4, fontSize: 10.5, color: 'var(--muted)' }}>
-            Reference photo · {guidance.reference_image_credit ?? 'Wikimedia'}
+            Reference photo · {referenceCredit}
           </figcaption>
         </figure>
       )}

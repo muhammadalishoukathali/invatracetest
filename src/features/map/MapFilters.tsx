@@ -4,17 +4,17 @@ import { Icon } from '@/components/Icon'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { useMapView } from '@/features/map/map-view-store'
 import { useDialogA11y } from '@/hooks/useDialogA11y'
+import { modelSpeciesCatalog } from '@/data/model-species-catalog'
 import type { SightingStatus, Risk } from '@/types'
 import './map-controls.css'
 
-/** Species currently included in the Malaysia pilot. Keep these IDs aligned
- *  with the species records returned by the API. */
-const SPECIES = [
-  { id: 'mikania-micrantha', label: 'Mikania' },
-  { id: 'chromolaena-odorata', label: 'Siam weed' },
-  { id: 'eichhornia-crassipes', label: 'Water hyacinth' },
-  { id: 'clidemia-hirta', label: "Koster's curse" },
-] as const
+/** Every invasive class emitted by the bundled model. */
+export const MAP_FILTER_SPECIES = modelSpeciesCatalog.classes
+  .filter((species) => species.malaysia_status === 'invasive')
+  .map((species) => ({
+    id: species.machine_label.replaceAll('_', '-'),
+    label: species.display_name,
+  }))
 
 const STATUSES: { id: SightingStatus; label: string; dot?: string }[] = [
   { id: 'screened', label: 'Rule screened' },
@@ -85,7 +85,7 @@ export function MapFilters() {
       {/* Desktop has enough width to show every filter as an inline chip. */}
       {isDesktop && (
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-          {SPECIES.map((s) => (
+          {MAP_FILTER_SPECIES.map((s) => (
             <Chip key={s.id} label={s.label} on={species.includes(s.id)}
                   onClick={() => toggleSpecies(s.id)} />
           ))}
@@ -185,7 +185,7 @@ function FiltersSheet({
           </FilterGroup>
           <FilterGroup title="Species" description="Choose one or more tracked plants.">
             <div className="filter-option-grid">
-            {SPECIES.map((s) => (
+            {MAP_FILTER_SPECIES.map((s) => (
                 <FilterOption key={s.id} label={s.label} on={selectedSpecies.includes(s.id)}
                               onClick={() => toggleSpecies(s.id)} />
             ))}

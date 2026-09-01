@@ -3,6 +3,9 @@ import type {
   AppNotification, Report, ReportSubmission, Sighting,
   AccessOverview, PseudonymousProfile, SightingDetail,
 } from '@/types'
+import {
+  findModelSpecies, modelReferenceImageUrl, modelSpeciesCatalog,
+} from '@/data/model-species-catalog'
 
 const url = (p: string) => `*${p}`
 
@@ -427,45 +430,44 @@ export const handlers = [
 
   http.get(url('/api/v1/species'), () =>
     HttpResponse.json({
-      items: [
-        { id: 'mikania-micrantha', name: 'Mikania micrantha', latinName: 'Mikania micrantha', isInvasive: true },
-        { id: 'chromolaena-odorata', name: 'Siam weed', latinName: 'Chromolaena odorata', isInvasive: true },
-        { id: 'eichhornia-crassipes', name: 'Water hyacinth', latinName: 'Eichhornia crassipes', isInvasive: true },
-        { id: 'clidemia-hirta', name: "Koster's curse", latinName: 'Clidemia hirta', isInvasive: true },
-        { id: 'dicranopteris-linearis', name: 'Resam fern', latinName: 'Dicranopteris linearis', isInvasive: false },
-      ],
+      items: modelSpeciesCatalog.classes.map((species) => ({
+        id: species.machine_label.replaceAll('_', '-'),
+        name: species.display_name,
+        latinName: species.scientific_name,
+        isInvasive: species.malaysia_status === 'invasive',
+        malaysiaStatus: species.malaysia_status,
+        statusSource: species.status_source,
+      })),
     })),
 
   http.get(url('/api/v1/species/:id'), ({ params }) => {
     const id = params.id as string
-    const detail = SPECIES_DETAIL[id]
-    if (detail) return HttpResponse.json(detail)
-    // Fallback for any species the ONNX model can classify but that we have
-    // not yet written full field guidance for. Returning a minimal reportable
-    // record lets the demo submit sightings for the full 31-class set instead
-    // of dead-ending on 14 of them with an "unsupported" screen. Real backend
-    // curation still gates this via reportable/reportEligible on the server.
-    const humanName = id.split('-').map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(' ')
+    const modelSpecies = findModelSpecies({ speciesId: id })
+    if (!modelSpecies) return HttpResponse.json({ detail: 'Species not found.' }, { status: 404 })
+    const invasive = modelSpecies.malaysia_status === 'invasive'
+    const detail = SPECIES_DETAIL[id] as Record<string, unknown> | undefined
     return HttpResponse.json({
-      id,
-      name: humanName,
-      latinName: humanName,
       commonNames: [],
-      isInvasive: true,
-      risk: 'medium',
-      reportable: true,
-      reportEligible: true,
+      risk: invasive ? 'high' : 'watch',
       actionEligible: false,
       statusReviewedAt: null,
-      statusSourceId: null,
-      referenceImageUrl: null,
-      referenceImageCredit: null,
       traits: [],
       nativeTwin: null,
       removalSteps: [],
-      doNotDo: [
-        'Detailed field guidance for this plant is not yet available in InvaTrace.',
-      ],
+      doNotDo: invasive
+        ? ['Detailed field guidance for this plant is not yet available in InvaTrace.']
+        : ['Leave this plant in place. It is not a model-listed invasive target.'],
+      ...detail,
+      id,
+      name: modelSpecies.display_name,
+      latinName: modelSpecies.scientific_name,
+      isInvasive: invasive,
+      reportable: invasive,
+      reportEligible: invasive,
+      malaysiaStatus: modelSpecies.malaysia_status,
+      statusSourceId: modelSpecies.status_source,
+      referenceImageUrl: modelReferenceImageUrl(modelSpecies),
+      referenceImageCredit: 'Species reference image',
     })
   }),
 
@@ -635,7 +637,7 @@ export const handlers = [
         policyVersion: 'deterministic-rules-v1.0',
         screeningMethod: 'deterministic_rules',
       }
-      report.sightingId = SIGHTINGS[0].id
+      report.sightingId = publishReportSighting(report)
     }, 750)
     return HttpResponse.json(report, { status: 201 })
   }),
@@ -789,7 +791,7 @@ const SEEDED_REPORTS: Report[] = [
   seedReport('seed-new-03', 'mikania-micrantha', 'uncertain', 0.51,
     3.1524, 101.6421, null, 'small_patch',
     'Not sure if same vine — looks slightly different.', 7),
-  seedReport('seed-trusted-04', 'clidemia-hirta', 'target', 0.87,
+  seedReport('seed-trusted-04', 'lantana-camara', 'target', 0.87,
     3.1476, 101.6432, 8, 'large_area',
     'Dense understory patch spreading fast.', 12),
   seedReport('seed-new-05', 'eichhornia-crassipes', 'target', 0.94,
@@ -832,8 +834,8 @@ const SEED: Omit<Sighting, 'location' | 'precisionReduced' | 'lastReportedAt' | 
   { id: 's-05', speciesId: 'chromolaena-odorata', speciesName: 'Siam weed', latinName: 'Chromolaena odorata', status: 'screened', risk: 'high', reportCount: 1 },
   { id: 's-06', speciesId: 'eichhornia-crassipes', speciesName: 'Water hyacinth', latinName: 'Eichhornia crassipes', status: 'screened', risk: 'high', reportCount: 5 },
   { id: 's-07', speciesId: 'eichhornia-crassipes', speciesName: 'Water hyacinth', latinName: 'Eichhornia crassipes', status: 'screened', risk: 'high', reportCount: 2 },
-  { id: 's-08', speciesId: 'clidemia-hirta', speciesName: "Koster's curse", latinName: 'Clidemia hirta', status: 'screened', risk: 'watch', reportCount: 3 },
-  { id: 's-09', speciesId: 'clidemia-hirta', speciesName: "Koster's curse", latinName: 'Clidemia hirta', status: 'screened', risk: 'watch', reportCount: 1 },
+  { id: 's-08', speciesId: 'lantana-camara', speciesName: 'Lantana camara', latinName: 'Lantana camara', status: 'screened', risk: 'high', reportCount: 3 },
+  { id: 's-09', speciesId: 'lantana-camara', speciesName: 'Lantana camara', latinName: 'Lantana camara', status: 'screened', risk: 'high', reportCount: 1 },
   { id: 's-10', speciesId: 'mikania-micrantha', speciesName: 'Mikania micrantha', latinName: 'Mikania micrantha', status: 'removed', risk: 'high', reportCount: 2 },
 ]
 
@@ -866,15 +868,67 @@ const SIGHTINGS: Sighting[] = SEED.map((sighting, index) => {
       trailName: PLACES[index].name.includes(' · ') ? PLACES[index].name.split(' · ')[1] : null,
       source: 'seed',
     },
-    // Stand-in per-sighting photo — real deployments store the user's
-    // uploaded capture at this URL. The mock reuses the species' curated
-    // reference photo so the sheet demonstrates "the reporter's photo" +
-    // "typical example" as two distinct blocks.
+    // Stand-in per-sighting upload retained in the API contract. The public
+    // detail sheet intentionally ignores it and uses reviewed species media.
     thumbnailUrl: `/reference-images/${sighting.speciesId.replaceAll('-', '_')}.jpg`,
     screeningMethod: 'deterministic_rules',
     lastReportedAt: new Date(Date.now() - (index + 1) * 3600 * 1000).toISOString(),
   }
 })
+
+const SIGHTING_SPECIES: Record<string, Pick<Sighting, 'speciesName' | 'latinName' | 'risk'>> = Object.fromEntries(
+  modelSpeciesCatalog.classes.map((modelClass) => [
+    modelClass.machine_label.replaceAll('_', '-'),
+    {
+      speciesName: modelClass.display_name,
+      latinName: modelClass.scientific_name,
+      risk: modelClass.malaysia_status === 'invasive' ? 'high' as const : 'watch' as const,
+    },
+  ]),
+)
+
+export function resolveSightingSpecies(
+  speciesId: string,
+): Pick<Sighting, 'speciesName' | 'latinName' | 'risk'> {
+  return SIGHTING_SPECIES[speciesId] ?? {
+    speciesName: 'Reported plant', latinName: 'Identification unavailable', risk: 'watch',
+  }
+}
+
+/** Publish a screened report as its own map sighting at the submitted point. */
+function publishReportSighting(report: Report): string {
+  const sightingId = `report-${report.id}`
+  if (SIGHTINGS.some((sighting) => sighting.id === sightingId)) return sightingId
+
+  const speciesId = report.submission.speciesId ?? 'unknown-species'
+  const species = resolveSightingSpecies(speciesId)
+  const closestPlace = PLACES
+    .map((place) => ({ place, distance: haversineMetres(report.submission.location, place) }))
+    .sort((a, b) => a.distance - b.distance)[0]
+  const hasNearbyPlace = closestPlace && closestPlace.distance <= 2_000
+
+  SIGHTINGS.unshift({
+    id: sightingId,
+    speciesId,
+    ...species,
+    status: 'screened',
+    location: report.submission.location,
+    precisionReduced: false,
+    reportCount: 1,
+    lastReportedAt: report.createdAt,
+    place: hasNearbyPlace ? {
+      displayName: closestPlace.place.name,
+      areaName: closestPlace.place.name.split(' · ')[0] ?? null,
+      trailName: closestPlace.place.name.includes(' · ') ? closestPlace.place.name.split(' · ')[1] : null,
+      source: 'seed',
+    } : {
+      displayName: '', areaName: null, trailName: null, source: 'fallback',
+    },
+    thumbnailUrl: null,
+    screeningMethod: 'deterministic_rules',
+  })
+  return sightingId
+}
 
 const SPECIES_DETAIL: Record<string, unknown> = {
   'mikania-micrantha': {

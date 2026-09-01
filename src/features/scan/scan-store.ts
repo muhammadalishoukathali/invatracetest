@@ -87,12 +87,35 @@ export const useScan = create<ScanState>((set, get) => ({
         confidence: r.confidence,
         modelVersion: r.modelVersion,
         reportable: r.reportable,
+        location: scan.location?.point ?? null,
+        locationAccuracyM: scan.location?.accuracyM ?? null,
       })
     }
     set({ step: 'result', imageBitmap: null, result: r, speciesDetail: detail })
   },
 
-  setLocation: (loc) => set({ location: loc, locationStatus: 'ok' }),
+  setLocation: (loc) => {
+    const scan = get()
+    // A warm model can finish before the GPS request. Update the already-saved
+    // history row when that late fix arrives so View on map is still available.
+    if (scan.result && scan.captureId && scan.observedAt && scan.captureSource) {
+      saveScanHistoryRecord({
+        captureId: scan.captureId,
+        observedAt: scan.observedAt,
+        captureSource: scan.captureSource,
+        outcome: scan.result.outcome,
+        speciesId: scan.result.speciesId ?? null,
+        speciesName: scan.result.speciesName ?? scan.speciesDetail?.name ?? null,
+        scientificName: scan.result.scientificName ?? scan.speciesDetail?.latinName ?? null,
+        confidence: scan.result.confidence,
+        modelVersion: scan.result.modelVersion,
+        reportable: scan.result.reportable,
+        location: loc.point,
+        locationAccuracyM: loc.accuracyM,
+      })
+    }
+    set({ location: loc, locationStatus: 'ok' })
+  },
   setLocationStatus: (s) => set({ locationStatus: s }),
 
   reset: () => {

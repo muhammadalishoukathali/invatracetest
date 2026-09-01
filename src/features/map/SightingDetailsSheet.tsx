@@ -9,7 +9,9 @@ import { fetchNearestOsmFeature } from '@/services/osm-nearest'
 import { PIN_TIERS, pinTier } from '@/features/map/ThreatMapPage'
 import { PlantGuidancePanel } from '@/features/scan/PlantGuidancePanel'
 import { findPlantGuidance } from '@/data/plant-guidance'
-import type { SightingDetail, SightingStatus } from '@/types'
+import { findModelSpecies, modelReferenceImageUrl } from '@/data/model-species-catalog'
+import type { SightingDetail } from '@/types'
+import './sighting-details.css'
 
 const OSM_FEATURE_LABEL: Record<string, string> = {
   highway_path: 'trail',
@@ -18,17 +20,6 @@ const OSM_FEATURE_LABEL: Record<string, string> = {
   leisure_park: 'park',
   landuse_forest: 'forest',
   natural_wood: 'wood',
-}
-import './sighting-details.css'
-
-const STATUS_LABEL: Record<SightingStatus, string> = {
-  screened: 'Community report — not expert validated',
-  removed: 'Removed',
-}
-
-const STATUS_COLOR: Record<SightingStatus, string> = {
-  screened: 'var(--green)',
-  removed: 'var(--icon)',
 }
 
 export function SightingDetailsSheet() {
@@ -49,9 +40,7 @@ export function SightingDetailsSheet() {
     staleTime: 60_000,
   })
 
-  // AC 4.3.1 — live nearest-feature lookup against OpenStreetMap Overpass.
-  // The lookup runs after the sighting detail arrives; failure or "no result"
-  // is silent so publishing and viewing are never blocked (AC 4.3.2).
+  // The nearby feature enriches the record but never blocks viewing it.
   const { data: nearestOsm } = useQuery({
     queryKey: ['osm-nearest', data?.location.lat, data?.location.lng],
     queryFn: () => fetchNearestOsmFeature(data!.location.lat, data!.location.lng),
@@ -64,30 +53,17 @@ export function SightingDetailsSheet() {
 
   const tier = data ? pinTier(data) : 'isolated'
   const tierInfo = PIN_TIERS[tier]
-  // Tier name doubles as the sheet's modifier class so the accent bar picks
-  // up the matching --risk-accent from sighting-details.css.
-  const riskClass = tier
-  const riskColor = tier === 'hotspot' ? 'var(--red-text)'
-    : tier === 'spreading' ? 'var(--amber-text)'
-    : tier === 'isolated' ? 'var(--green-dark)'
-    : 'var(--muted)'
   const coordinateDecimals = data?.precisionReduced ? 4 : 5
-  const directionsHref = data
-    ? `https://www.google.com/maps/dir/?api=1&destination=${data.location.lat},${data.location.lng}`
-    : '#'
-
-  /* Render the details under document.body so they always appear above the map
-   * canvas, legend, and MapLibre controls. */
   return createPortal(
     <>
       <div onClick={close} aria-hidden className="app-sheet-backdrop sighting-details-backdrop" />
-      <aside ref={dialogRef} tabIndex={-1} className={`pin-sheet pin-sheet--${riskClass}`}
+      <aside ref={dialogRef} tabIndex={-1} className={`pin-sheet pin-sheet--${tier}`}
         role="dialog" aria-label="Sighting details" aria-modal="true">
         <div className="pin-sheet__handle" aria-hidden />
 
         <button type="button" onClick={close} aria-label="Close sighting details"
           className="pin-sheet__close">
-          <Icon name="X" size={17} color="var(--body)" />
+          <Icon name="X" size={18} color="var(--body)" />
         </button>
 
         <div className="pin-sheet__content">
@@ -109,79 +85,68 @@ export function SightingDetailsSheet() {
             </div>
           ) : (
             <>
-              {data.thumbnailUrl && (
-                <figure style={{ margin: 0 }}>
-                  <img className="pin-sheet__photo" src={data.thumbnailUrl}
-                    alt={`Photo submitted with this ${data.speciesName} report`} />
-                  <figcaption style={{
-                    marginTop: 4, fontSize: 10.5, color: 'var(--muted)',
-                    padding: '0 var(--pin-sheet-x, 16px)',
-                  }}>
-                    Photo from this report
-                  </figcaption>
-                </figure>
-              )}
+              <PlantReferenceMedia latinName={data.latinName} speciesName={data.speciesName} />
+
               <header className="pin-sheet__heading">
                 <h2 tabIndex={-1} data-dialog-initial>{data.speciesName}</h2>
-                <p>{data.latinName}</p>
-                <div className="pin-sheet__summary" aria-label={`${tierInfo.label}, ${STATUS_LABEL[data.status]}`}>
-                  <span className="pin-sheet__risk" style={{ color: riskColor }}>
+                <p className="pin-sheet__latin">{data.latinName}</p>
+                <div className="pin-sheet__summary" aria-label={sightingSummaryLabel(data)}>
+                  <span className={`pin-sheet__risk pin-sheet__risk--${tier}`}>
                     <span aria-hidden className="pin-sheet__risk-dot" style={{ background: tierInfo.fill }} />
-                    {tierInfo.label}
+                    {densityLabel(tierInfo.label)}
                   </span>
-                  <span aria-hidden className="pin-sheet__summary-separator" />
-                  <span className="pin-sheet__status" style={{ color: STATUS_COLOR[data.status] }}>
-                    <Icon name={statusIcon(data.status)} size={14} />
-                    {STATUS_LABEL[data.status]}
+                  <span aria-hidden>·</span>
+                  <span className="pin-sheet__report-count">
+                    {formatReportCount(data.reportCount)} at this location
                   </span>
                 </div>
+                <p className="pin-sheet__status-note">
+                  {data.status === 'removed'
+                    ? 'Marked removed · retained for follow-up'
+                    : 'Community-screened · not expert verified'}
+                </p>
               </header>
 
               <section className="pin-sheet__record" aria-labelledby="sighting-record-heading">
-                <h3 id="sighting-record-heading">Sighting record</h3>
+                <h3 id="sighting-record-heading">Report information</h3>
                 <dl>
-                  <MetaRow icon="MapPin" label="Coordinates"
+                  <MetaRow label="Reported" value={formatTime(data.lastReportedAt)} />
+                  <MetaRow label="Near"
+                    value={nearbyPlaceLabel(data, nearestOsm)}
+                    sub={nearestOsm ? 'Live place data from OpenStreetMap' : undefined} />
+                  <MetaRow label="Coordinates"
                     value={`${data.location.lat.toFixed(coordinateDecimals)}, ${data.location.lng.toFixed(coordinateDecimals)}`}
-                    sub={data.precisionReduced ? 'Approximate location' : undefined} mono />
-                  <MetaRow icon="Trees" label="Nearby place"
-                    value={(() => {
-                      if (nearestOsm) {
-                        const kind = OSM_FEATURE_LABEL[nearestOsm.featureType] ?? 'feature'
-                        return `${nearestOsm.featureName} (${kind}, ~${nearestOsm.distanceM} m)`
-                      }
-                      if (data.place.source === 'fallback' || !data.place.displayName) {
-                        return 'No named trail, park or forest found nearby'
-                      }
-                      return data.place.displayName
-                    })()}
-                    sub={nearestOsm ? 'OpenStreetMap · live' : undefined} />
-                  <MetaRow icon="Clock" label="Last reported" value={formatTime(data.lastReportedAt)} />
+                    sub={data.precisionReduced ? 'Approximate location for privacy' : undefined} mono />
                 </dl>
               </section>
 
-              {/* Mirror the scan-result page: same plant reference photo,
-                  short description, and the dynamic permission-aware
-                  guidance panel so a map viewer gets identical decision
-                  support to someone who just captured the plant. */}
-              <PlantInfoBlock latinName={data.latinName} speciesName={data.speciesName} />
-              <PlantGuidancePanel
-                scientificName={data.latinName}
-                speciesName={data.speciesName}
-                plantId={data.speciesId}
-                decisionContext={{ id: `sighting:${data.id}`, kind: 'sighting' }}
-              />
+              <details className="pin-sheet__guidance">
+                <summary>
+                  <span>
+                    <strong>Identification and safety</strong>
+                    <small>Plant details and action guidance</small>
+                  </span>
+                  <span className="pin-sheet__guidance-action" aria-hidden />
+                </summary>
+                <PlantGuidancePanel
+                  scientificName={data.latinName}
+                  speciesName={data.speciesName}
+                  plantId={data.speciesId}
+                  showReferenceImage={false}
+                  decisionContext={{ id: `sighting:${data.id}`, kind: 'sighting' }}
+                />
+              </details>
             </>
           )}
         </div>
 
         {data && (
           <footer className="pin-sheet__footer">
-            <a href={directionsHref} target="_blank" rel="noopener noreferrer"
-              aria-label="Open directions in Google Maps (opens in a new tab)"
+            <button type="button" disabled aria-label="Open directions (not available yet)"
               className="pin-sheet__directions">
               <Icon name="Navigation" size={16} color="currentColor" />
-              Open directions
-            </a>
+              Directions unavailable
+            </button>
           </footer>
         )}
       </aside>
@@ -190,66 +155,66 @@ export function SightingDetailsSheet() {
   )
 }
 
-/** Reference photo + one-sentence description, pulled from the bundled
- *  guidance dataset. Renders nothing when the species has no reviewed record. */
-function PlantInfoBlock({ latinName, speciesName }: { latinName: string; speciesName: string }) {
+/** Uses the reviewed species image, never a reporter's uploaded photo. */
+function PlantReferenceMedia({ latinName, speciesName }: { latinName: string; speciesName: string }) {
   const guidance = findPlantGuidance({
     scientificName: latinName,
     modelLabel: speciesName,
     plantId: null,
   })
-  if (!guidance) return null
-  const firstSentence = guidance.general_information.match(/^.*?[.!?](?=\s|$)/)?.[0]
-    ?? guidance.general_information
+  const modelSpecies = findModelSpecies({ scientificName: latinName })
+  const referenceImage = guidance?.reference_image
+    ?? (modelSpecies ? modelReferenceImageUrl(modelSpecies) : null)
+  if (!referenceImage) return null
   return (
-    <section
-      aria-label="About this plant"
-      style={{
-        marginTop: 16,
-        padding: 12,
-        borderRadius: 'var(--r-card)',
-        background: 'var(--bg-alt)',
-        border: '1px solid var(--border)',
-      }}
-    >
-      {guidance.reference_image && (
-        <figure style={{ margin: 0 }}>
-          <img
-            src={guidance.reference_image}
-            alt={`Reference photo of ${latinName}`}
-            loading="lazy"
-            style={{
-              width: '100%', maxHeight: 220, objectFit: 'cover',
-              borderRadius: 'var(--r-input)', display: 'block',
-            }}
-          />
-          <figcaption style={{ marginTop: 4, fontSize: 10.5, color: 'var(--muted)' }}>
-            Typical example of the species · {guidance.reference_image_credit ?? 'Wikimedia'}
-          </figcaption>
-        </figure>
-      )}
-      <p style={{ marginTop: 10, fontSize: 13, color: 'var(--body)', lineHeight: 1.55 }}>
-        {firstSentence}
-      </p>
-    </section>
+    <figure className="pin-sheet__reference">
+      <img className="pin-sheet__photo" src={referenceImage}
+        alt={`Typical appearance of ${latinName}`} />
+      <figcaption>
+        <span>Species reference</span>
+        <span>{guidance?.reference_image_credit ?? 'Species reference image'}</span>
+      </figcaption>
+    </figure>
   )
 }
 
-function MetaRow({ icon, label, value, sub, mono }: {
-  icon: string; label: string; value: string; sub?: string; mono?: boolean
+function MetaRow({ label, value, sub, mono }: {
+  label: string; value: string; sub?: string; mono?: boolean
 }) {
   return (
     <div className="pin-sheet__record-row">
-      <dt><Icon name={icon} size={15} color="var(--muted)" />{label}</dt>
+      <dt>{label}</dt>
       <dd className={mono ? 'mono' : undefined}>{value}</dd>
       {sub && <span>{sub}</span>}
     </div>
   )
 }
 
-function statusIcon(status: SightingStatus): string {
-  if (status === 'screened') return 'CircleCheck'
-  return 'Check'
+function nearbyPlaceLabel(
+  data: SightingDetail,
+  nearestOsm: Awaited<ReturnType<typeof fetchNearestOsmFeature>> | undefined,
+): string {
+  if (nearestOsm) {
+    const kind = OSM_FEATURE_LABEL[nearestOsm.featureType] ?? 'feature'
+    return `${nearestOsm.featureName} · ${kind}, about ${nearestOsm.distanceM} m away`
+  }
+  if (data.place.source === 'fallback' || !data.place.displayName) {
+    return 'No named trail, park or forest found nearby'
+  }
+  return data.place.displayName
+}
+
+function densityLabel(label: string): string {
+  return label.replace(/\s*\(.*\)$/, '')
+}
+
+function formatReportCount(count: number): string {
+  return `${count} ${count === 1 ? 'report' : 'reports'}`
+}
+
+function sightingSummaryLabel(data: SightingDetail): string {
+  const status = data.status === 'removed' ? 'removed' : 'community-screened, not expert verified'
+  return `${densityLabel(PIN_TIERS[pinTier(data)].label)}, ${formatReportCount(data.reportCount)}, ${status}`
 }
 
 function formatTime(iso: string): string {

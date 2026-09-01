@@ -146,21 +146,6 @@ SPECIES = [
         "action_guides": [],
     },
     {
-        "id": "clidemia-hirta",
-        "name": "Koster's curse",
-        "latin_name": "Clidemia hirta",
-        "common_names": [],
-        "is_invasive": True,
-        "risk": "watch",
-        "traits": [],
-        "native_twin": None,
-        "removal_steps": [],
-        "do_not_do": [],
-        "detail_available": False,
-        "reportable": False,
-        "action_guides": [],
-    },
-    {
         "id": "dicranopteris-linearis",
         "name": "Resam fern",
         "latin_name": "Dicranopteris linearis",
@@ -176,6 +161,42 @@ SPECIES = [
         "action_guides": [],
     },
 ]
+
+
+def _apply_model_catalog_to_species_seed() -> None:
+    catalog_path = Path(__file__).with_name("data") / "pulih_model1_species_31.json"
+    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+    detailed_by_id = {item["id"]: item for item in SPECIES}
+    model_species: list[dict[str, object]] = []
+
+    for model_class in catalog["classes"]:
+        species_id = model_class["machine_label"].replace("_", "-")
+        invasive = model_class["malaysia_status"] == "invasive"
+        detail = detailed_by_id.get(species_id, {
+            "common_names": [],
+            "traits": [],
+            "native_twin": None,
+            "removal_steps": [],
+            "do_not_do": [],
+            "detail_available": False,
+            "action_guides": [],
+        })
+        detail.update({
+            "id": species_id,
+            "name": model_class["display_name"],
+            "latin_name": model_class["scientific_name"],
+            "is_invasive": invasive,
+            "risk": "high" if invasive else None,
+            "reportable": invasive,
+        })
+        model_species.append(detail)
+
+    if len(model_species) != catalog["class_count"]:
+        raise ValueError("Development species seed does not match the PULIH model catalogue.")
+    SPECIES[:] = model_species
+
+
+_apply_model_catalog_to_species_seed()
 
 PLACES = [
     ("Bukit Kiara · West Trail", 3.1497, 101.6412),
@@ -198,37 +219,13 @@ SIGHTING_SEED = [
     ("chromolaena-odorata", "screened", "high", 0.0037, 4.7),
     ("eichhornia-crassipes", "screened", "high", 0.0028, 5.9),
     ("eichhornia-crassipes", "screened", "high", 0.0045, 0.9),
-    ("clidemia-hirta", "screened", "watch", 0.0022, 2.0),
-    ("clidemia-hirta", "screened", "watch", 0.0033, 3.1),
+    ("lantana-camara", "screened", "high", 0.0022, 2.0),
+    ("lantana-camara", "screened", "high", 0.0033, 3.1),
     ("mikania-micrantha", "removed", "high", 0.0016, 4.2),
 ]
 
 
 def seed_development_data(session: Session) -> None:
-    catalog_path = Path(__file__).with_name("data") / "pulih_model1_species_31.json"
-    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
-    detailed_ids = {item["id"] for item in SPECIES}
-    for model_class in catalog["classes"]:
-        species_id = model_class["machine_label"].replace("_", "-")
-        if species_id in detailed_ids:
-            continue
-        SPECIES.append(
-            {
-                "id": species_id,
-                "name": model_class["display_name"],
-                "latin_name": model_class["scientific_name"],
-                "common_names": [],
-                "is_invasive": model_class["malaysia_status"] == "invasive",
-                "risk": "watch" if model_class["malaysia_status"] == "invasive" else None,
-                "traits": [],
-                "native_twin": None,
-                "removal_steps": [],
-                "do_not_do": [],
-                "detail_available": False,
-                "reportable": False,
-                "action_guides": [],
-            }
-        )
     for values in SPECIES:
         existing = session.get(Species, values["id"])
         if existing:

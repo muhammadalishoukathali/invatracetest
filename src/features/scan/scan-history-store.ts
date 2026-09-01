@@ -1,4 +1,4 @@
-import type { IdentifyResult } from '@/types'
+import type { GeoPoint, IdentifyResult } from '@/types'
 
 export interface ScanHistoryRecord {
   captureId: string
@@ -11,6 +11,10 @@ export interface ScanHistoryRecord {
   confidence: number
   modelVersion: string
   reportable: boolean
+  /** Captured with the scan when geolocation was available. Older records do
+   *  not have these fields and remain valid without a map action. */
+  location?: GeoPoint | null
+  locationAccuracyM?: number | null
   recordedAt: string
 }
 
@@ -50,6 +54,16 @@ function isRecord(value: unknown): value is ScanHistoryRecord {
     && Number.isFinite(record.confidence)
     && typeof record.modelVersion === 'string'
     && typeof record.reportable === 'boolean'
+    && (record.location === undefined || record.location === null || (
+      typeof record.location === 'object'
+      && typeof record.location.lat === 'number'
+      && Number.isFinite(record.location.lat)
+      && typeof record.location.lng === 'number'
+      && Number.isFinite(record.location.lng)
+    ))
+    && (record.locationAccuracyM === undefined
+      || record.locationAccuracyM === null
+      || (typeof record.locationAccuracyM === 'number' && Number.isFinite(record.locationAccuracyM)))
     && typeof record.recordedAt === 'string'
 }
 

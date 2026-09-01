@@ -24,6 +24,9 @@ interface Props {
    *  regardless of the user's permission selection. Undefined = no server
    *  gate; the panel's own permission logic applies. */
   actionEligible?: boolean
+  /** The map sheet uses this image as its hero, so it can suppress the
+   *  duplicate here. Scan results keep the existing default. */
+  showReferenceImage?: boolean
   /** A scan capture or map sighting key. Permission choices are private safety
    *  notes stored on this device; they never change official land status. */
   decisionContext?: { id: string; kind: 'scan' | 'sighting' }
@@ -70,6 +73,7 @@ export function PlantGuidancePanel({
   speciesName,
   plantId,
   actionEligible,
+  showReferenceImage = true,
   decisionContext,
 }: Props) {
   const plant = useMemo(
@@ -145,7 +149,7 @@ export function PlantGuidancePanel({
 
       <ModeBanner help={modeInfo.help} tone={modeInfo.tone} label={modeInfo.label} />
 
-      {plant.reference_image && (
+      {showReferenceImage && plant.reference_image && (
         <figure style={{ margin: '12px 0 0' }}>
           <img
             src={plant.reference_image}

@@ -33,7 +33,7 @@ export default defineConfig({
         name: 'InvaTrace',
         short_name: 'InvaTrace',
         description: 'Invasive plant monitoring and trail recovery',
-        theme_color: '#1B7A50',
+        theme_color: '#FFFFFF',
         background_color: '#F4F6F3',
         display: 'standalone',
         start_url: '/',

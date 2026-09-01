@@ -3,10 +3,14 @@ export interface ProfileNavigationState {
 }
 
 export function profileReturnPath(state: unknown): ProfileNavigationState['returnTo'] {
-  if (!state || typeof state !== 'object' || !('returnTo' in state)) return '/map'
-  return (state as { returnTo?: unknown }).returnTo === '/reports' ? '/reports' : '/map'
+  // Profile and records link to each other. Letting either page become the
+  // other's Back destination creates an endless Profile ↔ Records loop.
+  // The map is the stable parent for both peer destinations.
+  void state
+  return '/map'
 }
 
 export function profileStateFromPath(pathname: string): ProfileNavigationState {
-  return { returnTo: pathname.startsWith('/reports') ? '/reports' : '/map' }
+  void pathname
+  return { returnTo: '/map' }
 }

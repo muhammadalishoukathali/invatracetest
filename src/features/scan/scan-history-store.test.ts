@@ -47,6 +47,26 @@ describe('scan history storage', () => {
     expect(listScanHistory(storage)[0]?.confidence).toBe(0.98)
   })
 
+  it('preserves a captured location for map navigation', () => {
+    const storage = new MemoryStorage()
+    saveScanHistoryRecord({
+      ...record('located', '2026-09-01T10:00:00.000Z'),
+      location: { lat: 3.05936, lng: 101.61481 },
+      locationAccuracyM: 18,
+    }, storage)
+
+    expect(listScanHistory(storage)[0]?.location).toEqual({ lat: 3.05936, lng: 101.61481 })
+    expect(listScanHistory(storage)[0]?.locationAccuracyM).toBe(18)
+  })
+
+  it('keeps older records that do not contain location fields', () => {
+    const storage = new MemoryStorage()
+    saveScanHistoryRecord(record('legacy', '2026-09-01T09:00:00.000Z'), storage)
+
+    expect(listScanHistory(storage)[0]?.captureId).toBe('legacy')
+    expect(listScanHistory(storage)[0]?.location).toBeUndefined()
+  })
+
   it('ignores damaged browser data', () => {
     const storage = new MemoryStorage()
     storage.setItem('invatrace-scan-history-v1', '{not json')

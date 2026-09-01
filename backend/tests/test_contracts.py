@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -9,6 +11,7 @@ from pydantic import ValidationError
 
 from app.api.schemas import ReportSubmission, ReportSubmissionDetails, StartProfileRequest
 from app.main import app
+from app.seed import SPECIES
 
 
 def valid_report() -> dict[str, object]:
@@ -33,6 +36,19 @@ def test_report_contract_uses_frontend_camel_case() -> None:
     parsed = ReportSubmission.model_validate(valid_report())
     assert parsed.species_id == "mikania-micrantha"
     assert parsed.model_dump(by_alias=True)["consent"]["noPII"] is True
+
+
+def test_development_species_seed_exactly_matches_model_catalog() -> None:
+    catalog_path = Path(__file__).parents[1] / "app/data/pulih_model1_species_31.json"
+    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+    expected_ids = {
+        item["machine_label"].replace("_", "-") for item in catalog["classes"]
+    }
+    assert len(SPECIES) == catalog["class_count"] == 31
+    assert {item["id"] for item in SPECIES} == expected_ids
+    assert sum(bool(item["is_invasive"]) for item in SPECIES) == 16
+    assert sum(bool(item["reportable"]) for item in SPECIES) == 16
+    assert "clidemia-hirta" not in expected_ids
 
 
 def test_target_requires_species_and_non_target_forbids_it() -> None:

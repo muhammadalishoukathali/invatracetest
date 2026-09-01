@@ -1,40 +1,33 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
-import { Icon } from '@/components/Icon'
 import { api } from '@/services/api-client'
 import type { Report, ReportStatus } from '@/types'
 import './report-tracking.css'
 
-const COPY: Record<ReportStatus, { icon: string; title: string; body: string }> = {
+const COPY: Record<ReportStatus, { title: string; body: string }> = {
   processing: {
-    icon: 'LoaderCircle',
-    title: 'Automated rule screening is running',
-    body: 'The report stays private while the server checks image quality, duplicates, location, and submission patterns.',
+    title: 'Screening in progress',
+    body: 'This report remains private while its photo, location and submission details are checked.',
   },
   screened: {
-    icon: 'CircleCheck',
     title: 'Report published',
-    body: 'Community report — not expert validated. The Iteration 1 rules passed, so this observation now appears on the shared map.',
+    body: 'Community-screened, not expert verified. This report is now visible on the shared map.',
   },
   merged: {
-    icon: 'GitMerge',
-    title: 'Matched an existing plant',
-    body: 'The same species was reported nearby within the screening time window, so your evidence was added to that map sighting.',
+    title: 'Added to an existing sighting',
+    body: 'A recent report of the same species was found nearby, so this evidence was added to that sighting.',
   },
   needs_rescan: {
-    icon: 'ScanLine',
-    title: 'A fresh scan is needed',
-    body: 'One or more screening rules need a better image or location. Use the in-app camera again at the plant.',
+    title: 'A new scan is needed',
+    body: 'The current photo or location could not be checked. Retake the scan at the plant.',
   },
   rejected: {
-    icon: 'XOctagon',
-    title: 'Duplicate evidence rejected',
-    body: 'The image or capture identifier matched evidence that was already submitted.',
+    title: 'Report not accepted',
+    body: 'This evidence matches a report that was already submitted.',
   },
   validation_unavailable: {
-    icon: 'WifiOff',
-    title: 'Screening is temporarily unavailable',
-    body: 'The report remains private until the required screening services recover.',
+    title: 'Screening unavailable',
+    body: 'This report remains private until screening is available again.',
   },
 }
 
@@ -56,84 +49,94 @@ export function ReportTrackingPage() {
   if (query.isLoading) {
     return (
       <section className="report-tracking" aria-label="Report status">
-        <section className="report-tracking__card report-tracking__card--loading" role="status" aria-label="Loading report status">
-          <span className="report-tracking__skeleton-icon invatrace-skeleton" aria-hidden />
+        <article className="report-tracking__content report-tracking__content--loading" role="status">
           <span className="report-tracking__skeleton-line report-tracking__skeleton-line--short invatrace-skeleton" aria-hidden />
           <span className="report-tracking__skeleton-line report-tracking__skeleton-line--title invatrace-skeleton" aria-hidden />
           <span className="report-tracking__skeleton-line invatrace-skeleton" aria-hidden />
           <span className="report-tracking__skeleton-line report-tracking__skeleton-line--medium invatrace-skeleton" aria-hidden />
           <span className="sr-only">Loading report status…</span>
-        </section>
+        </article>
       </section>
     )
   }
+
   if (query.isError || !query.data) {
     return (
       <section className="report-tracking" aria-label="Report status">
-        <section className="report-tracking__card report-tracking__card--error" role="alert">
-          <span className="report-tracking__icon" aria-hidden>
-            <Icon name="WifiOff" size={32} color="currentColor" />
-          </span>
+        <article className="report-tracking__content" role="alert">
           <h1>Report unavailable</h1>
           <p>We could not load this report. Check the connection and try again.</p>
           <div className="report-tracking__actions">
             <button type="button" onClick={() => void query.refetch()}>Try again</button>
             <Link to="/reports" className="report-tracking__secondary">Back to my records</Link>
           </div>
-        </section>
+        </article>
       </section>
     )
   }
 
   const report = query.data
   const copy = COPY[report.status]
+  const usefulReasons = report.validation.reasonCodes.filter((reason) => reason !== 'automated_rule_screened')
+
   return (
     <section className={`report-tracking report-tracking--${report.status}`} aria-label="Report status">
-      <section className="report-tracking__card" aria-live="polite">
-        <span className="report-tracking__icon" aria-hidden>
-          <Icon name={copy.icon} size={34} color="currentColor" />
-        </span>
-        <p className="report-tracking__eyebrow">Reference {report.id.slice(0, 8)}</p>
+      <article className="report-tracking__content" aria-live="polite">
+        <p className="report-tracking__reference">Report {report.id.slice(0, 8)}</p>
         <h1>{copy.title}</h1>
         <p>{copy.body}</p>
-        {report.validation.reasonCodes.length > 0 && (
-          <div className="report-tracking__checks">
-            <strong>Rule screening result</strong>
-            <ul>{report.validation.reasonCodes.map((reason) => (
-              <li key={reason}>{humanize(reason)}</li>
-            ))}</ul>
+
+        <dl className="report-tracking__meta">
+          <div>
+            <dt>Reported location</dt>
+            <dd className="report-tracking__coordinates">
+              {report.submission.location.lat.toFixed(5)}, {report.submission.location.lng.toFixed(5)}
+            </dd>
           </div>
+          <div>
+            <dt>Submitted</dt>
+            <dd>{formatSubmittedAt(report.createdAt)}</dd>
+          </div>
+        </dl>
+
+        {usefulReasons.length > 0 && (
+          <section className="report-tracking__reasons" aria-labelledby="report-reasons-heading">
+            <h2 id="report-reasons-heading">Details</h2>
+            {usefulReasons.map((reason) => <p key={reason}>{humanize(reason)}</p>)}
+          </section>
         )}
-        {report.validation.screeningMethod === 'deterministic_rules' && (
-          <p className="report-tracking__scope-note">
-            Screening covers image quality, duplicate evidence, location, and submission patterns.
-          </p>
-        )}
+
         <div className="report-tracking__actions">
           {report.status === 'needs_rescan' && <Link to="/scan" state={{ returnTo: '/reports' }}>Retake scan</Link>}
-          {report.sightingId && <Link to={`/map`}>View shared map</Link>}
+          {report.sightingId && (
+            <Link to={`/map?sighting=${encodeURIComponent(report.sightingId)}`}>View shared map</Link>
+          )}
           <Link to="/reports" className="report-tracking__secondary">Back to my records</Link>
         </div>
-      </section>
+      </article>
     </section>
   )
 }
 
 const REASON_COPY: Record<string, string> = {
-  automated_rule_screened: 'Automated checks passed',
-  exact_photo_replay: 'This photo was already submitted',
-  perceptual_photo_replay: 'Very similar to an earlier photo of the same species',
-  same_species_nearby_recent: 'Someone recently reported the same species nearby',
-  image_too_small: 'The photo is too small to check',
-  image_too_dark: 'The photo is too dark',
-  image_too_bright: 'The photo is too bright',
-  image_low_contrast: 'The plant is hard to see against the background',
-  image_too_blurry: 'The photo is too blurry',
-  invalid_or_corrupt_image: 'The photo could not be read',
-  location_accuracy_insufficient: 'GPS needs to be accurate to within 100 m',
-  plant_identification_not_reportable: 'This species is not on the reportable list yet',
-  unsupported_client_model_version: 'Update the app to submit this report',
+  exact_photo_replay: 'This photo was already submitted.',
+  perceptual_photo_replay: 'This photo is very similar to an earlier report of the same species.',
+  same_species_nearby_recent: 'The same species was reported nearby recently.',
+  image_too_small: 'The photo is too small to check.',
+  image_too_dark: 'The photo is too dark.',
+  image_too_bright: 'The photo is too bright.',
+  image_low_contrast: 'The plant is difficult to distinguish from the background.',
+  image_too_blurry: 'The photo is too blurry.',
+  invalid_or_corrupt_image: 'The photo could not be read.',
+  location_accuracy_insufficient: 'Location accuracy must be within 100 metres.',
+  plant_identification_not_reportable: 'This species is not currently reportable.',
+  unsupported_client_model_version: 'Update the app before submitting this report.',
 }
 
 const humanize = (reason: string) => REASON_COPY[reason]
-  ?? reason.replaceAll('_', ' ').replace(/^./, (char) => char.toUpperCase())
+  ?? `${reason.replaceAll('_', ' ').replace(/^./, (char) => char.toUpperCase())}.`
+
+const formatSubmittedAt = (value: string) => new Intl.DateTimeFormat(undefined, {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+}).format(new Date(value))

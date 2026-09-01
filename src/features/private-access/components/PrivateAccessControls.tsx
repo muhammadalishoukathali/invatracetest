@@ -25,13 +25,23 @@ export function PrivateAccessButton({
   )
 }
 
-export function PrivateAccessLink({ href, children, icon }: { href: string; children: ReactNode; icon?: string }) {
+export function PrivateAccessLink({
+  href,
+  children,
+  icon,
+  replace = false,
+}: {
+  href: string
+  children: ReactNode
+  icon?: string
+  replace?: boolean
+}) {
   // Route via React Router so the app shell isn't torn down on internal hops
   // (external URLs fall back to a native anchor).
   const isInternal = href.startsWith('/')
   if (isInternal) {
     return (
-      <Link className="access-link-button" to={href}>
+      <Link className="access-link-button" to={href} replace={replace}>
         {icon && <Icon name={icon} size={18} />}
         <span>{children}</span>
       </Link>
