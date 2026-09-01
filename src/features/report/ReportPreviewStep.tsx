@@ -44,7 +44,7 @@ export function ReportPreviewStep() {
 
   const canSubmit = !!draft.location
     && draft.locationAccuracyM !== null
-    && draft.locationAccuracyM <= 100
+    && draft.locationAccuracyM <= 5000
     && !!imageBlob
     && draft.consentAccurate
     && draft.consentNoPII

@@ -12,7 +12,7 @@ export function ReportSubmissionResult() {
     window.setTimeout(() => {
       reset()
       useScan.getState().reset()
-    }, 0)
+    }, 150)
   }
 
   if (!outcome) return null
