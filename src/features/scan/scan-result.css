@@ -53,16 +53,20 @@
   font-size: 14px;
   font-weight: 650;
   cursor: pointer;
+  white-space: nowrap;
+  padding: 0 12px;
 }
 
 .scan-result__secondary-action {
-  flex: 0 0 142px;
+  flex: 1 1 0;
+  min-width: 0;
   border: 1px solid var(--border);
   background: var(--surface);
 }
 
 .scan-result__report-action {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
   border: 1px solid var(--green);
   background: var(--green);
   color: #fff;
@@ -96,22 +100,21 @@
     margin-top: 2px;
   }
 
-  .scan-result__secondary-action {
-    flex-basis: 118px;
+  .scan-result__secondary-action,
+  .scan-result__report-action {
+    padding: 0 8px;
+    font-size: 13px;
   }
 }
 
 @media (max-width: 360px) {
   .scan-result__action-buttons {
-    gap: 7px;
-  }
-
-  .scan-result__secondary-action {
-    flex-basis: 106px;
+    gap: 6px;
   }
 
   .scan-result__secondary-action,
   .scan-result__report-action {
-    font-size: 13px;
+    padding: 0 6px;
+    font-size: 12px;
   }
 }
