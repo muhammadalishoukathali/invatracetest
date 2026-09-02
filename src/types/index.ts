@@ -176,7 +176,7 @@ export interface ReportDraft {
   captureSource: 'camera' | 'gallery'
   location: GeoPoint | null
   locationAccuracyM: number | null  // GPS accuracy in metres; null until a fix is available.
-  extent: ExtentSize
+  extent: ExtentSize | null
   notes: string
   consentAccurate: boolean
   consentNoPII: boolean

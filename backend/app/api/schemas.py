@@ -33,6 +33,12 @@ Role = Literal["Detector", "Volunteer", "Expert", "Admin"]
 TrustLevel = Literal["New", "Trusted", "Steward"]
 Outcome = Literal["target", "other_plant", "uncertain"]
 Extent = Literal["single", "small_patch", "large_area"]
+MalaysiaStatus = Literal["invasive", "information_only", "status_uncertain"]
+GuidanceMode = Literal[
+    "active_guidance",
+    "site_manager_confirmation_required",
+    "report_only",
+]
 ReportStatus = Literal[
     "processing",
     "screened",
@@ -170,8 +176,23 @@ class RemovalStep(ApiModel):
     safe: bool
 
 
+class GuidanceSource(ApiModel):
+    id: str
+    title: str
+    publisher: str | None = None
+    url: str | None = None
+    accessed: str | None = None
+
+
 class SeasonalActionGuide(ApiModel):
-    action_mode: Literal["remove", "contain", "report_only"]
+    action_mode: Literal[
+        "remove", "contain", "report_only",
+        "active_guidance", "site_manager_confirmation_required",
+    ]
+    guidance_mode: GuidanceMode
+    plant_id: str
+    content_version: str
+    last_reviewed: datetime | None = None
     title: str
     summary: str
     valid_months: list[int]
@@ -179,6 +200,10 @@ class SeasonalActionGuide(ApiModel):
     do_not_do: list[str]
     ppe: list[str]
     decontamination: list[str]
+    stop_conditions: list[str] = Field(default_factory=list)
+    spread_prevention: list[str] = Field(default_factory=list)
+    prohibited_actions: list[str] = Field(default_factory=list)
+    sources: list[GuidanceSource] = Field(default_factory=list)
     revision: str
 
 
@@ -195,14 +220,39 @@ class SpeciesDetail(ApiModel):
     do_not_do: list[str]
     reportable: bool
     action_guide: SeasonalActionGuide | None
+    malaysia_status: MalaysiaStatus
+    status_source_id: str | None = None
+    status_reviewed_at: datetime | None = None
+    general_information: str | None = None
+    action_eligible: bool
+    report_eligible: bool
 
 
 class SpeciesListResponse(ApiModel):
     items: list[SpeciesSummary]
 
 
+class ScanCreateRequest(ApiModel):
+    capture_id: uuid.UUID
+    predicted_species_id: Annotated[str, StringConstraints(max_length=80)] | None = None
+    outcome: Outcome
+    confidence: float = Field(ge=0, le=1)
+    model_version: Annotated[str, StringConstraints(min_length=1, max_length=120)]
+    image_sha256_hex: Annotated[str, StringConstraints(pattern=r"^[0-9a-fA-F]{64}$")] | None = None
+
+
+class ScanResponse(ApiModel):
+    id: str
+    capture_id: uuid.UUID
+    predicted_species_id: str | None
+    outcome: Outcome
+    confidence: float
+    model_version: str
+    created_at: datetime
+
+
 class PresignRequest(ApiModel):
-    content_type: Literal["image/jpeg"]
+    content_type: Literal["image/jpeg", "image/png", "image/webp"]
     size_bytes: int = Field(gt=0)
 
 
@@ -255,9 +305,10 @@ class ReportSubmission(ReportSubmissionDetails):
         if observed.tzinfo is None:
             raise ValueError("observedAt must include a timezone")
         now = datetime.now(UTC)
-        if observed > now + timedelta(minutes=5):
-            raise ValueError("observedAt cannot be in the future")
-        if observed < now - timedelta(days=30):
+        future_max = now + timedelta(minutes=5)
+        if observed > future_max:
+            object.__setattr__(self, "observed_at", future_max)
+        if self.observed_at < now - timedelta(days=30):
             raise ValueError("observedAt is outside the reporting window")
         return self
 

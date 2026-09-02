@@ -9,6 +9,25 @@
   margin: 0 auto;
 }
 
+.report-tracking__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 12px;
+  padding: 6px 10px 6px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-button);
+  background: var(--surface);
+  color: var(--body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.report-tracking__back:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
 .report-tracking__reference {
   color: var(--muted);
   font: 500 12px/1.4 var(--font-mono);

@@ -45,6 +45,7 @@ export function ReportPreviewStep() {
   const canSubmit = !!draft.location
     && draft.locationAccuracyM !== null
     && draft.locationAccuracyM <= 100
+    && !!draft.extent
     && !!imageBlob
     && draft.consentAccurate
     && draft.consentNoPII
@@ -77,7 +78,7 @@ export function ReportPreviewStep() {
         <Divider />
         <Row icon="Grid3x3"
              label="Extent"
-             value={EXTENT_LABEL[draft.extent]} />
+             value={draft.extent ? EXTENT_LABEL[draft.extent] : '—'} />
         {draft.notes && (
           <>
             <Divider />

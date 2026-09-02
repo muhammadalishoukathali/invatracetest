@@ -126,12 +126,30 @@
 .scan-capture__gallery-note svg { margin-top: 1px; }
 .scan-capture__gallery-note strong { color: var(--green-dark); }
 .scan-capture__camera-error {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   margin-top: 12px;
   padding: 11px 13px;
   border-radius: var(--r-input);
   background: var(--red-light);
   color: var(--red-text);
   font-size: 13px;
+}
+.scan-capture__camera-error p { margin: 0; }
+.scan-capture__camera-fallback {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--r-button);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .scan-capture__live { display: grid; gap: 14px; }

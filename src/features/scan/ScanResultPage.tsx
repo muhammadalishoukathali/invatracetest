@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { Icon } from '@/components/Icon'
 import { useScan } from '@/features/scan/scan-store'
@@ -13,6 +14,7 @@ export function ScanResultPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { imageUrl, result, speciesDetail, captureSource, captureId } = useScan()
+  const [reportBlocked, setReportBlocked] = useState<string | null>(null)
 
   if (!result) {
     return <Navigate to="/scan" replace state={location.state} />
@@ -23,13 +25,23 @@ export function ScanResultPage() {
     navigate('/scan', { replace: true, state: location.state })
   }
 
+  const backToCapture = () => {
+    // Preserve scan state so the user can re-inspect the photo they captured.
+    navigate('/scan', { state: location.state })
+  }
+
   const startReport = () => {
     const {
       imageBlob, imageUrl: url, observedAt, captureId, captureSource: source,
     } = useScan.getState()
-    if (!imageBlob || !url || !observedAt || !captureId) return
     const trusted = source === 'camera' || source === 'gallery'
-    if (!trusted) return
+    if (!imageBlob || !url || !observedAt || !captureId || !trusted) {
+      setReportBlocked(
+        'The photo is no longer available for reporting. Retake it to continue.',
+      )
+      return
+    }
+    setReportBlocked(null)
     useReportDraft.getState().beginFromScan({
       result, imageBlob, imageUrl: url, observedAt, captureId, captureSource: source,
     })
@@ -121,9 +133,13 @@ export function ScanResultPage() {
         )}
 
         <div className="scan-result__action-buttons">
+          <button type="button" onClick={backToCapture} className="scan-result__secondary-action">
+            <Icon name="ChevronLeft" size={16} color="var(--body)" />
+            Back to capture
+          </button>
           <button type="button" onClick={scanAgain} className="scan-result__secondary-action">
-          <Icon name="RotateCcw" size={16} color="var(--body)" />
-          Scan again
+            <Icon name="RotateCcw" size={16} color="var(--body)" />
+            Scan again
           </button>
 
           {canReport && (
@@ -133,6 +149,13 @@ export function ScanResultPage() {
             </button>
           )}
         </div>
+        {reportBlocked && (
+          <p role="alert" style={{
+            marginTop: 10, fontSize: 12.5, color: 'var(--red-text)', lineHeight: 1.5,
+          }}>
+            {reportBlocked}
+          </p>
+        )}
       </div>
 
     </div>

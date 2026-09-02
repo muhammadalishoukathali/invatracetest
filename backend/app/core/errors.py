@@ -29,15 +29,38 @@ class ApiProblem(Exception):
 
 
 def problem_response(
-    status: int, code: str, detail: str, headers: dict[str, str] | None = None
+    status: int,
+    code: str,
+    detail: str,
+    headers: dict[str, str] | None = None,
+    field_errors: list[dict[str, str]] | None = None,
 ) -> JSONResponse:
     request_id = request_id_var.get()
     response_headers = {"X-Request-ID": request_id, **(headers or {})}
+    payload: dict[str, object] = {"code": code, "detail": detail, "requestId": request_id}
+    if field_errors:
+        payload["fieldErrors"] = field_errors
     return JSONResponse(
         status_code=status,
-        content={"code": code, "detail": detail, "requestId": request_id},
+        content=payload,
         headers=response_headers,
     )
+
+
+def _to_snake(value: str) -> str:
+    return "".join("_" + c.lower() if c.isupper() else c for c in value).lstrip("_")
+
+
+def _summarize_pydantic_errors(error: RequestValidationError) -> list[dict[str, str]]:
+    """AC 2.2.2 — surface field-specific validation errors, not just a generic 400."""
+    field_errors: list[dict[str, str]] = []
+    for issue in error.errors():
+        loc = [str(part) for part in issue.get("loc", []) if part not in ("body", "query", "path")]
+        field = ".".join(loc) if loc else "request"
+        code = str(issue.get("type", "invalid"))
+        message = str(issue.get("msg", "Invalid value"))
+        field_errors.append({"field": field, "code": code, "message": message})
+    return field_errors
 
 
 def install_error_handlers(app: FastAPI) -> None:
@@ -46,8 +69,14 @@ def install_error_handlers(app: FastAPI) -> None:
         return problem_response(error.status_code, error.code, error.detail, error.headers)
 
     @app.exception_handler(RequestValidationError)
-    async def handle_validation(_request: Request, _error: RequestValidationError) -> JSONResponse:
-        return problem_response(400, "invalid_request", "The request is invalid.")
+    async def handle_validation(_request: Request, error: RequestValidationError) -> JSONResponse:
+        field_errors = _summarize_pydantic_errors(error)
+        return problem_response(
+            422 if field_errors else 400,
+            "validation_failed" if field_errors else "invalid_request",
+            "One or more fields failed validation." if field_errors else "The request is invalid.",
+            field_errors=field_errors,
+        )
 
     @app.exception_handler(StarletteHTTPException)
     async def handle_http(_request: Request, error: StarletteHTTPException) -> JSONResponse:

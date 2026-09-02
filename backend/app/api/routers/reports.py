@@ -13,6 +13,7 @@ from app.api.schemas import (
     ReportResponse,
     ReportSubmission,
 )
+from app.config import get_settings
 from app.core.errors import ApiProblem, request_id_var
 from app.core.idempotency import acquire_idempotency_lock, canonical_request_hash
 from app.core.pagination import decode_cursor, encode_cursor
@@ -25,6 +26,7 @@ from app.db.models import (
     Notification,
     Report,
     ReportSightingLink,
+    Scan,
     Species,
     UploadGrant,
     VerificationJob,
@@ -102,11 +104,44 @@ def create_report(
     species = session.get(Species, body.species_id) if body.species_id else None
     if body.species_id and not species:
         raise ApiProblem(400, "unknown_species", "The species is not supported.")
+    # AC 2.2.1 — if the client persisted a scan for this capture, re-read it and reject
+    # any submission that tries to swap the species from what the model actually returned.
+    scan_record = session.scalar(
+        select(Scan).where(
+            Scan.capture_id == body.capture_id,
+            Scan.profile_id == auth.profile.id,
+        )
+    )
+    if scan_record is not None:
+        if scan_record.outcome != body.outcome:
+            raise ApiProblem(
+                422,
+                "scan_outcome_mismatch",
+                "Report outcome does not match the recorded scan.",
+            )
+        if (scan_record.predicted_species_id or None) != (body.species_id or None):
+            raise ApiProblem(
+                422,
+                "scan_species_mismatch",
+                "Report species does not match the recorded scan.",
+            )
     if body.outcome == "target" and species and not species.reportable:
         raise ApiProblem(
             422,
             "species_not_reportable",
             "This model class does not yet have reviewed field guidance and cannot be reported.",
+        )
+    # AC 1.1.3: reports whose confidence is below the server-configured threshold cannot be
+    # published as invasive; the client must surface them as Uncertain instead.
+    settings = get_settings()
+    if body.outcome == "target" and float(body.confidence) < settings.model_acceptance_threshold:
+        raise ApiProblem(
+            422,
+            "confidence_below_threshold",
+            (
+                f"Prediction confidence is below the acceptance threshold"
+                f" ({settings.model_acceptance_threshold:.2f})."
+            ),
         )
 
     evidence_key = f"evidence/{auth.profile.id}/{grant.id}.jpg"

@@ -61,7 +61,7 @@ const createEmptyReportDraft = (
   captureSource,
   location: null,
   locationAccuracyM: null,
-  extent: 'small_patch',
+  extent: null,
   notes: '',
   consentAccurate: false,
   consentNoPII: false,
@@ -127,7 +127,7 @@ export const useReportDraft = create<ReportState>((set, get) => ({
 
   toSubmission: () => {
     const draft = get().draft
-    if (!draft || !draft.location) return null
+    if (!draft || !draft.location || !draft.extent) return null
     return {
       speciesId: draft.speciesId,
       outcome: draft.outcome,

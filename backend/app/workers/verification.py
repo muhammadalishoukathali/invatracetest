@@ -153,6 +153,13 @@ def process_job(job_id: str) -> None:
                 report=report,
                 content_sha256=content_sha256,
             )
+            owner_species_merge_sighting = None
+            if not exact_replay:
+                owner_species_merge_sighting = _find_owner_species_replay(
+                    session,
+                    report=report,
+                    content_sha256=content_sha256,
+                )
             screening: ImageScreeningResult | None = None
             perceptual_match_id: str | None = None
             perceptual_match_distance: int | None = None
@@ -161,11 +168,15 @@ def process_job(job_id: str) -> None:
                     image,
                     minimum_dimension=settings.screening_minimum_image_dimension,
                 )
-                if not screening.failure_reasons and report.species_id:
-                    # Serialize the bounded perceptual comparison so concurrent
-                    # submissions cannot both pass before either fingerprint is
-                    # committed. The comparison is intentionally cross-species:
-                    # relabelling the same photo must not evade replay checks.
+                # AC 2.3.1: when the same anonymous identity has already published
+                # this exact photo for this exact species, treat as merge with the
+                # prior sighting BEFORE the perceptual replay check would otherwise
+                # reject it as a cross-species look-alike.
+                if (
+                    not screening.failure_reasons
+                    and report.species_id
+                    and owner_species_merge_sighting is None
+                ):
                     _lock_screening_units(session, "perceptual-screening")
                     perceptual_match_id, perceptual_match_distance = _find_perceptual_replay(
                         session,
@@ -195,7 +206,13 @@ def process_job(job_id: str) -> None:
 
             merge_target = None
             merge_distance_m = None
-            if base_decision.status == "screened" and reportable_species_id:
+            if owner_species_merge_sighting is not None and base_decision.status in {
+                "screened",
+                "needs_rescan",
+            }:
+                merge_target = owner_species_merge_sighting
+                merge_distance_m = 0.0
+            elif base_decision.status == "screened" and reportable_species_id:
                 merge_target, merge_distance_m = _find_merge_target(
                     session,
                     report=report,
@@ -295,11 +312,13 @@ def process_job(job_id: str) -> None:
 
 
 def _is_exact_replay(session, *, report: Report, content_sha256: bytes) -> bool:
+    # Cross-owner or cross-species same-hash / capture-id match is treated as spam replay.
     return (
         session.scalar(
             select(Report.id)
             .where(
                 Report.id != report.id,
+                Report.profile_id != report.profile_id,
                 or_(
                     Report.content_sha256 == content_sha256,
                     Report.capture_id == report.capture_id,
@@ -309,6 +328,42 @@ def _is_exact_replay(session, *, report: Report, content_sha256: bytes) -> bool:
         )
         is not None
     )
+
+
+def _find_owner_species_replay(
+    session, *, report: Report, content_sha256: bytes
+) -> Sighting | None:
+    """AC 2.3.1: same anonymous identity + same species + same SHA-256 (or capture id) → merge with prior sighting."""
+    if not report.species_id:
+        return None
+    prior_report = session.scalar(
+        select(Report)
+        .where(
+            Report.id != report.id,
+            Report.profile_id == report.profile_id,
+            Report.species_id == report.species_id,
+            or_(
+                Report.content_sha256 == content_sha256,
+                Report.capture_id == report.capture_id,
+            ),
+            Report.status.in_(["screened", "merged"]),
+        )
+        .order_by(Report.created_at)
+        .limit(1)
+    )
+    if prior_report is None:
+        return None
+    link = session.scalar(
+        select(ReportSightingLink)
+        .where(
+            ReportSightingLink.report_id == prior_report.id,
+            ReportSightingLink.active.is_(True),
+        )
+        .limit(1)
+    )
+    if link is None:
+        return None
+    return session.get(Sighting, link.sighting_id)
 
 
 def _find_perceptual_replay(
@@ -360,38 +415,29 @@ def _find_merge_target(
     report: Report,
     species_id: str,
 ) -> tuple[Sighting | None, float | None]:
+    """AC 2.3.2: same species + within 25 m + within 10 min → merge with existing sighting."""
     settings = get_settings()
-    radius_m = min(
-        settings.screening_duplicate_radius_max_m,
-        max(15, report.location_accuracy_m or 25),
-    )
+    # AC-literal 25 m radius, expanded when reported accuracy is worse than that.
+    radius_m = max(settings.screening_duplicate_radius_max_m, report.location_accuracy_m or 0)
     window_minutes = settings.screening_duplicate_window_minutes
-    observed_after = report.observed_at - timedelta(minutes=window_minutes)
-    observed_before = report.observed_at + timedelta(minutes=window_minutes)
-    candidate = session.scalar(
-        select(Sighting)
+    # A Sighting only exists if a prior report was screened; use its updated_at as
+    # the recency proxy (updated on create and on every merge). This dodges the
+    # race where a first report is still `processing` when the second lands.
+    cutoff = datetime.now(UTC) - timedelta(minutes=window_minutes)
+    candidate_row = session.execute(
+        select(Sighting, func.ST_Distance(Sighting.location, report.location))
         .where(
             Sighting.species_id == species_id,
             Sighting.status == "screened",
+            Sighting.updated_at >= cutoff,
             func.ST_DWithin(Sighting.location, report.location, radius_m),
-            select(ReportSightingLink.id)
-            .join(Report, Report.id == ReportSightingLink.report_id)
-            .where(
-                ReportSightingLink.sighting_id == Sighting.id,
-                ReportSightingLink.active.is_(True),
-                Report.id != report.id,
-                Report.species_id == species_id,
-                Report.status.in_(["screened", "merged"]),
-                Report.observed_at.between(observed_after, observed_before),
-            )
-            .exists(),
         )
         .order_by(func.ST_Distance(Sighting.location, report.location))
         .limit(1)
-    )
-    if candidate is None:
+    ).first()
+    if candidate_row is None:
         return None, None
-    distance = session.scalar(select(func.ST_Distance(candidate.location, report.location)))
+    candidate, distance = candidate_row
     return candidate, round(float(distance), 3) if distance is not None else None
 
 

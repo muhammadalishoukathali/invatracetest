@@ -33,7 +33,8 @@ class Settings(BaseSettings):
     s3_access_key_id: str = "minioadmin"
     s3_secret_access_key: str = "minioadmin"
     s3_force_path_style: bool = True
-    upload_max_bytes: int = Field(default=8 * 1024 * 1024, ge=1024, le=32 * 1024 * 1024)
+    upload_max_bytes: int = Field(default=10 * 1024 * 1024, ge=1024, le=32 * 1024 * 1024)
+    model_acceptance_threshold: float = Field(default=0.5, ge=0.0, le=1.0)
     upload_url_ttl_seconds: int = Field(default=900, ge=60, le=3600)
     upload_active_grants_per_profile: int = Field(default=10, ge=1, le=100)
     upload_cleanup_interval_seconds: int = Field(default=3600, ge=60, le=86_400)

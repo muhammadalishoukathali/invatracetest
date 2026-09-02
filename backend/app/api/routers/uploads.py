@@ -33,7 +33,8 @@ def presign_upload(
     if not IDEMPOTENCY_PATTERN.fullmatch(idempotency_key):
         raise ApiProblem(400, "invalid_idempotency_key", "A valid Idempotency-Key is required.")
     if body.size_bytes > settings.upload_max_bytes:
-        raise ApiProblem(413, "upload_too_large", "Image exceeds 8MB limit")
+        max_mb = settings.upload_max_bytes // (1024 * 1024)
+        raise ApiProblem(413, "upload_too_large", f"Image exceeds {max_mb}MB limit")
     now = utcnow()
     scope = "upload.presign"
     request_hash = canonical_request_hash(body.model_dump(mode="json", by_alias=True))
@@ -78,7 +79,8 @@ def presign_upload(
         )
 
     upload_id = uuid.uuid4()
-    object_key = f"uploads/{auth.profile.id}/{upload_id}.jpg"
+    ext = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}[body.content_type]
+    object_key = f"uploads/{auth.profile.id}/{upload_id}.{ext}"
     expires_at = now + timedelta(seconds=settings.upload_url_ttl_seconds)
     grant = UploadGrant(
         id=upload_id,

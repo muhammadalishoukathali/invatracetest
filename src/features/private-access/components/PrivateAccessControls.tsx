@@ -89,21 +89,24 @@ export function PrivateAccessNotice({
   tone,
   title,
   children,
-  live = false,
+  live: _liveOptOut = false,
 }: {
   tone: 'info' | 'warning' | 'error' | 'success'
   title: string
   children: ReactNode
+  /** Retained for backwards compatibility; announcements now fire on every
+   *  mount so screen readers do not miss first-render notices. */
   live?: boolean
 }) {
+  void _liveOptOut
   const icon = tone === 'error' ? 'XOctagon'
     : tone === 'warning' ? 'AlertTriangle'
       : tone === 'success' ? 'CircleCheck' : 'Info'
   return (
     <div
       className={`access-notice access-notice--${tone}`}
-      role={tone === 'error' ? 'alert' : undefined}
-      aria-live={live ? 'polite' : undefined}
+      role={tone === 'error' ? 'alert' : 'status'}
+      aria-live={tone === 'error' ? 'assertive' : 'polite'}
     >
       <Icon name={icon} size={20} />
       <div><strong>{title}</strong><p>{children}</p></div>

@@ -80,10 +80,31 @@ def list_sightings(
     max_lat: float | None = Query(default=None, ge=0.8, le=7.5),
     min_lng: float | None = Query(default=None, ge=99.3, le=119.5),
     max_lng: float | None = Query(default=None, ge=99.3, le=119.5),
+    bbox: str | None = Query(
+        default=None,
+        description="AC 4.2.1 alias: comma-separated `west,south,east,north` in EPSG:4326",
+    ),
     limit: int = Query(default=200, ge=1, le=500),
     cursor: str | None = None,
     session: Session = Depends(get_session),
 ) -> SightingListResponse:
+    if bbox is not None:
+        parts = bbox.split(",")
+        if len(parts) != 4:
+            raise ApiProblem(400, "invalid_bbox", "bbox must be west,south,east,north.")
+        try:
+            west, south, east, north = (float(part) for part in parts)
+        except ValueError as error:
+            raise ApiProblem(400, "invalid_bbox", "bbox values must be numeric.") from error
+        for value, lo, hi in (
+            (south, 0.8, 7.5),
+            (north, 0.8, 7.5),
+            (west, 99.3, 119.5),
+            (east, 99.3, 119.5),
+        ):
+            if not lo <= value <= hi:
+                raise ApiProblem(400, "invalid_bbox", "bbox is outside the supported region.")
+        min_lat, max_lat, min_lng, max_lng = south, north, west, east
     rate_limiter.check("sightings_read", client_address(request))
     offset = decode_cursor(cursor)
     count_expr = func.count(Report.id).filter(ReportSightingLink.active.is_(True))

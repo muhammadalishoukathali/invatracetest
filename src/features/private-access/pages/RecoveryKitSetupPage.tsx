@@ -131,7 +131,7 @@ export function RecoveryKitSetupPage() {
           <PrivateAccessButton onClick={() => void continueToApp()} disabled={!codes || !acknowledged || continuing}>
             {continuing ? 'Securing private access…' : 'Continue to InvaTrace'}
           </PrivateAccessButton>
-          {syncMessage && (
+          {(syncMessage || status === 'storage-error') && (
             <PrivateAccessButton kind="quiet" onClick={() => void retryPendingStorage()}>Save installation again</PrivateAccessButton>
           )}
           {!codes && (

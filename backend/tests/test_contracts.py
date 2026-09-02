@@ -58,7 +58,8 @@ def test_development_species_seed_exactly_matches_model_catalog() -> None:
     assert len(SPECIES) == catalog["class_count"] == 31
     assert {item["id"] for item in SPECIES} == expected_ids
     assert sum(bool(item["is_invasive"]) for item in SPECIES) == 16
-    assert sum(bool(item["reportable"]) for item in SPECIES) == 1
+    # AC 1.2.2: every invasive species must expose the Report control (report_eligible=true).
+    assert sum(bool(item["reportable"]) for item in SPECIES) == 16
     assert "clidemia-hirta" not in expected_ids
 
 

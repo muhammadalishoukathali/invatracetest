@@ -12,6 +12,28 @@ from sqlalchemy.orm import Session
 
 from app.db.models import MonitoredPlace, Report, Sighting, Species
 
+_MIKANIA_SOURCES = [
+    {
+        "id": "griis-malaysia-v1_3",
+        "title": "GRIIS Malaysia v1.3",
+        "publisher": "GBIF / IUCN SSC Invasive Species Specialist Group",
+        "url": "https://cloud.gbif.org/griis/resource?r=griis-malaysia&v=1.3",
+        "accessed": "2026-08-27",
+    },
+    {
+        "id": "myias-2025",
+        "title": "MyBIS Invasive Alien Species (MyIAS) 2025",
+        "publisher": "Malaysia Biodiversity Information System",
+        "url": "https://www.mybis.gov.my/ias/resources.php?menu=98",
+        "accessed": "2026-08-27",
+    },
+]
+_CHROMOLAENA_SOURCES = _MIKANIA_SOURCES
+_EICHHORNIA_SOURCES = _MIKANIA_SOURCES
+
+_REVIEW_DATE = datetime(2026, 8, 27, tzinfo=UTC)
+_GUIDANCE_VERSION = "invatrace-plant-guidance-v1"
+
 SPECIES = [
     {
         "id": "mikania-micrantha",
@@ -20,6 +42,33 @@ SPECIES = [
         "common_names": ["Mile-a-minute weed", "Chinese creeper"],
         "is_invasive": True,
         "risk": "high",
+        "malaysia_status": "invasive",
+        "status_source": "GRIIS Malaysia v1.3",
+        "status_reviewed_at": _REVIEW_DATE,
+        "general_information": (
+            "Fast-growing climbing vine that smothers native vegetation. Listed as invasive"
+            " in Malaysia; small manual removal is safe when done with care."
+        ),
+        "action_eligible": True,
+        "guidance_content_version": _GUIDANCE_VERSION,
+        "guidance_last_reviewed": _REVIEW_DATE,
+        "guidance_metadata": {
+            "stop_conditions": [
+                "You are on private, protected, or unfamiliar land without permission",
+                "The vine has climbed above chest height or wraps mature trees",
+                "Fragments would fall into flowing water",
+            ],
+            "spread_prevention": [
+                "Bag every cut fragment before leaving the site",
+                "Clean tools, gloves, and boots before moving to a new area",
+                "Do not compost — even small pieces can re-root",
+            ],
+            "prohibited_actions": [
+                "Do not burn plant material on-site",
+                "Do not apply herbicide without a licensed operator",
+            ],
+            "sources": _MIKANIA_SOURCES,
+        },
         "traits": [
             {"label": "Leaf shape", "value": "Heart-shaped, opposite, 5–13 cm"},
             {"label": "Flower", "value": "Small white heads in dense clusters"},
@@ -81,6 +130,33 @@ SPECIES = [
         "common_names": ["Siam weed", "Devil weed"],
         "is_invasive": True,
         "risk": "high",
+        "malaysia_status": "invasive",
+        "status_source": "GRIIS Malaysia v1.3",
+        "status_reviewed_at": _REVIEW_DATE,
+        "general_information": (
+            "Woody shrub or scrambler that spreads by wind-borne seeds. Do not disturb"
+            " flowering or seed-bearing plants."
+        ),
+        "action_eligible": True,
+        "guidance_content_version": _GUIDANCE_VERSION,
+        "guidance_last_reviewed": _REVIEW_DATE,
+        "guidance_metadata": {
+            "stop_conditions": [
+                "Flowers or seed heads are visible on the plant",
+                "The site is a park or forest reserve without site-manager approval",
+                "You cannot safely bag flowering parts before cutting",
+            ],
+            "spread_prevention": [
+                "Bag flowering parts before you cut anything",
+                "Brush seeds off clothing, gloves, and boots before leaving",
+                "Do not drag cut plants across other vegetation",
+            ],
+            "prohibited_actions": [
+                "Do not slash flowering or seed-bearing plants",
+                "Do not burn on-site without a permit",
+            ],
+            "sources": _CHROMOLAENA_SOURCES,
+        },
         "traits": [
             {"label": "Leaf shape", "value": "Opposite, ovate, 5–12 cm with serrated edges"},
             {"label": "Flower", "value": "Pale purple to white, in terminal clusters"},
@@ -137,6 +213,31 @@ SPECIES = [
         "common_names": [],
         "is_invasive": True,
         "risk": "high",
+        "malaysia_status": "invasive",
+        "status_source": "GRIIS Malaysia v1.3",
+        "status_reviewed_at": _REVIEW_DATE,
+        "general_information": (
+            "Free-floating aquatic plant that forms dense mats. Do not enter water"
+            " to remove; report the sighting instead."
+        ),
+        "action_eligible": False,
+        "guidance_content_version": _GUIDANCE_VERSION,
+        "guidance_last_reviewed": _REVIEW_DATE,
+        "guidance_metadata": {
+            "stop_conditions": [
+                "The plant is in flowing or standing water",
+                "You would need to wade or use a boat to reach it",
+            ],
+            "spread_prevention": [
+                "Do not disturb the mat — fragments float and re-establish downstream",
+                "Report the location for coordinated removal by trained crews",
+            ],
+            "prohibited_actions": [
+                "Do not enter water to remove the plant",
+                "Do not drag mats onto banks where they may re-root",
+            ],
+            "sources": _EICHHORNIA_SOURCES,
+        },
         "traits": [],
         "native_twin": None,
         "removal_steps": [],
@@ -163,6 +264,42 @@ SPECIES = [
 ]
 
 
+_GENERIC_SOURCES = [
+    {
+        "id": "griis-malaysia-v1_3",
+        "title": "GRIIS Malaysia v1.3",
+        "publisher": "GBIF / IUCN SSC Invasive Species Specialist Group",
+        "url": "https://cloud.gbif.org/griis/resource?r=griis-malaysia&v=1.3",
+        "accessed": "2026-08-27",
+    },
+    {
+        "id": "myias-2025",
+        "title": "MyBIS Invasive Alien Species (MyIAS) 2025",
+        "publisher": "Malaysia Biodiversity Information System",
+        "url": "https://www.mybis.gov.my/ias/resources.php?menu=98",
+        "accessed": "2026-08-27",
+    },
+]
+
+_GENERIC_INVASIVE_GUIDANCE = {
+    "stop_conditions": [
+        "You do not have permission to work on this land",
+        "The plant has climbed above chest height or wraps mature trees",
+        "You are near flowing or standing water",
+    ],
+    "spread_prevention": [
+        "Do not disturb the plant; report the sighting first",
+        "Clean tools, gloves, and boots before moving to a new area",
+        "Do not compost — many invasive species re-establish from fragments",
+    ],
+    "prohibited_actions": [
+        "Do not burn plant material on-site",
+        "Do not apply herbicide without a licensed operator",
+    ],
+    "sources": _GENERIC_SOURCES,
+}
+
+
 def _apply_model_catalog_to_species_seed() -> None:
     catalog_path = Path(__file__).with_name("data") / "pulih_model1_species_31.json"
     catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
@@ -171,7 +308,9 @@ def _apply_model_catalog_to_species_seed() -> None:
 
     for model_class in catalog["classes"]:
         species_id = model_class["machine_label"].replace("_", "-")
-        invasive = model_class["malaysia_status"] == "invasive"
+        catalog_status = model_class.get("malaysia_status", "")
+        catalog_source = model_class.get("status_source")
+        invasive = catalog_status == "invasive"
         detail = detailed_by_id.get(species_id, {
             "common_names": [],
             "traits": [],
@@ -181,7 +320,27 @@ def _apply_model_catalog_to_species_seed() -> None:
             "detail_available": False,
             "action_guides": [],
         })
-        reportable = bool(detail.get("reportable", False)) and invasive
+        detail.setdefault("malaysia_status", catalog_status)
+        detail.setdefault("status_source", catalog_source)
+        detail.setdefault("status_reviewed_at", _REVIEW_DATE)
+        detail.setdefault("action_eligible", False)
+        detail.setdefault("guidance_metadata", {})
+        # AC 1.2.2 — every invasive result must carry a general_information paragraph
+        # so the "invasive-result pathway" shows a short description plus the source.
+        if invasive and not detail.get("general_information"):
+            detail["general_information"] = (
+                f"{model_class['display_name']} is listed as invasive in Malaysia by"
+                f" {catalog_source or 'the reviewed status source'}. Please observe and report"
+                " sightings; follow reviewed guidance before attempting any action."
+            )
+        if invasive and not detail.get("guidance_metadata"):
+            detail["guidance_metadata"] = dict(_GENERIC_INVASIVE_GUIDANCE)
+        elif invasive:
+            merged = dict(_GENERIC_INVASIVE_GUIDANCE)
+            merged.update(detail.get("guidance_metadata") or {})
+            detail["guidance_metadata"] = merged
+        # AC 1.2.2 — invasive species must expose Report control; content-only species stay off.
+        reportable = invasive or bool(detail.get("reportable", False))
         detail.update({
             "id": species_id,
             "name": model_class["display_name"],

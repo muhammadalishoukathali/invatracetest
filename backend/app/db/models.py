@@ -138,6 +138,16 @@ class Species(TimestampMixin, Base):
     action_guides: Mapped[list[dict[str, Any]]] = mapped_column(
         JSON_TYPE, default=list, nullable=False
     )
+    malaysia_status: Mapped[str | None] = mapped_column(String(60))
+    status_source: Mapped[str | None] = mapped_column(String(200))
+    status_reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    general_information: Mapped[str | None] = mapped_column(Text)
+    action_eligible: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    guidance_content_version: Mapped[str | None] = mapped_column(String(60))
+    guidance_last_reviewed: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    guidance_metadata: Mapped[dict[str, Any]] = mapped_column(
+        JSON_TYPE, default=dict, nullable=False
+    )
 
 
 class MonitoredPlace(Base):
@@ -211,6 +221,30 @@ class ObjectDeletionJob(Base):
         DateTime(timezone=True), server_default=func.now(), index=True, nullable=False
     )
     last_error: Mapped[str | None] = mapped_column(String(500))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class Scan(Base):
+    __tablename__ = "scans"
+    __table_args__ = (
+        CheckConstraint("outcome IN ('target','other_plant','uncertain')", name="scan_outcome"),
+        CheckConstraint("confidence >= 0 AND confidence <= 1", name="scan_confidence"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    profile_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("profiles.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    capture_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), unique=True, nullable=False)
+    predicted_species_id: Mapped[str | None] = mapped_column(
+        ForeignKey("species.id", ondelete="SET NULL")
+    )
+    outcome: Mapped[str] = mapped_column(String(30), nullable=False)
+    confidence: Mapped[Decimal] = mapped_column(Numeric(6, 5), nullable=False)
+    model_version: Mapped[str] = mapped_column(String(120), nullable=False)
+    image_sha256: Mapped[bytes | None] = mapped_column(LargeBinary(32))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

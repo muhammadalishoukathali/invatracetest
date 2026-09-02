@@ -78,7 +78,7 @@ export function ReportExtentStep() {
         </span>
       </label>
 
-      <ReportNextButton onClick={next} label="Continue" />
+      <ReportNextButton onClick={next} label="Continue" disabled={draft.extent == null} />
     </div>
   )
 }

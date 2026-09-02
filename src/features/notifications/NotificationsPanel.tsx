@@ -3,7 +3,7 @@
  *  Desktop uses a dropdown; mobile renders a bottom sheet over the page. */
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Icon } from '@/components/Icon'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { useNotifications, useMarkNotificationRead } from './useNotifications'
@@ -35,6 +35,7 @@ export function NotificationsPanel() {
   const wrapper = useRef<HTMLDivElement>(null)
   const isDesktop = useIsDesktop()
   const navigate = useNavigate()
+  const location = useLocation()
   const { data } = useNotifications()
   const { markOne, markAll } = useMarkNotificationRead()
 
@@ -54,7 +55,17 @@ export function NotificationsPanel() {
 
   const openItem = (n: AppNotification) => {
     if (!n.read) void markOne(n.id)
-    if (n.linkTo) navigate(n.linkTo)
+    if (n.linkTo) {
+      // An absolute URL from the server would otherwise be mis-parsed by
+      // React Router as a relative path (e.g. `/foo/https:/…`).
+      if (/^https?:\/\//i.test(n.linkTo)) {
+        window.open(n.linkTo, '_blank', 'noopener,noreferrer')
+      } else {
+        const alreadyHere = location.pathname + location.search === n.linkTo
+          || location.pathname === n.linkTo
+        navigate(n.linkTo, alreadyHere ? { replace: true } : undefined)
+      }
+    }
     setOpen(false)
   }
 

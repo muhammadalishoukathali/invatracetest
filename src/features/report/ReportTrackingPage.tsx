@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '@/services/api-client'
 import type { Report, ReportStatus } from '@/types'
 import { usePrivateAccess } from '@/features/private-access/private-access-store'
@@ -12,7 +12,7 @@ const COPY: Record<ReportStatus, { title: string; body: string }> = {
   },
   screened: {
     title: 'Report published',
-    body: 'Community-screened, not expert verified. This report is now visible on the shared map.',
+    body: 'Community report - not expert validated. This report is now visible on the shared map.',
   },
   merged: {
     title: 'Added to an existing sighting',
@@ -34,6 +34,13 @@ const COPY: Record<ReportStatus, { title: string; body: string }> = {
 
 export function ReportTrackingPage() {
   const { reportId } = useParams()
+  const navigate = useNavigate()
+  const goBack = () => {
+    // History depth is unreliable when opened from a notification, so fall back
+    // to the records index whenever we cannot pop within the app.
+    if (window.history.length > 1) navigate(-1)
+    else navigate('/reports')
+  }
   const profileId = usePrivateAccess((state) => state.profile?.id ?? null)
   const query = useQuery({
     queryKey: ['report', profileId, reportId],
@@ -84,6 +91,9 @@ export function ReportTrackingPage() {
   return (
     <section className={`report-tracking report-tracking--${report.status}`} aria-label="Report status">
       <article className="report-tracking__content" aria-live="polite">
+        <button type="button" onClick={goBack} className="report-tracking__back">
+          &larr; Back
+        </button>
         <p className="report-tracking__reference">Report {report.id.slice(0, 8)}</p>
         <h1>{copy.title}</h1>
         <p>{copy.body}</p>

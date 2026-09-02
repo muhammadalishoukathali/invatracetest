@@ -21,6 +21,7 @@ LIMITS = {
     "profile_start": Limit(10, 60),
     "profile_bootstrap": Limit(30, 60),
     "profile_restore": Limit(5, 15 * 60),
+    "profile_restore_ip": Limit(5, 15 * 60),
     "recovery_rotate": Limit(5, 60 * 60),
     "installation_revoke": Limit(20, 60 * 60),
     "upload_presign": Limit(30, 60),

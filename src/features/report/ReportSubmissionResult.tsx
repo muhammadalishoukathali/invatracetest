@@ -8,7 +8,13 @@ export function ReportSubmissionResult() {
   const { outcome, reset } = useReportDraft()
 
   const done = (destination: string) => {
-    navigate(destination, { replace: true })
+    // Server-supplied absolute URLs would otherwise be interpreted as SPA
+    // routes and 404. Open externally and stay put so the reset still runs.
+    if (/^https?:\/\//i.test(destination)) {
+      window.open(destination, '_blank', 'noopener,noreferrer')
+    } else {
+      navigate(destination, { replace: true })
+    }
     window.setTimeout(() => {
       reset()
       useScan.getState().reset()
@@ -18,6 +24,11 @@ export function ReportSubmissionResult() {
   if (!outcome) return null
 
   const submitted = outcome.kind === 'submitted'
+  const trackingDestination = submitted && outcome.kind === 'submitted'
+    ? (typeof outcome.report.trackingUrl === 'string' && outcome.report.trackingUrl.length > 0
+      ? outcome.report.trackingUrl
+      : `/reports/${outcome.report.id}`)
+    : null
 
   return (
     <main className="report-submission-result">
@@ -33,8 +44,8 @@ export function ReportSubmissionResult() {
         )}
 
         <div className="report-submission-result__actions">
-          {submitted && outcome.kind === 'submitted' && (
-            <button type="button" onClick={() => done(outcome.report.trackingUrl)}>
+          {trackingDestination && (
+            <button type="button" onClick={() => done(trackingDestination)}>
               View report
             </button>
           )}

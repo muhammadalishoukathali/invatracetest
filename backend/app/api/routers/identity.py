@@ -161,8 +161,8 @@ def restore(
     request: Request,
     session: Session = Depends(get_session),
 ) -> RestoreResponse:
-    identity_key = f"{client_address(request)}:{body.profile_id}"
-    rate_limiter.check("profile_restore", identity_key)
+    rate_limiter.check("profile_restore", body.profile_id)
+    rate_limiter.check("profile_restore_ip", client_address(request))
     token_hash = keyed_hash(body.installation_token)
     if session.scalar(select(Installation.id).where(Installation.token_hash == token_hash)):
         raise ApiProblem(400, "restore_failed", GENERIC_RESTORE_ERROR)

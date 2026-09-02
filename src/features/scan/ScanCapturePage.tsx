@@ -8,6 +8,14 @@ import { api } from '@/services/api-client'
 import type { SpeciesDetail } from '@/types'
 import './scan-capture.css'
 
+async function sha256HexOfBlob(blob: Blob): Promise<string> {
+  const buffer = await blob.arrayBuffer()
+  const digest = await crypto.subtle.digest('SHA-256', buffer)
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('')
+}
+
 /** The camera and gallery use separate file inputs so each button always does
  *  one clear job. The `capture` attribute asks supported phones to open the
  *  rear camera, while the other input opens the normal file picker. */
@@ -46,27 +54,49 @@ export function ScanCapturePage() {
 
   useEffect(() => {
     mountedRef.current = true
+    let hiddenTimer: number | null = null
+    const clearHiddenTimer = () => {
+      if (hiddenTimer !== null) {
+        window.clearTimeout(hiddenTimer)
+        hiddenTimer = null
+      }
+    }
     const interruptCamera = () => {
       if (streamRef.current) {
         stopCamera('Camera closed when the app was interrupted. Reopen it when you are ready.')
       }
     }
     const handleVisibility = () => {
-      if (document.visibilityState === 'hidden') interruptCamera()
+      if (document.visibilityState === 'hidden') {
+        // Ignore short backgrounding (e.g. iOS permission prompts,
+        // notification shade) so the stream isn't torn down on every blur.
+        clearHiddenTimer()
+        hiddenTimer = window.setTimeout(() => {
+          hiddenTimer = null
+          if (document.visibilityState === 'hidden') interruptCamera()
+        }, 3000)
+      } else {
+        clearHiddenTimer()
+      }
+    }
+    const handlePageHide = () => {
+      clearHiddenTimer()
+      interruptCamera()
     }
     document.addEventListener('visibilitychange', handleVisibility)
-    window.addEventListener('pagehide', interruptCamera)
+    window.addEventListener('pagehide', handlePageHide)
     return () => {
       mountedRef.current = false
       cameraRequestRef.current += 1
       imageRequestRef.current += 1
       analysisRequestRef.current += 1
       analysisRunningRef.current = false
+      clearHiddenTimer()
       const stream = streamRef.current
       streamRef.current = null
       stream?.getTracks().forEach((track) => track.stop())
       document.removeEventListener('visibilitychange', handleVisibility)
-      window.removeEventListener('pagehide', interruptCamera)
+      window.removeEventListener('pagehide', handlePageHide)
     }
   }, [stopCamera])
 
@@ -112,7 +142,6 @@ export function ScanCapturePage() {
 
   const openCamera = async () => {
     if (cameraStarting || streamRef.current) return
-    captureScanLocation()
     setCameraError(null)
     const requestId = ++cameraRequestRef.current
     setCameraStarting(true)
@@ -130,6 +159,7 @@ export function ScanCapturePage() {
         stream.getTracks().forEach((track) => track.stop())
         return
       }
+      captureScanLocation()
       const handleEnded = () => {
         if (streamRef.current !== stream || !mountedRef.current) return
         streamRef.current = null
@@ -214,6 +244,29 @@ export function ScanCapturePage() {
       }
 
       setResult({ ...result, reportable: Boolean(detail?.reportable ?? detail) }, detail)
+      // AC 2.2.1 — persist the model result server-side so a later report submission
+      // cannot silently change the species. Fire-and-forget: if it fails the report
+      // path still works, but with weaker anti-spoofing guarantees.
+      void (async () => {
+        try {
+          const { captureId } = useScan.getState()
+          if (!captureId) return
+          const hashHex = await sha256HexOfBlob(imageBlob)
+          await api('/api/v1/scans', {
+            method: 'POST',
+            body: JSON.stringify({
+              captureId,
+              predictedSpeciesId: result.outcome === 'target' ? result.speciesId ?? null : null,
+              outcome: result.outcome,
+              confidence: result.confidence,
+              modelVersion: result.modelVersion,
+              imageSha256Hex: hashHex,
+            }),
+          })
+        } catch {
+          // Non-fatal — user can still submit; backend just won't enforce species mismatch.
+        }
+      })()
       navigate('/scan/result', { replace: true, state: location.state })
     } catch {
       if (requestId === analysisRequestRef.current) {
@@ -308,7 +361,19 @@ export function ScanCapturePage() {
             <small>Fill the frame with the plant feature</small>
           </button>
 
-          {cameraError && <p className="scan-capture__camera-error" role="alert">{cameraError}</p>}
+          {cameraError && (
+            <div className="scan-capture__camera-error" role="alert">
+              <p>{cameraError}</p>
+              <button
+                type="button"
+                onClick={() => cameraRef.current?.click()}
+                className="scan-capture__camera-fallback"
+              >
+                <Icon name="Camera" size={16} color="var(--ink)" />
+                Use device camera app
+              </button>
+            </div>
+          )}
 
           <button
             type="button"
