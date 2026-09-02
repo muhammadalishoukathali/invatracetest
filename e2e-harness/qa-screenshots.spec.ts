@@ -1,3 +1,8 @@
+// One-off screenshot capture tool, not a real test suite — every test here
+// exists to produce a labelled PNG in Downloads for showing progress to a
+// supervisor or dropping into the FYP writeup, not to assert correctness.
+// Covers the main screens across desktop and mobile widths plus the report
+// wizard, so keep the numbering in the filenames roughly in flow order.
 import { test, expect, Page } from '@playwright/test'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -15,6 +20,9 @@ async function bootstrap(page: Page) {
   await page.waitForTimeout(2500)
 }
 
+// Same fake-green-blob trick as the overflow audit — lets the flow reach
+// scan/result without a real photo, since the point here is capturing UI
+// states, not testing classification accuracy.
 async function uploadSyntheticGreen(page: Page) {
   await page.evaluate(async () => {
     const c = document.createElement('canvas'); c.width = 500; c.height = 500
@@ -110,6 +118,8 @@ test('09 report page reached from gallery upload (proves DEV unlock)', async ({ 
   await page.screenshot({ path: path.join(OUT, '09-report-wizard-opened.png'), fullPage: false })
 })
 
+// Deliberately skips bootstrapIdentity() here — we want the recovery kit
+// screen itself, before the "continue" click that normally routes past it.
 test('10 recovery kit screen — 10 codes, ack checkbox', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('http://localhost:5173/')

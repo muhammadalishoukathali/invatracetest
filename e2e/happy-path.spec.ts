@@ -1,3 +1,9 @@
+// End-to-end coverage for the whole "private access" journey: creating an
+// anonymous profile, saving/restoring recovery codes, scanning and reporting a
+// plant, and flushing queued reports once back online. This is the main
+// regression net for InvaTrace's core loop, so keep it in sync with anything
+// that touches identity, scan, or report flows. Runs against the mock service
+// worker via the default Playwright config (npm run dev).
 import { test, expect, type Page } from '@playwright/test'
 import path from 'node:path'
 
@@ -133,6 +139,11 @@ async function startPrivateAccess(page: Page, acknowledge = true) {
   return payload
 }
 
+// These "legacy" tests covered the old model where InvaTrace silently bootstrapped
+// an anonymous profile with no explicit consent step. That got replaced by the
+// private-access screen below (recovery kit, explicit opt-in), so these are
+// skipped rather than deleted — still handy if we ever need to check the old
+// behaviour or roll something back.
 test.skip('legacy: fresh launch created a stable pseudonymous installation automatically', async ({ page }) => {
   const bootstrapBodies: Array<{ installationToken: string }> = []
   const accountEndpointCalls: string[] = []
@@ -355,6 +366,9 @@ test.skip('legacy: bootstrap created profiles while ignoring privilege fields', 
   await expect(page).toHaveURL(/\/map$/)
 })
 
+// Checks recovery codes and the access token never touch browser storage
+// before the user confirms they've saved the kit — if they did, closing the
+// tab early would leak credentials nobody meant to persist yet.
 test('private access creation saves a recovery kit, skips the optional name, and bootstraps later', async ({ page }) => {
   const payload = await startPrivateAccess(page, false)
   expect(payload.profile).toMatchObject({ role: 'Detector', trustLevel: 'New' })
@@ -385,6 +399,10 @@ test('private access creation saves a recovery kit, skips the optional name, and
   await expect(page.locator('input[type="email"], input[type="password"]')).toHaveCount(0)
 })
 
+// Big one: restoring access on a second install, one-time-use codes, rotating
+// a whole batch, and revoking an old installation. Also checks the restore
+// endpoint answers identically for a real profile id and a made-up one, so it
+// can't be used to fish for which ids exist.
 test('restoration adds an installation, consumes codes once, rotates batches, and supports revocation', async ({ page }) => {
   const started = await startPrivateAccess(page)
   const firstIdentity = await readStoredIdentity(page)
@@ -471,6 +489,9 @@ test('restoration adds an installation, consumes codes once, rotates batches, an
   expect(revokedBootstrap).toMatchObject({ status: 401, body: { code: 'installation_revoked' } })
 })
 
+// If the user reloads before acknowledging their recovery kit, we can't be
+// sure they actually saw the codes, so the backend should hand out a fresh
+// batch and the old ones shouldn't show up anywhere after that.
 test('interrupted recovery setup rotates the unseen batch after reload', async ({ page }) => {
   const started = await startPrivateAccess(page, false)
   const bootstrap = page.waitForResponse((response) => new URL(response.url()).pathname === BOOTSTRAP_PATH)
@@ -487,6 +508,9 @@ test('interrupted recovery setup rotates the unseen batch after reload', async (
   await expect(page).toHaveURL(/\/map$/)
 })
 
+// Private access needs a live request to the backend, so a brand-new user who
+// opens the app offline shouldn't end up with a half-created profile — just a
+// clear message and a disabled button until they're back online.
 test('a first-ever offline launch explains the network requirement without creating a profile', async ({ page }) => {
   await page.addInitScript(() => {
     Object.defineProperty(Navigator.prototype, 'onLine', { configurable: true, get: () => false })
@@ -512,6 +536,10 @@ test('a first-ever offline launch explains the network requirement without creat
   expect(stored).toBeNull()
 })
 
+// The full happy path: scan a photo, get a species match, fill in the report
+// form, and submit. Also forces the session to expire right before submission
+// to check the app quietly recovers a new session and retries instead of just
+// losing the report.
 test('private detector can scan, analyse, and submit', async ({ page, context }) => {
   await context.grantPermissions(['geolocation'], { origin: 'http://localhost:5173' })
   await context.setGeolocation({ latitude: 3.1497, longitude: 101.6412, accuracy: 15 })
@@ -568,6 +596,10 @@ test('private detector can scan, analyse, and submit', async ({ page, context })
   expect(accountEndpointCalls).toEqual([])
 })
 
+// A report queued while offline shouldn't try to bootstrap a session or
+// upload anything until the app is actually back online, and the bootstrap
+// has to finish before the queued report gets flushed — the upload needs a
+// valid session to attach to.
 test('offline launch restores locally, then reconnects before flushing reports', async ({ page }) => {
   const { profile } = await startPrivateAccess(page)
 

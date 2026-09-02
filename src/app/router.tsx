@@ -26,6 +26,8 @@ const ReportTrackingPage = lazy(() => import('@/features/report/ReportTrackingPa
 const MyReportsPage = lazy(() => import('@/features/report/MyReportsPage')
   .then((module) => ({ default: module.MyReportsPage })))
 
+// Wraps a lazy-loaded page in its own Suspense boundary so one slow chunk
+// doesn't hold up rendering of AppShell or the surrounding route tree.
 function loadRoute(content: ReactNode) {
   return <Suspense fallback={<RouteLoadingState />}>{content}</Suspense>
 }
@@ -39,6 +41,12 @@ function RouteLoadingState() {
   )
 }
 
+// Route tree, roughly in three groups: the unauthenticated /private-access
+// flow (guarded by PrivateAccessRouteGuard so it redirects once a profile
+// already exists), the main AppShell layout (guarded by RequirePrivateAccess
+// so nothing here renders without a profile), and the standalone /scan and
+// /report flows, which use their own layouts instead of AppShell because
+// they need a focused, distraction-free screen without the sidebar/tabs.
 export const router = createBrowserRouter([
   {
     path: '/auth/*',

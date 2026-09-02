@@ -12,6 +12,10 @@ const PRIVATE_STEPS = [
   ['Recovery stays with you', 'One-time recovery codes let you bring that profile to another device.'],
 ] as const
 
+/** First screen a new or logged-out installation sees: explains the
+ *  no-email/no-password identity model and offers to start a new private
+ *  profile or hand off to RestorePrivateAccessPage.tsx. Rendered inside
+ *  PrivateAccessRouteGuard.tsx, so it never shows to an already-ready profile. */
 export function PrivateAccessLandingPage() {
   const navigate = useNavigate()
   const online = useOnline()

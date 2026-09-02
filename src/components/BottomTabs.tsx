@@ -3,7 +3,11 @@ import { Icon } from './Icon'
 import { scanStateFromPath } from '@/features/scan/scan-navigation'
 import './bottom-tabs.css'
 
-// The map stays behind this mobile action, so the compact bar only needs Scan.
+/**
+ * Mobile bottom bar with a single big Scan action. Only rendered by AppShell
+ * on the map screen at narrow widths — the map stays visible behind it, so
+ * the bar doesn't need a full tab set, just the one primary action.
+ */
 export function BottomTabs() {
   return (
     <div className="bottom-tabs-shell">

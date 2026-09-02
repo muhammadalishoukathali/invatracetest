@@ -1,3 +1,7 @@
+// Targets verify-unsupported-target.spec.ts on the model-test server (5174)
+// — presumably the check for how the app handles a photo of something
+// outside the target species list. Note: that spec file isn't present in
+// this directory right now, so this config currently has nothing to run.
 import { defineConfig, devices } from '@playwright/test'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'

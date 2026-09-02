@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react'
 import { LogoWordmark } from '@/components/Logo'
 
-/** Shared page frame for private-access screens. The compact version keeps
- *  short loading and restore screens from becoming unnecessarily wide. */
+/** Shared page frame (logo header + footer) for the landing/setup/restore
+ *  screens, so they all look like one flow instead of four separate pages.
+ *  The compact version keeps short loading and restore screens from
+ *  becoming unnecessarily wide. */
 export function PrivateAccessLayout({ children, compact = false }: { children: ReactNode; compact?: boolean }) {
   return (
     <div className={`private-access-shell${compact ? ' private-access-shell--compact' : ''}`}>

@@ -26,9 +26,21 @@ from app.db.models import (
 )
 from app.services.object_deletion import enqueue_object_deletions
 
+"""Admin-only endpoints — role moderation, report repair, sighting takedown.
+
+Everything here sits behind require_admin, so it's the backend for the
+(presumably small) admin panel rather than anything a normal user hits.
+Every mutation writes an AuditEvent so there's a paper trail of who changed
+what and why — useful given we don't have real user accounts to fall back on.
+"""
+
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
 
+# Lets an admin manually push a report out of a stuck/exceptional screening
+# state (e.g. the worker crashed mid-job, or a report needs a second look).
+# expected_status is an optimistic-lock guard so two admins acting on stale
+# UI state can't stomp on each other.
 @router.post("/reports/{report_id}/repair", response_model=OkResponse)
 def repair_report(
     report_id: uuid.UUID,
@@ -54,6 +66,8 @@ def repair_report(
         select(VerificationJob).where(VerificationJob.report_id == report.id).with_for_update()
     )
     if body.action == "requeue":
+        # Reset the job back to pending so the screening worker (see
+        # app/services/scan_service.py or wherever it lives) picks it up fresh.
         report.status = "processing"
         report.validation_reasons = ["admin_requeued"]
         if not job:
@@ -65,6 +79,8 @@ def repair_report(
         job.locked_at = None
         job.last_error_code = None
     else:
+        # Otherwise the admin is just forcing a terminal state without
+        # re-running the automated checks.
         report.status = "needs_rescan" if body.action == "set_needs_rescan" else "rejected"
         report.validation_reasons = ["admin_integrity_repair"]
         if job:
@@ -98,6 +114,8 @@ def repair_report(
     return OkResponse()
 
 
+# Promotes/demotes a profile's role (Detector/Volunteer/Expert/Admin). Used by
+# the admin user-management screen.
 @router.post("/profiles/{profile_id}/role", response_model=OkResponse)
 def update_profile_role(
     profile_id: uuid.UUID,
@@ -109,6 +127,7 @@ def update_profile_role(
     profile = session.scalar(select(Profile).where(Profile.id == profile_id).with_for_update())
     if not profile:
         raise ApiProblem(404, "profile_not_found", "Not found")
+    # Stops an admin from locking themselves out by demoting their own account.
     if profile.id == auth.profile.id and body.role != "Admin":
         raise ApiProblem(
             409, "self_demote_forbidden", "Admins cannot demote themselves."
@@ -140,6 +159,10 @@ def update_profile_role(
     return OkResponse()
 
 
+# Takedown for a public sighting (bad photo, wrong species, whatever). Called
+# from the admin moderation view — once removed, the sighting still exists in
+# the DB (status="removed") but drops off the public map/feed. See
+# app/api/routers/sightings.py, which only ever returns screened/removed rows.
 @router.post("/sightings/{sighting_id}/remove", response_model=OkResponse)
 def remove_sighting(
     sighting_id: uuid.UUID,
@@ -154,6 +177,7 @@ def remove_sighting(
     if not sighting:
         raise ApiProblem(404, "sighting_not_found", "Not found")
     if sighting.status == "removed":
+        # Already gone — treat as a no-op so retries/double-clicks don't error.
         return OkResponse()
     thumbnail_key = sighting.thumbnail_key
     sighting.status = "removed"
@@ -165,6 +189,8 @@ def remove_sighting(
             )
         ).all()
     )
+    # A sighting can be backed by multiple merged reports (see the screening
+    # worker's merge logic) — reject all of them, not just the "primary" one.
     photo_keys: list[str] = []
     for report_id in linked_report_ids:
         report = session.scalar(select(Report).where(Report.id == report_id).with_for_update())
@@ -185,6 +211,8 @@ def remove_sighting(
             },
         )
     )
+    # Don't delete objects from R2/MinIO inline in the request — queue it up
+    # so a slow storage backend can't hang this endpoint (see object_deletion.py).
     enqueue_object_deletions(session, [thumbnail_key, *photo_keys])
     session.commit()
     return OkResponse()

@@ -16,9 +16,16 @@ async function sha256HexOfBlob(blob: Blob): Promise<string> {
     .join('')
 }
 
-/** The camera and gallery use separate file inputs so each button always does
- *  one clear job. The `capture` attribute asks supported phones to open the
- *  rear camera, while the other input opens the normal file picker. */
+/**
+ * First screen of the scan flow: lets the user open the live camera or pick
+ * a photo from their library, runs the quality check and then the actual
+ * plant-model inference on it, and on success hands off to ScanResultPage.
+ * Also doubles as the "retake" screen when coming back from processing.
+ *
+ * The camera and gallery use separate file inputs so each button always does
+ * one clear job. The `capture` attribute asks supported phones to open the
+ * rear camera, while the other input opens the normal file picker.
+ */
 export function ScanCapturePage() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -27,6 +34,12 @@ export function ScanCapturePage() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const mountedRef = useRef(false)
+  // These three counters are the cancellation mechanism for async work that
+  // has no native abort signal (getUserMedia, image decode/resize, model
+  // inference). Bumping the relevant counter makes any in-flight callback's
+  // "is this still the request that started me" check fail, so a stale
+  // camera stream, resize, or inference result from before a retake/unmount
+  // can't clobber state that's already moved on.
   const cameraRequestRef = useRef(0)
   const imageRequestRef = useRef(0)
   const analysisRequestRef = useRef(0)
@@ -86,6 +99,10 @@ export function ScanCapturePage() {
     document.addEventListener('visibilitychange', handleVisibility)
     window.addEventListener('pagehide', handlePageHide)
     return () => {
+      // Unmounting the capture screen should cancel any camera start, image
+      // resize, or model inference that's still running — otherwise a
+      // background analyse() could finish after the user has already
+      // navigated away and call setState on an unmounted component's data.
       mountedRef.current = false
       cameraRequestRef.current += 1
       imageRequestRef.current += 1

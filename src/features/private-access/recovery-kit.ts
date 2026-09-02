@@ -1,3 +1,12 @@
+// Formats and downloads the recovery kit (profile ID + one-time codes) as a
+// local text file. This is all client-side string/Blob work — no network
+// calls here. Recovery codes are shown to the user only once, during setup
+// or rotation (see docs/product.md), and the client never persists the raw
+// codes anywhere. That's why there's no "load saved recovery kit" function
+// in this file — once the codes leave memory (tab closed, page navigated
+// away without downloading) they're gone from the client for good, same as
+// they are on the server after they're consumed.
+
 interface RecoveryKitInput {
   profileId: string
   recoveryCodes: string[]
@@ -91,6 +100,8 @@ export function downloadRecoveryKit(input: RecoveryKitInput): string {
   document.body.appendChild(link)
   link.click()
   link.remove()
+  // Delay the revoke by a tick so the browser has actually started the
+  // download before we free the object URL out from under it.
   window.setTimeout(() => URL.revokeObjectURL(href), 0)
   return link.download
 }

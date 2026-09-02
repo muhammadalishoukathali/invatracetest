@@ -8,7 +8,16 @@ public/models/pulih-model1-v4
 /public/reference-images/*.png
 /vendor/PULIH_Model1_v4_FP16_Web_Kit/model/*.onnx
 .env
+.env.local
+.cloudflare-pages.env
 .DS_Store
+Thumbs.db
+.impeccable
+playwright-report
+.playwright-cli
+*.log
+.idea
+.vscode
 tsconfig.tsbuildinfo
 test-results
 playwright-report

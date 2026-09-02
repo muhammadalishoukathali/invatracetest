@@ -1,5 +1,13 @@
 import type { GeoPoint, IdentifyResult } from '@/types'
 
+/**
+ * Durable local log of past scans (species, outcome, confidence, location,
+ * whether it was later submitted as a report), capped at 50 and kept in
+ * localStorage so a volunteer can look back at what they've scanned even
+ * offline. This is separate from scan-store.ts, which only holds the scan
+ * that's currently in progress and gets wiped on reset — this file is the
+ * append-only history that survives across scans and app restarts.
+ */
 export interface ScanHistoryRecord {
   captureId: string
   observedAt: string

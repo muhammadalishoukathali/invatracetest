@@ -1,3 +1,8 @@
+// Verification script for the permission radio gate on the scan-result page.
+// The guidance panel is supposed to stay hidden until the user picks an
+// answer, then show exactly one of two mutually exclusive blocks — this was
+// a bug-prone spot early on (both blocks rendering, or neither), so it gets
+// its own targeted checks plus screenshots for each of the three states.
 import { test, expect, Page } from '@playwright/test'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -33,6 +38,10 @@ async function bootstrapAndScan(page: Page) {
   await page.waitForTimeout(800)
 }
 
+// Scrolls the inner scan-flow panel (not the window) down to wherever the
+// permission question currently sits — its position shifts depending on how
+// much guidance text is above it, so we search by text instead of a fixed
+// offset.
 async function scrollToPermissionGate(page: Page) {
   await page.evaluate(() => {
     const container = document.querySelector<HTMLElement>('.scan-flow__main')

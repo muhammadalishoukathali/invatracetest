@@ -32,6 +32,16 @@ const COPY: Record<ReportStatus, { title: string; body: string }> = {
   },
 }
 
+/**
+ * Private per-report status screen — shows a single contributor where their
+ * own report stands in the automated screening pipeline (processing,
+ * published, merged, needs rescan, rejected). Per product.md, screening
+ * decisions are made inspectable through reason codes, but only at this
+ * scoped level: we filter out the generic "automated_rule_screened" code and
+ * show plain-language copy for the rest, never the raw rule internals or
+ * other people's reports. Polls while a report is still processing (or
+ * stuck in validation_unavailable but retryable) since screening runs async.
+ */
 export function ReportTrackingPage() {
   const { reportId } = useParams()
   const navigate = useNavigate()

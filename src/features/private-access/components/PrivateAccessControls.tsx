@@ -7,6 +7,8 @@ import '../private-access.css'
 // across every private-access screen. The field also connects hint and error
 // text to its input so screen readers announce the same help as visual users.
 
+/** Standard button for the access screens. `kind` just swaps the visual
+ *  style class — no different behaviour per kind, it's purely cosmetic. */
 export function PrivateAccessButton({
   kind = 'primary',
   icon,
@@ -25,6 +27,8 @@ export function PrivateAccessButton({
   )
 }
 
+/** Link styled like a button. Switches between router `Link` and a plain
+ *  anchor depending on whether the target is internal, see isInternal below. */
 export function PrivateAccessLink({
   href,
   children,
@@ -55,6 +59,9 @@ export function PrivateAccessLink({
   )
 }
 
+/** Labelled text input with wired-up hint/error ids so assistive tech reads
+ *  the same help text a sighted user sees, without every call site redoing
+ *  the aria-describedby plumbing by hand. */
 export function PrivateAccessField({
   label,
   hint,
@@ -85,6 +92,9 @@ export function PrivateAccessField({
   )
 }
 
+/** Inline status banner (info/warning/error/success) used for setup and
+ *  restore feedback. Errors get role="alert" + assertive so they interrupt,
+ *  everything else is polite so it doesn't steal focus mid-flow. */
 export function PrivateAccessNotice({
   tone,
   title,
@@ -114,6 +124,9 @@ export function PrivateAccessNotice({
   )
 }
 
+/** Renders the ten one-time recovery codes as a numbered grid. Purely
+ *  presentational — it never persists or transmits the codes itself, that's
+ *  on the caller (see RecoveryKitSetupPage.tsx and AccessManagementPage.tsx). */
 export function RecoveryCodeGrid({ codes }: { codes: string[] }) {
   return (
     <ol className="recovery-code-grid" aria-label="One-time recovery codes">

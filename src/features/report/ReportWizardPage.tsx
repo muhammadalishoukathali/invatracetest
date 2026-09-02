@@ -16,6 +16,14 @@ const STEP_LABEL: Record<string, string> = {
   preview: 'Preview',
 }
 
+/**
+ * Entry point for the report feature. Renders the current step from
+ * report-draft-store.ts (location -> extent -> consent -> preview) plus a
+ * shared header, back button and progress bar, then swaps to
+ * ReportSubmissionResult.tsx once the draft has an outcome. Bounces to
+ * /scan if there's no draft and no outcome, since this screen only makes
+ * sense right after a scan seeds a draft via beginFromScan().
+ */
 export function ReportWizardPage() {
   const navigate = useNavigate()
   const location = useLocation()

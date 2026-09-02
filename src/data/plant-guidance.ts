@@ -1,3 +1,13 @@
+// Static, curated per-species guidance shown after a scan result — what a plant is,
+// its Malaysia invasive status, and what a contributor should (and shouldn't) do about
+// it. None of this is user-generated; it's reviewed reference content bundled with the
+// app and read by src/features/scan/PlantGuidancePanel.tsx (via ScanResultPage.tsx) and
+// referenced from the map's sighting details / filters for status labels.
+//
+// The actual data lives in ./plant-guidance.json and is expected to satisfy
+// ./plant-guidance.schema.json — that contract is checked by the sibling
+// plant-guidance.schema.test.ts, not enforced at runtime here, so an edit to the JSON
+// that breaks the schema won't fail until tests run.
 import guidanceJson from './plant-guidance.json'
 import { findModelSpecies } from './model-species-catalog'
 
@@ -92,6 +102,10 @@ export interface PlantGuidanceDataset {
 
 const rawPlantGuidanceDataset = guidanceJson as unknown as PlantGuidanceDataset
 
+// Maps the raw malaysia_status strings from species_31.json (model-species-catalog.ts)
+// to how we actually label them in the UI. Keys have to match the model kit's status
+// values exactly — anything not listed here falls through to the "needs review" default
+// in modelMalaysiaStatus below rather than failing loudly.
 const MODEL_STATUS_PRESENTATION: Record<string, Pick<MalaysiaStatus, 'category' | 'display_label' | 'confidence'>> = {
   invasive: {
     category: 'invasive', display_label: 'Invasive in Malaysia', confidence: 'high',

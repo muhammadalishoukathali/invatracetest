@@ -1,5 +1,12 @@
-/** Stores the active map filters and selected sighting. This state is not kept
- *  in the URL because changing a filter should not add browser-history entries. */
+/**
+ * Stores the active map filters and selected sighting. This state is not kept
+ * in the URL because changing a filter should not add browser-history entries.
+ *
+ * Pulled out of ThreatMapPage.tsx (rather than useState there) so MapFilters.tsx
+ * and SightingDetailsSheet.tsx can read and write it directly without prop
+ * drilling through the page component — both need it, and neither is a child
+ * of the other.
+ */
 import { create } from 'zustand'
 import type { SightingStatus, Risk } from '@/types'
 

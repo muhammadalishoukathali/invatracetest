@@ -19,6 +19,9 @@ function itemStyle(active: boolean): React.CSSProperties {
   }
 }
 
+// One nav entry. Renders as a disabled-looking span (not a real link) for
+// destinations gated to a later iteration, so it can't be tabbed to and
+// activated like it actually navigates somewhere.
 function Row({ item, role }: { item: NavItem; role: PseudonymousProfile['role'] }) {
   const enabled = isEnabled(item, role)
   if (!enabled) {
@@ -43,6 +46,11 @@ function Row({ item, role }: { item: NavItem; role: PseudonymousProfile['role'] 
   )
 }
 
+/**
+ * Desktop-only left navigation: brand mark, scan shortcut, primary nav links,
+ * and the profile entry point. Rendered by AppShell in place of BottomTabs
+ * once useIsDesktop reports a wide enough viewport.
+ */
 export function Sidebar({ profile }: { profile: PseudonymousProfile }) {
   const navigate = useNavigate()
   const { pathname } = useLocation()

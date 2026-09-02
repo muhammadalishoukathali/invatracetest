@@ -15,11 +15,23 @@ from pydantic import (
 )
 
 
+"""Pydantic request/response models for the whole API.
+
+Field names are snake_case in Python but serialize as camelCase (to_camel
+below) so the React frontend gets the naming convention it expects without
+every router having to do the conversion by hand. Grouped roughly by
+router: identity/access stuff first, then species, scans, uploads, reports,
+sightings, notifications, admin.
+"""
+
 def to_camel(value: str) -> str:
     first, *rest = value.split("_")
     return first + "".join(word.capitalize() for word in rest)
 
 
+# Base class every schema in this file inherits from. extra="forbid" means an
+# unexpected field in the request body is a 422, not silently ignored — helps
+# catch frontend/backend drift early instead of debugging a mystery later.
 class ApiModel(BaseModel):
     model_config = ConfigDict(
         alias_generator=to_camel,
@@ -50,10 +62,15 @@ ReportStatus = Literal[
 SightingStatus = Literal["screened", "removed"]
 Risk = Literal["high", "watch"]
 
+# 43 chars = a base64url-encoded 256-bit random value generated client-side —
+# this is the closest thing to a "password" in the whole auth model.
 InstallationSecret = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9_-]{43}$")]
 DisplayName = Annotated[str, StringConstraints(max_length=80)]
 
 
+# Rejects control characters in free-text fields (display names, notes) —
+# mostly to stop someone smuggling weird terminal escape codes or null bytes
+# through into stored data / notifications.
 def _no_controls(value: str) -> str:
     if any(ord(character) < 32 or ord(character) == 127 for character in value):
         raise ValueError("control characters are not allowed")
@@ -108,6 +125,8 @@ class RestoreRequest(ApiModel):
     recovery_code: Annotated[str, StringConstraints(min_length=1, max_length=64)]
     installation_token: InstallationSecret
 
+    # Recovery codes/profile IDs are displayed to the user in uppercase, so
+    # normalize case here rather than expecting the client to get it exactly right.
     @field_validator("profile_id", "recovery_code")
     @classmethod
     def normalize_secret_label(cls, value: str) -> str:
@@ -263,11 +282,16 @@ class PresignResponse(ApiModel):
     expires_at: datetime
 
 
+# Bounds are roughly Malaysia's bounding box — the app is scoped to that
+# region so we don't accept (or publish) coordinates from anywhere else.
 class GeoPoint(ApiModel):
     lat: float = Field(ge=0.8, le=7.5)
     lng: float = Field(ge=99.3, le=119.5)
 
 
+# Both fields must literally be True — pydantic rejects the request outright
+# if the client sends false, so there's no code path where we'd accidentally
+# accept a report the user didn't confirm as accurate/PII-free.
 class Consent(ApiModel):
     accurate: Literal[True]
     no_pii: Literal[True] = Field(alias="noPII")
@@ -297,6 +321,8 @@ class ReportSubmission(ReportSubmissionDetails):
 
     @model_validator(mode="after")
     def validate_species_outcome(self) -> ReportSubmission:
+        # A "target" (i.e. it's the invasive species) report needs a
+        # species_id; anything else (other_plant/uncertain) must not have one.
         if self.outcome == "target" and not self.species_id:
             raise ValueError("target reports require a speciesId")
         if self.outcome != "target" and self.species_id is not None:
@@ -305,9 +331,15 @@ class ReportSubmission(ReportSubmissionDetails):
         if observed.tzinfo is None:
             raise ValueError("observedAt must include a timezone")
         now = datetime.now(UTC)
+        # Small forgiveness window for clock skew between device and server —
+        # a timestamp a couple minutes in the future gets clamped rather than
+        # rejected, since phone clocks drift.
         future_max = now + timedelta(minutes=5)
         if observed > future_max:
             object.__setattr__(self, "observed_at", future_max)
+        # Anything older than 30 days is probably a stale offline-queue entry
+        # or a bogus timestamp — reject rather than publish an old sighting
+        # as if it just happened.
         if self.observed_at < now - timedelta(days=30):
             raise ValueError("observedAt is outside the reporting window")
         return self
@@ -421,4 +453,6 @@ class HealthResponse(ApiModel):
     verification_backlog: int | None = None
 
 
+# Shape check for the client-supplied Idempotency-Key header, used by both
+# uploads.py and reports.py before it ever touches the idempotency table.
 IDEMPOTENCY_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{8,128}$")

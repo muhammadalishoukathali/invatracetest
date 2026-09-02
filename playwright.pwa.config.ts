@@ -1,5 +1,9 @@
 import { defineConfig, devices } from '@playwright/test'
 
+/** Service-worker and offline-caching behaviour only shows up in a production
+ *  build; Vite's dev server doesn't register a real service worker. So this
+ *  runs against `npm run preview` (the built dist/ output) instead of the dev
+ *  server the other configs use. */
 export default defineConfig({
   testDir: './e2e',
   testMatch: 'pwa.spec.ts',

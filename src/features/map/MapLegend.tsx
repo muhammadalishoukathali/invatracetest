@@ -4,10 +4,12 @@ import { useIsDesktop } from '@/hooks/useIsDesktop'
 import './map-controls.css'
 
 /**
- * Map legend. Desktop shows the card inline in the bottom-left corner.
- * Mobile shows a small "Legend" pill that expands into a centered card
- * anchored above the scan button, so the reveal reads as a proper popover
- * rather than a small tooltip crammed against the map edge.
+ * Legend explaining the pin colours on the threat map (hotspot/spreading/
+ * isolated/removed). Rendered inside ThreatMapPage.tsx, floating over the map.
+ * Desktop shows the card inline in the bottom-left corner. Mobile shows a
+ * small "Legend" pill that expands into a centered card anchored above the
+ * scan button, so the reveal reads as a proper popover rather than a small
+ * tooltip crammed against the map edge.
  */
 export function MapLegend() {
   const isDesktop = useIsDesktop()
@@ -105,6 +107,7 @@ export function MapLegend() {
   return card
 }
 
+/** One colour-swatch + label line in the legend card. */
 function Row({ colour, label, muted }: { colour: string; label: string; muted?: boolean }) {
   return (
     <div className="map-legend-card__row">

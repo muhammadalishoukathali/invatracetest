@@ -1,3 +1,6 @@
+// Targets qa-screenshots.spec.ts, the plain screenshot-capture script, on
+// the mocked dev server (5173). Its own config mainly so it's a one-command
+// re-run whenever I need fresh screenshots for the writeup.
 import { defineConfig, devices } from '@playwright/test'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'

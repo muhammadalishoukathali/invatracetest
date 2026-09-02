@@ -9,6 +9,11 @@ const EXTENT_OPTIONS: { value: ExtentSize; title: string; desc: string; ha: stri
   { value: 'large_area', title: 'Large area', desc: 'Spread widely — needs a crew to survey.', ha: '> 500 m²' },
 ]
 
+/**
+ * Step 2 of 4 in the report wizard (location, extent, consent, preview).
+ * Lets the contributor say roughly how big the infestation is and add free
+ * text notes — both get bundled into the submission on the preview step.
+ */
 export function ReportExtentStep() {
   const { draft, setExtent, setNotes, next } = useReportDraft()
   if (!draft) return null

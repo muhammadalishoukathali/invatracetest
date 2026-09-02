@@ -1,3 +1,7 @@
+// Targets known-species-harness.spec.ts (the clean-photo control group for
+// the cluttered-species harness) on the model-test server, port 5174. Own
+// config so this can be run and compared against the cluttered results
+// without either spec's setup interfering with the other.
 import { defineConfig, devices } from '@playwright/test'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'

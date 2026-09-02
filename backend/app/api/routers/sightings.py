@@ -23,9 +23,21 @@ from app.db.models import MonitoredArea, Report, ReportSightingLink, Sighting, S
 from app.domain.action_guidance import action_summary, current_action_guide
 from app.services.storage import storage
 
+"""Public sighting feed and map — the read side of screened reports.
+
+This is what the map/feed view calls. Only ever returns sightings in
+status screened or removed (never processing/rejected/needs_rescan — those
+stay private on the reporter's own "my reports" list). Coordinates get
+run through app/core/privacy.py before going out, since untrusted reporters'
+exact locations shouldn't be publicly pinpointable.
+"""
+
 router = APIRouter(prefix="/api/v1/sightings", tags=["sightings"])
 
 
+# Turns a raw Sighting + joined Species/place data into the public API shape.
+# Shared by both list_sightings and sighting_detail so the privacy logic and
+# place-source labeling only live in one place.
 def serialize_sighting(
     sighting: Sighting,
     species: Species,
@@ -41,6 +53,9 @@ def serialize_sighting(
         status=sighting.status,
         reporter_trust=sighting.reporter_trust,
     )
+    # Tells the frontend how confident to be about the place label — a real
+    # OSM match, one of our seeded reference places, or the generic
+    # "somewhere in Malaysia" fallback when we couldn't resolve anything.
     place_source = (
         "osm"
         if area_name or trail_name
@@ -69,6 +84,9 @@ def serialize_sighting(
     )
 
 
+# Main feed/map query — backs both the list view and the map's marker
+# clustering. Supports filtering by species/status/risk/text search plus
+# either a lat/lng box or the bbox alias the map view sends when panning.
 @router.get("", response_model=SightingListResponse)
 def list_sightings(
     request: Request,
@@ -88,6 +106,10 @@ def list_sightings(
     cursor: str | None = None,
     session: Session = Depends(get_session),
 ) -> SightingListResponse:
+    # bbox is just a friendlier alias for min/max lat/lng that the map
+    # component sends as one query param instead of four — unpack it into
+    # the same variables so the rest of the function doesn't care which
+    # style the caller used.
     if bbox is not None:
         parts = bbox.split(",")
         if len(parts) != 4:
@@ -107,6 +129,9 @@ def list_sightings(
         min_lat, max_lat, min_lng, max_lng = south, north, west, east
     rate_limiter.check("sightings_read", client_address(request))
     offset = decode_cursor(cursor)
+    # ReportSightingLink.active filters out reports that got merged into this
+    # sighting and then later unlinked (e.g. an admin fixed a bad merge) — we
+    # only want currently-active links counted toward report_count.
     count_expr = func.count(Report.id).filter(ReportSightingLink.active.is_(True))
     latest_expr = func.max(Report.observed_at).filter(ReportSightingLink.active.is_(True))
     statement = (
@@ -159,6 +184,8 @@ def list_sightings(
     )
 
 
+# Single-sighting detail page — same privacy rules as the list endpoint, plus
+# the removal action guidance the map marker's detail panel shows.
 @router.get("/{sighting_id}", response_model=SightingDetailResponse)
 def sighting_detail(
     sighting_id: str,
@@ -171,6 +198,8 @@ def sighting_detail(
 
         parsed_id = uuid.UUID(sighting_id)
     except ValueError as error:
+        # A malformed id isn't a real 400 — we don't want to leak "this
+        # exists but the id was wrong" vs "doesn't exist" so it's just 404.
         raise ApiProblem(404, "sighting_not_found", "Not found") from error
     row = session.execute(
         select(

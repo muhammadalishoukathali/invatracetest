@@ -1,3 +1,12 @@
+"""Idempotent development/demo data seed.
+
+Populates species records (merged with the PULIH classifier's 31-class
+catalog), a handful of Kuala Lumpur monitored places, and a few sample
+sightings so a fresh dev database isn't just empty. Run via `invatrace
+seed` (see app/cli.py). Safe to run repeatedly - existing rows get
+updated in place rather than duplicated, matched by id/name.
+"""
+
 from __future__ import annotations
 
 import json
@@ -12,6 +21,9 @@ from sqlalchemy.orm import Session
 
 from app.db.models import MonitoredPlace, Report, Sighting, Species
 
+# Citation metadata attached to each species' guidance_metadata.sources - shown
+# to the user so the "this plant is invasive" claim isn't just asserted, it's
+# traceable back to GRIIS/MyBIS.
 _MIKANIA_SOURCES = [
     {
         "id": "griis-malaysia-v1_3",
@@ -34,6 +46,11 @@ _EICHHORNIA_SOURCES = _MIKANIA_SOURCES
 _REVIEW_DATE = datetime(2026, 8, 27, tzinfo=UTC)
 _GUIDANCE_VERSION = "invatrace-plant-guidance-v1"
 
+# Hand-written, fully fleshed-out entries for the four species we have proper
+# field-guide content for (removal steps, look-alikes, etc). Everything else
+# comes from the model catalog below and only gets bare-bones detail -
+# _apply_model_catalog_to_species_seed() merges the two, keeping these entries
+# where they already exist by id.
 SPECIES = [
     {
         "id": "mikania-micrantha",
@@ -301,6 +318,11 @@ _GENERIC_INVASIVE_GUIDANCE = {
 
 
 def _apply_model_catalog_to_species_seed() -> None:
+    """Rebuilds SPECIES from the classifier's 31-class catalog, layering in
+    the hand-written detail above wherever we have it (by id) and falling
+    back to generic invasive-species guidance for the rest. This runs once at
+    import time (see the call at the bottom of this block), not per-seed-call,
+    so SPECIES is fully resolved before seed_development_data() ever touches it."""
     catalog_path = Path(__file__).with_name("data") / "pulih_model1_species_31.json"
     catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
     detailed_by_id = {item["id"]: item for item in SPECIES}
@@ -352,12 +374,18 @@ def _apply_model_catalog_to_species_seed() -> None:
         model_species.append(detail)
 
     if len(model_species) != catalog["class_count"]:
+        # If this ever fires it means the catalog JSON and this file drifted
+        # apart (someone added/removed a model class without updating the
+        # seed) - better to fail loudly here than silently seed a mismatched
+        # species list.
         raise ValueError("Development species seed does not match the PULIH model catalogue.")
     SPECIES[:] = model_species
 
 
 _apply_model_catalog_to_species_seed()
 
+# Real coordinates around KL parks/reserves, used as the "home base" for the
+# sample sightings below and as MonitoredPlace rows in their own right.
 PLACES = [
     ("Bukit Kiara · West Trail", 3.1497, 101.6412),
     ("Bukit Kiara · Look-out", 3.1523, 101.6440),
@@ -371,6 +399,9 @@ PLACES = [
     ("Bukit Gasing · North gate", 3.1044, 101.6538),
 ]
 
+# (species, status, risk, radius-from-centre-in-degrees, angle-in-radians) -
+# radius/angle just scatter the sample sightings around the Bukit Kiara centre
+# point in seed_development_data() rather than stacking them on top of each other.
 SIGHTING_SEED = [
     ("mikania-micrantha", "screened", "high", 0.0032, 0.2),
     ("mikania-micrantha", "screened", "high", 0.0025, 1.1),
@@ -388,6 +419,9 @@ LEGACY_SEED_SPECIES_IDS = {"clidemia-hirta"}
 
 
 def seed_development_data(session: Session) -> None:
+    """Upserts species/places/sightings and cleans up species ids we used to
+    seed but have since dropped from the model catalog. Called from the
+    `seed` CLI command - safe to run against an already-seeded database."""
     for values in SPECIES:
         existing = session.get(Species, values["id"])
         if existing:
@@ -433,6 +467,10 @@ def seed_development_data(session: Session) -> None:
                 **values,
             ))
     session.flush()
+    # Species ids that used to be in the seed but got dropped from the model
+    # catalog - only remove them from the DB if nothing real (a sighting or a
+    # user's report) references them, so we never delete data someone actually
+    # created just because our seed script changed.
     for species_id in LEGACY_SEED_SPECIES_IDS:
         species = session.get(Species, species_id)
         has_sighting = session.scalar(

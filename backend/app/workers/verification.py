@@ -1,3 +1,21 @@
+"""Deterministic, rule-based report screening worker.
+
+This is the thing that turns a submitted Report into either a public
+Sighting, a merge into an existing sighting, or a rejection - without
+any human review and without re-running an ML model server-side. It
+polls the verification_jobs table (see claim_job()) rather than using
+an in-process task queue, specifically so multiple worker processes
+can run against the same DB safely (Postgres row locking + SKIP
+LOCKED handles the coordination - no Celery/Redis queue needed).
+
+Screening covers: JPEG quality checks (size/exposure/contrast/edges),
+exact and perceptual-hash duplicate/replay detection, GPS sanity,
+whether the client's on-device model version is one we still trust,
+and merging same-species reports that land close together in space
+and time into one sighting instead of spamming the map. Started via
+`invatrace worker` (see app/cli.py).
+"""
+
 from __future__ import annotations
 
 import hashlib
@@ -43,6 +61,10 @@ def _mark_report_unavailable(
     reason: str,
     notification_body: str,
 ) -> None:
+    """Used when the worker gives up on a job (lease expired, or attempts
+    exhausted in _schedule_failure) - the report stays private rather than
+    silently stuck in "processing" forever, and we only notify the user once
+    (first_unavailable) so a job that keeps failing doesn't spam them."""
     first_unavailable = report.status != "validation_unavailable"
     report.status = "validation_unavailable"
     report.validation_reasons = [reason]
@@ -60,6 +82,15 @@ def _mark_report_unavailable(
 
 
 def claim_job() -> str | None:
+    """Grabs the next job to work on, or None if the queue's empty. This is
+    the piece that makes it safe to run several worker processes against the
+    same queue: `with_for_update(skip_locked=True)` means a row another
+    worker already has locked is just skipped over instead of blocking this
+    one, so nobody double-processes a job and nobody stalls waiting on a row.
+
+    Also does its own janitorial pass first: any job stuck in "running" past
+    its lease (worker crashed / got killed mid-job) with no attempts left is
+    marked failed here rather than sitting locked forever."""
     with SessionLocal() as session:
         settings = get_settings()
         now = datetime.now(UTC)
@@ -84,6 +115,10 @@ def claim_job() -> str | None:
                     "worker_lease_expired",
                     "Your report remains private because automated screening could not finish.",
                 )
+        # Pick up anything ready to go (pending/retry/unavailable whose backoff
+        # has elapsed) or a job some other worker abandoned (still "running"
+        # but past its lease) - the second branch is what lets a crashed
+        # worker's in-flight job get picked back up by someone else.
         job = session.scalar(
             select(VerificationJob)
             .where(
@@ -114,16 +149,30 @@ def claim_job() -> str | None:
 
 
 def _advisory_key(label: str) -> int:
+    # pg_advisory_xact_lock wants a bigint, so hash the string label down to
+    # 8 bytes and reinterpret as a signed int64.
     digest = hashlib.blake2b(label.encode("utf-8"), digest_size=8).digest()
     return int.from_bytes(digest, "big", signed=True)
 
 
 def _lock_screening_units(session, *labels: str) -> None:
+    # Postgres advisory locks, scoped to this transaction (released automatically
+    # on commit/rollback). Used so two workers screening near-duplicate reports
+    # at the same time (same content hash, same capture id, same species) can't
+    # both decide "no duplicate exists yet" and both publish - see process_job,
+    # which locks on content hash + capture id before doing replay/merge checks.
+    # Sorted so two jobs that need the same set of locks always acquire them in
+    # the same order and can't deadlock against each other.
     for key in sorted({_advisory_key(label) for label in labels if label}):
         session.execute(select(func.pg_advisory_xact_lock(key)))
 
 
 def process_job(job_id: str) -> None:
+    """The actual screening pipeline for one report: replay/duplicate checks,
+    image quality checks, deciding accept/reject/merge, publishing a Sighting
+    (or merging into one) when accepted, and recording the decision + updating
+    the reporter's trust level. Runs inside one DB session/transaction so a
+    crash partway through just leaves the job retryable rather than half-applied."""
     settings = get_settings()
     started = time.perf_counter()
     content_sha256: bytes | None = None
@@ -148,6 +197,9 @@ def process_job(job_id: str) -> None:
                 lock_labels.append(f"species:{report.species_id}")
             _lock_screening_units(session, *lock_labels)
 
+            # Same photo bytes or same capture id from a *different* profile is
+            # treated as spam/replay outright, before we even bother screening
+            # the image - see _is_exact_replay.
             exact_replay = _is_exact_replay(
                 session,
                 report=report,
@@ -155,6 +207,10 @@ def process_job(job_id: str) -> None:
             )
             owner_species_merge_sighting = None
             if not exact_replay:
+                # Not the same as exact_replay above - this is the *same*
+                # reporter re-submitting the same photo for the same species,
+                # which is a legit "I'm confirming my earlier sighting" case
+                # rather than spam, so it merges instead of getting rejected.
                 owner_species_merge_sighting = _find_owner_species_replay(
                     session,
                     report=report,
@@ -210,14 +266,22 @@ def process_job(job_id: str) -> None:
                 "screened",
                 "needs_rescan",
             }:
+                # Same reporter re-confirming their own sighting - always merge,
+                # distance is meaningless here so just call it 0.
                 merge_target = owner_species_merge_sighting
                 merge_distance_m = 0.0
             elif base_decision.status == "screened" and reportable_species_id:
+                # Different reporter, but close enough in space/time to the same
+                # species - fold it into the existing sighting instead of
+                # creating a near-duplicate pin on the map.
                 merge_target, merge_distance_m = _find_merge_target(
                     session,
                     report=report,
                     species_id=reportable_species_id,
                 )
+            # Re-run evaluate() with the merge target plugged in (and image
+            # checks cleared, since they already passed in base_decision) so the
+            # final decision correctly comes back as "merged" rather than "screened".
             decision = (
                 evaluate(
                     ValidationInput(
@@ -278,6 +342,10 @@ def process_job(job_id: str) -> None:
             Image.DecompressionBombWarning,
             OSError,
         ):
+            # Corrupt/unreadable/bomb-y image - this isn't a transient failure
+            # worth retrying, it's the photo itself being bad, so go straight
+            # to needs_rescan instead of routing through _schedule_failure's
+            # retry-with-backoff path.
             previous_state = report.status
             decision = ValidationDecision("needs_rescan", ("invalid_or_corrupt_image",), True)
             report.status = decision.status
@@ -301,6 +369,9 @@ def process_job(job_id: str) -> None:
             job.status = "completed"
             job.last_error_code = "invalid_or_corrupt_image"
         except Exception as error:
+            # Anything else (DB blip, storage timeout, bug) - log it and let
+            # _schedule_failure decide whether to retry with backoff or give
+            # up after worker_max_attempts.
             log.exception(
                 "screening.failed",
                 job_id=str(job.id),
@@ -373,6 +444,12 @@ def _find_perceptual_replay(
     serialized_hashes: str,
     threshold: int,
 ) -> tuple[str | None, int | None]:
+    """Catches the case exact-hash matching misses: someone resizing or
+    cropping a photo before re-submitting it (accidentally or to dodge the
+    exact-replay check). Compares difference-hashes against recent reports
+    and picks the closest match; only counts as a replay if it's within
+    `threshold` Hamming distance. Capped to the last 30 days / 500 candidates
+    so this stays cheap rather than scanning the whole reports table."""
     candidates = session.scalars(
         select(Report)
         .where(
@@ -398,6 +475,10 @@ def _find_perceptual_replay(
 
 
 def _make_thumbnail(image: bytes) -> bytes:
+    # Escalate Pillow's decompression-bomb warning to an error so a malicious
+    # or absurdly large image gets caught here (and handled by the
+    # UnidentifiedImageError/DecompressionBombError branch in process_job)
+    # instead of us silently decoding something huge into memory.
     with warnings.catch_warnings():
         warnings.simplefilter("error", Image.DecompressionBombWarning)
         with Image.open(io.BytesIO(image)) as source:
@@ -450,6 +531,11 @@ def _publish_decision(
     merge_target: Sighting | None,
     thumbnail_bytes: bytes | None,
 ) -> Sighting | None:
+    """Turns an accepted decision into a database write: either link the
+    report to an existing sighting (merge) or create a brand new one, upload
+    its thumbnail, and link the report to that. Returns None for anything
+    that isn't accepted (rejected/needs_rescan), since there's nothing to
+    publish in that case."""
     if decision_status == "merged" and merge_target:
         session.add(
             ReportSightingLink(report_id=report.id, sighting_id=merge_target.id, active=True)
@@ -478,7 +564,7 @@ def _publish_decision(
         place_label=place.display_name,
     )
     session.add(sighting)
-    session.flush()
+    session.flush()  # need sighting.id before we can build its thumbnail key
     sighting.thumbnail_key = f"thumbnails/{sighting.id}.jpg"
     storage.put_bytes(sighting.thumbnail_key, thumbnail_bytes, "image/jpeg")
     session.add(ReportSightingLink(report_id=report.id, sighting_id=sighting.id, active=True))
@@ -496,6 +582,10 @@ def _checks_json(
     merge_distance_m: float | None,
     duration_ms: int,
 ) -> dict[str, object]:
+    # Everything here just gets stored as checks_json on the
+    # AutomatedValidationDecision row (see _record_decision) - a debugging/audit
+    # trail so we can see exactly why a given report was screened the way it was
+    # without having to reconstruct it from logs.
     return {
         "screeningMethod": "deterministic_rules",
         "exactReplay": exact_replay,
@@ -532,6 +622,10 @@ def _record_decision(
     merge_target: Sighting | None,
     published_sighting: Sighting | None,
 ) -> None:
+    # Two records for every screening pass: the detailed AutomatedValidationDecision
+    # (checks_json etc, mainly for debugging a specific report) and a lighter
+    # AuditEvent that goes in the same general audit trail as things like
+    # set_profile_access in app/cli.py.
     session.add(
         AutomatedValidationDecision(
             report_id=report.id,
@@ -561,6 +655,9 @@ def _record_decision(
 
 
 def _notify_resolution(session, report: Report) -> None:
+    # Push a notification with human-readable copy for whichever terminal
+    # status the report landed on - report.status is expected to already be
+    # one of these four keys by the time this is called.
     copy = {
         "screened": (
             "Report rule-screened",
@@ -597,10 +694,18 @@ def _notify_resolution(session, report: Report) -> None:
 
 
 def _update_trust(session, report: Report, sighting: Sighting | None) -> None:
+    """Bumps a reporter's trust level based on their track record. Trust only
+    goes up here (screened/merged reports count as valid, rejected ones count
+    as a hard failure) - there's no separate demotion path, the thresholds
+    below just won't be met if someone's ratio drops."""
     profile = session.get(Profile, report.profile_id)
     if not profile:
         return
     if report.status == "merged" and sighting is not None:
+        # Don't hand out repeat trust credit for merging into a sighting the
+        # same reporter already gets credit for within the last 30 days -
+        # otherwise someone could farm trust by resubmitting near-identical
+        # reports of the same sighting over and over.
         recent_credit = session.scalar(
             select(Report.id)
             .join(ReportSightingLink, ReportSightingLink.report_id == Report.id)
@@ -629,6 +734,9 @@ def _update_trust(session, report: Report, sighting: Sighting | None) -> None:
 
 
 def _schedule_failure(session, job: VerificationJob, report: Report, code: str) -> None:
+    # Exponential backoff (2^attempts seconds, capped at 5 minutes) up to
+    # worker_max_attempts, then give up for good and let the report fall back
+    # to validation_unavailable via _mark_report_unavailable.
     settings = get_settings()
     job.last_error_code = code
     if job.attempts >= settings.worker_max_attempts:
@@ -645,6 +753,10 @@ def _schedule_failure(session, job: VerificationJob, report: Report, code: str) 
 
 
 def run_worker(*, once: bool = False) -> None:
+    """Main loop for `invatrace worker`. `once=True` (the --once CLI flag)
+    processes at most one job and returns - handy for tests/manual runs -
+    otherwise this just polls forever, sleeping between empty checks so an
+    idle worker isn't hammering the DB."""
     settings = get_settings()
     while True:
         job_id = claim_job()

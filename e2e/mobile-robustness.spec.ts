@@ -1,3 +1,8 @@
+// Mobile-only check for the camera capture screen. Runs under the
+// "mobile-chromium" Playwright project (Pixel 5 viewport) — that's the only
+// project this spec is matched against. Guards against the camera staying on
+// (battery drain, privacy risk) when the tab gets backgrounded mid-scan, and
+// against layout overflow on a narrow screen.
 import { expect, test, type Page } from '@playwright/test'
 
 async function startPrivateAccess(page: Page) {
@@ -8,6 +13,9 @@ async function startPrivateAccess(page: Page) {
   await expect(page).toHaveURL(/\/map$/)
 }
 
+// Fires pagehide rather than a normal navigation, since that's the case most
+// likely to leave a camera stream running if the cleanup logic isn't wired up
+// properly (a real navigation would tear things down more predictably).
 test('mobile scan stops the camera on interruption and stays within the viewport', async ({ page }) => {
   await page.addInitScript(() => {
     Object.defineProperty(navigator.mediaDevices, 'getUserMedia', {

@@ -1,3 +1,9 @@
+// One-off verification script covering the full user journey: create a
+// private identity, scan, pick a permission answer, submit a report, then
+// follow through to the tracking page and confirm the backend actually
+// received it. Lives outside /e2e because it also captures screenshots for
+// the writeup and checks the raw POST response body, which is more than the
+// main suite's per-feature specs need to do.
 import { test, expect, Page } from '@playwright/test'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -90,6 +96,9 @@ async function completeReportWizard(
   expect(successBody).toMatch(/Reference:/i)
 }
 
+// Runs the whole journey twice, once per permission answer, since the
+// guidance copy and the report wizard branch differently depending on
+// whether the plant is on protected/unknown land or explicitly authorised.
 for (const choice of ['protected', 'explicit'] as const) {
   test(`end-to-end: identity → scan → guidance (${choice}) → report → tracking → map`, async ({ page, context }) => {
     await context.grantPermissions(['geolocation'], { origin: 'http://localhost:5173' })

@@ -2,6 +2,18 @@ import { create } from 'zustand'
 import type { GeoPoint, QualityResult, IdentifyResult, SpeciesDetail } from '@/types'
 import { saveScanHistoryRecord } from './scan-history-store'
 
+/**
+ * Owns the state for the scan currently in progress: the captured image
+ * (both the object URL and the live ImageBitmap/Blob), quality-check and
+ * identification results, and the GPS fix taken alongside the photo. This
+ * is in-memory only and reset on every new scan — it's the "working"
+ * state for capture -> processing -> result. Once a scan finishes it gets
+ * written out to scan-history-store.ts (the durable local record) and, for
+ * permission choices tied to a specific scan, guidance-decision-store.ts.
+ * Three separate stores instead of one because they have different
+ * lifetimes: this one is volatile per-scan, the other two persist across
+ * scans and sessions in localStorage.
+ */
 let locationRequestGeneration = 0
 
 type ScanStep = 'capture' | 'processing' | 'result'
@@ -84,6 +96,10 @@ export const useScan = create<ScanState>((set, get) => ({
 
   setImage: (url, bitmap, blob, captureSource, captureId, observedAt) => {
     const previous = get()
+    // Object URLs and ImageBitmaps are both real browser resources that
+    // don't get garbage collected just because we stop referencing them —
+    // a retake/rescan without this leak would pile up memory over a long
+    // field session.
     if (previous.imageUrl) URL.revokeObjectURL(previous.imageUrl)
     previous.imageBitmap?.close()
     set({ imageUrl: url, imageBitmap: bitmap, imageBlob: blob,
@@ -130,6 +146,10 @@ export const useScan = create<ScanState>((set, get) => ({
 /** Start a location request without blocking the scan screen. The result or
  *  failure state is saved in the scan store for the report form to read later. */
 export function captureScanLocation() {
+  // The generation counter guards against a stale GPS callback landing after
+  // the user has already retaken the photo (which starts a new request) or
+  // reset the scan entirely — geolocation.getCurrentPosition has no cancel
+  // API, so this is the only way to ignore an answer that's no longer relevant.
   const requestGeneration = ++locationRequestGeneration
   useScan.setState({ location: null, locationStatus: 'locating' })
   if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {

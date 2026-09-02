@@ -1,3 +1,17 @@
+"""ORM models for the whole InvaTrace schema.
+
+One file for everything rather than splitting per-feature, since most
+tables reference profiles/species/reports/sightings and it's easier to see
+the relationships in one place. Falls roughly into: pseudonymous auth
+(Profile, Installation, RecoveryCode*), the reference data seeded from
+OSM/species lists (Species, MonitoredPlace/Area, Trail), the
+report -> screening -> sighting pipeline (Report, VerificationJob,
+AutomatedValidationDecision, Sighting, ReportSightingLink), and support
+tables (UploadGrant, ObjectDeletionJob, Notification, AuditEvent,
+IdempotencyRecord). CheckConstraints double as documentation for the
+allowed enum-ish string values since we're not using native Postgres enums.
+"""
+
 from __future__ import annotations
 
 import uuid
@@ -28,10 +42,17 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
+# JSON on SQLite for tests, JSONB on Postgres in real life — lets the test
+# suite run against sqlite without needing a real Postgres instance
 JSON_TYPE = JSON().with_variant(JSONB(), "postgresql")
 
 
 class TimestampMixin:
+    """created_at/updated_at pair reused by most tables. Not every table gets
+    this — a few (Installation, RecoveryCode, etc) manage their own timestamp
+    columns because they don't need the auto-updating updated_at.
+    """
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -41,6 +62,16 @@ class TimestampMixin:
 
 
 class Profile(TimestampMixin, Base):
+    """The pseudonymous "account" — no email or password attached to it.
+
+    Identified externally by public_id (see app/core/security.py), and can
+    have multiple Installations (one per device). trust_level starts at
+    "New" and affects both rate limiting headroom and whether their reports
+    get coordinate displacement (see app/core/privacy.py). The counters below
+    are denormalized rather than computed from reports/sightings on every
+    read, since trust level is checked on basically every submission.
+    """
+
     __tablename__ = "profiles"
     __table_args__ = (
         CheckConstraint("role IN ('Detector','Volunteer','Expert','Admin')", name="role"),
@@ -66,6 +97,14 @@ class Profile(TimestampMixin, Base):
 
 
 class Installation(Base):
+    """One row per device/browser that's linked to a Profile.
+
+    We never store the raw installation token, only its HMAC (token_hash,
+    see app/core/security.py:keyed_hash). revoked_at lets a user (or an
+    admin) kill one device's access — e.g. after "lost my phone" — without
+    touching the profile or its other installations.
+    """
+
     __tablename__ = "installations"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -86,6 +125,11 @@ class Installation(Base):
 
 
 class RecoveryCodeBatch(Base):
+    """Groups a set of RecoveryCode rows issued together, e.g. when a profile
+    is created or a user asks to rotate their codes. Rotating invalidates the
+    whole previous batch (invalidated_at) so old codes can't be mixed with new.
+    """
+
     __tablename__ = "recovery_code_batches"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -99,6 +143,13 @@ class RecoveryCodeBatch(Base):
 
 
 class RecoveryCode(Base):
+    """Individual one-time-use codes, hashed the same way as installation
+    tokens (never stored raw). used_at gets set on redemption instead of
+    deleting the row, so we keep a record of when/whether recovery happened.
+    key_version tracks which hashing key generation produced code_hash, in
+    case credential_hash_key ever needs to be rotated.
+    """
+
     __tablename__ = "recovery_codes"
     __table_args__ = (UniqueConstraint("batch_id", "code_hash", name="uq_recovery_batch_hash"),)
 
@@ -118,6 +169,16 @@ class RecoveryCode(Base):
 
 
 class Species(TimestampMixin, Base):
+    """Reference data for plants the app can identify — invasive species plus
+    enough native look-alikes to explain "this is what you might be confusing
+    it with". id is a slug (not a UUID) since these are curated/seeded, not
+    user-generated. action_guides holds the raw seasonal removal-guidance
+    JSON blobs that app/domain/action_guidance.py hydrates into API schemas;
+    the shape has drifted over time (camelCase vs snake_case keys, old
+    action_mode vs newer guidance_mode) which is why that module has to check
+    both when reading a guide.
+    """
+
     __tablename__ = "species"
     __table_args__ = (CheckConstraint("risk IS NULL OR risk IN ('high','watch')", name="risk"),)
 
@@ -135,6 +196,8 @@ class Species(TimestampMixin, Base):
     do_not_do: Mapped[list[str]] = mapped_column(JSON_TYPE, default=list, nullable=False)
     detail_available: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     reportable: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # per-month removal guidance, see app/domain/action_guidance.py for how this
+    # gets picked apart and turned into a SeasonalActionGuide
     action_guides: Mapped[list[dict[str, Any]]] = mapped_column(
         JSON_TYPE, default=list, nullable=False
     )
@@ -150,7 +213,19 @@ class Species(TimestampMixin, Base):
     )
 
 
+# location/geometry columns below are GENERATED (Computed) from lat/lng or an
+# imported geometry rather than set directly — write latitude/longitude (or
+# geometry) and Postgres derives the PostGIS geography column for us. The
+# actual gist indexes for spatial queries are declared at the bottom of the
+# file rather than inline, since Index() needs the fully-defined column.
+
+
 class MonitoredPlace(Base):
+    """Small set of hand-seeded named locations (parks, reserves) used as a
+    last-resort fallback in app/domain/place_association.py when a report's
+    coordinates don't fall inside any imported OSM area or trail.
+    """
+
     __tablename__ = "monitored_places"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -164,6 +239,12 @@ class MonitoredPlace(Base):
 
 
 class MonitoredArea(Base):
+    """Polygon areas imported from OpenStreetMap (see OsmImport) — parks,
+    reserves, forest boundaries. Used to label where a sighting happened
+    (app/domain/place_association.py) with something more useful than a
+    lat/lng dump.
+    """
+
     __tablename__ = "monitored_areas"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -175,6 +256,10 @@ class MonitoredArea(Base):
 
 
 class Trail(Base):
+    """Line geometry (hiking trails etc) from the same OSM import as
+    MonitoredArea, used the same way for place labelling.
+    """
+
     __tablename__ = "trails"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -186,6 +271,12 @@ class Trail(Base):
 
 
 class UploadGrant(Base):
+    """Tracks a presigned-upload slot handed out for direct-to-R2/MinIO photo
+    upload. expires_at bounds how long the presigned URL is valid;
+    consumed_at/consumed_by_report_id get set once the grant is actually used
+    to submit a report, so a grant can't be replayed against a second report.
+    """
+
     __tablename__ = "upload_grants"
     __table_args__ = (
         CheckConstraint("size_bytes > 0", name="positive_size"),
@@ -212,6 +303,11 @@ class UploadGrant(Base):
 
 
 class ObjectDeletionJob(Base):
+    """Queue of R2/MinIO object keys waiting to be deleted by a background
+    worker. attempts/last_error support retrying deletes that fail (object
+    storage hiccups) instead of losing track of orphaned objects.
+    """
+
     __tablename__ = "object_deletion_jobs"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -227,6 +323,13 @@ class ObjectDeletionJob(Base):
 
 
 class Scan(Base):
+    """On-device ML identification result, logged for every capture even if
+    it never turns into a Report (e.g. the on-device model said "not the
+    target plant" and the user didn't submit). Useful for measuring
+    client-model accuracy over time. capture_id is unique and is the join key
+    back to a Report if/when the user does submit.
+    """
+
     __tablename__ = "scans"
     __table_args__ = (
         CheckConstraint("outcome IN ('target','other_plant','uncertain')", name="scan_outcome"),
@@ -251,6 +354,17 @@ class Scan(Base):
 
 
 class Report(Base):
+    """A single submission from a profile: one photo, one location, one
+    outcome. This is the "raw" record — it goes through the screening
+    worker (app/domain/evidence_screening.py + validation.py) and, if it
+    passes, gets linked to a Sighting via ReportSightingLink (a Report never
+    becomes public on its own). The lat/lng CheckConstraints hard-pin
+    submissions to Malaysia's bounding box, matching the app's scope.
+    idempotency_key + profile_id is unique so a retried submission with the
+    same key can't create a duplicate row (see app/core/idempotency.py for
+    how the lock around that is taken).
+    """
+
     __tablename__ = "reports"
     __table_args__ = (
         CheckConstraint(
@@ -287,6 +401,8 @@ class Report(Base):
     )
     capture_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True, nullable=False)
     capture_source: Mapped[str] = mapped_column(String(20), nullable=False)
+    # both indexed — the screening worker uses these to catch exact and
+    # near-duplicate photo replays, see app/domain/evidence_screening.py
     content_sha256: Mapped[bytes | None] = mapped_column(LargeBinary(32), index=True)
     perceptual_hash: Mapped[str | None] = mapped_column(String(160), index=True)
     latitude: Mapped[Decimal] = mapped_column(Numeric(8, 5), nullable=False)
@@ -313,6 +429,15 @@ class Report(Base):
 
 
 class Sighting(Base):
+    """The public-facing record — what the map/list actually shows. Created
+    once a Report clears screening (or merged into an existing Sighting if
+    it's the same species nearby and recent, see app/domain/validation.py).
+    Deliberately decoupled from Report: a sighting can have multiple reports
+    linked to it over time (ReportSightingLink), and its own lat/lng gets
+    passed through app/core/privacy.py's displacement logic before ever
+    reaching a public response — the raw Report coordinates never do.
+    """
+
     __tablename__ = "sightings"
     __table_args__ = (
         CheckConstraint(
@@ -362,6 +487,13 @@ class Sighting(Base):
 
 
 class ReportSightingLink(Base):
+    """Join table between Report and Sighting. "active" plus the partial
+    unique index right below (uq_report_sighting_active) enforces that a
+    given report can only be actively linked to one sighting at a time,
+    while still letting the history of past links stick around (ended_at)
+    if a report ever gets re-merged elsewhere.
+    """
+
     __tablename__ = "report_sighting_links"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -387,6 +519,13 @@ Index(
 
 
 class VerificationJob(Base):
+    """Queue row that drives the screening worker for one Report. Workers pick
+    up jobs where available_at <= now, stamp locked_at while processing, and
+    move status through pending -> running -> completed (or retry/unavailable/
+    failed on the way). Decoupled from the Report row itself so retries and
+    worker locking don't need to touch report data directly.
+    """
+
     __tablename__ = "verification_jobs"
     __table_args__ = (
         CheckConstraint(
@@ -416,6 +555,10 @@ class VerificationJob(Base):
 
 
 class Notification(Base):
+    """In-app notifications for a profile (report screened, rejected, merged,
+    etc). read_at is nullable/indexed so "unread count" queries are cheap.
+    """
+
     __tablename__ = "notifications"
     __table_args__ = (
         CheckConstraint(
@@ -440,6 +583,13 @@ class Notification(Base):
 
 
 class AuditEvent(Base):
+    """Generic append-only audit trail — subject_type/subject_id is a loose
+    polymorphic reference (not an FK) so this one table can log against any
+    entity in the system without a constraint per subject type.
+    acting_profile_id is nullable and SET NULL on delete since we still want
+    the audit row even if the profile responsible is later deleted.
+    """
+
     __tablename__ = "audit_events"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -457,6 +607,14 @@ class AuditEvent(Base):
 
 
 class IdempotencyRecord(Base):
+    """Stores the response we sent for a given (profile, scope, idempotency_key)
+    so a retried request gets the exact same response replayed back instead
+    of re-running the operation. request_hash lets us detect the edge case
+    where a client reuses a key with a different body — see
+    app/core/idempotency.py:canonical_request_hash. expires_at bounds how
+    long we bother remembering it.
+    """
+
     __tablename__ = "idempotency_records"
     __table_args__ = (
         UniqueConstraint("profile_id", "scope", "idempotency_key", name="uq_idempotency_scope_key"),
@@ -480,6 +638,14 @@ class IdempotencyRecord(Base):
 
 
 class AutomatedValidationDecision(Base):
+    """Audit trail specifically for the deterministic screening worker's
+    decisions on a Report — kept separate from the generic AuditEvent table
+    because this one needs structured fields (checks_json, reason_codes,
+    merge_target_id) that are worth querying directly rather than digging
+    through a JSON blob. policy_version lets us tell which ruleset produced
+    a given decision if the rules change later.
+    """
+
     __tablename__ = "automated_validation_decisions"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -501,6 +667,12 @@ class AutomatedValidationDecision(Base):
 
 
 class OsmImport(Base):
+    """Records each batch import of OpenStreetMap data that populated
+    MonitoredArea/Trail rows. sha256 is unique so re-running an import
+    script against the same source file is a harmless no-op instead of
+    duplicating areas/trails.
+    """
+
     __tablename__ = "osm_imports"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -515,6 +687,10 @@ class OsmImport(Base):
     )
 
 
+# GiST indexes for the geography/geometry columns — regular btree indexes
+# don't help with ST_DWithin/ST_Covers spatial queries, these do. Declared
+# here rather than inline on the columns since Index() needs the mapped
+# column objects to already exist.
 Index("ix_reports_location_gist", Report.location, postgresql_using="gist")
 Index("ix_sightings_location_gist", Sighting.location, postgresql_using="gist")
 Index("ix_places_location_gist", MonitoredPlace.location, postgresql_using="gist")

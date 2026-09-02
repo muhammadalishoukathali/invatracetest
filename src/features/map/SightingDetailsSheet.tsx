@@ -22,6 +22,12 @@ const OSM_FEATURE_LABEL: Record<string, string> = {
   natural_wood: 'wood',
 }
 
+/**
+ * Bottom sheet with the full detail view for a single map sighting: species
+ * photo, risk tier, report count, nearby place, and guidance. Rendered once
+ * inside ThreatMapPage.tsx and opens whenever `selectedId` in map-view-store.ts
+ * is set (by clicking a pin or picking a row from the accessible sighting list).
+ */
 export function SightingDetailsSheet() {
   const { selectedId, select } = useMapView()
   const dialogRef = useRef<HTMLElement>(null)
@@ -178,6 +184,7 @@ function PlantReferenceMedia({ latinName, speciesName }: { latinName: string; sp
   )
 }
 
+/** One label/value row (with an optional sub-note) in the "Report information" list. */
 function MetaRow({ label, value, sub, mono }: {
   label: string; value: string; sub?: string; mono?: boolean
 }) {

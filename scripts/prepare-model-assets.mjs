@@ -1,16 +1,22 @@
-import { createHash } from 'node:crypto'
-import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
-import { dirname, join, relative, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { restoreRuntimeAssets } from './restore-runtime-assets.mjs'
-
+// Runs as a "pre" hook before every dev server and build (predev,
+// predev:https, predev:model-test, predev:real, prebuild in package.json).
+// It restores the packed model/vendor assets, checks the ONNX model against
+// the vendor kit's published checksum, then splits the verified model into
+// chunks the app can serve from public/models/pulih-model1-v4/. Doing this on
+// every run means the served model is always freshly re-verified against the
+// vendor kit rather than trusting whatever was left in public/ from before.
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const kitRoot = join(projectRoot, 'vendor', 'PULIH_Model1_v4_FP16_Web_Kit')
 const modelRoot = join(kitRoot, 'model')
 const outputRoot = join(projectRoot, 'public', 'models', 'pulih-model1-v4')
 const modelName = 'efficientnet_v2_s_oe_v4_31class_web_fp16.onnx'
+// Same reasoning as the packing script: stay under Cloudflare Pages' static
+// file size limit. The browser-side model loader reassembles these chunks.
 const chunkBytes = 20 * 1024 * 1024
 
+// Make sure the vendor kit files (including the model) actually exist on
+// disk before we try to read them below. restore-runtime-assets.mjs
+// unpacks them from assets/runtime-packed/ if they're missing or stale.
 await restoreRuntimeAssets()
 
 const checksumLines = (await readFile(join(kitRoot, 'checksums.sha256'), 'utf8'))
@@ -20,6 +26,9 @@ const expectedLine = checksumLines.find((line) => line.endsWith(`model/${modelNa
 if (!expectedLine) throw new Error(`Missing checksum for ${modelName}`)
 const expectedSha256 = expectedLine.split(/\s+/)[0]
 
+// Fail loudly rather than silently serving a corrupted or swapped-out model
+// file. A bad model would fail quietly at inference time otherwise, giving
+// wrong species predictions instead of an obvious build error.
 const model = await readFile(join(modelRoot, modelName))
 const actualSha256 = createHash('sha256').update(model).digest('hex')
 if (actualSha256 !== expectedSha256) {

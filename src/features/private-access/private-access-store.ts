@@ -25,6 +25,20 @@ import { queryClient } from '@/services/query-client'
 // This store controls the full private-access lifecycle. It loads the browser's
 // installation record, opens or restores the server session, keeps an offline
 // fallback profile, and makes sure recovery codes are saved before access is ready.
+//
+// Rough status flow:
+//   initializing -> (no saved installation) needs-access
+//                -> (saved installation, offline) offline / needs-access
+//                -> (saved installation, online) syncing -> ready | recovery | error | revoked
+//   needs-access -> starting -> recovery (new profile, must save codes) -> ready
+//   needs-access -> restoring -> ready | storage-error
+//   ready -> offline (connectivity drops) -> syncing (reconnect) -> ready
+//   any -> storage-error (IndexedDB write failed, but we still have a profile in memory)
+//   any -> revoked (server says this installation was revoked elsewhere)
+//
+// 'recovery' is a hard gate: the app won't consider access 'ready' until the
+// user has acknowledged saving their one-time codes, see acknowledgeRecovery
+// below and RequirePrivateAccess.tsx which enforces this on every route.
 
 type PrivateAccessStatus =
   | 'initializing'
@@ -105,6 +119,11 @@ async function safelyClearInstallationIfToken(expectedToken: string): Promise<vo
   }
 }
 
+// Wipes everything tied to the previous identity when we're about to swap
+// installations (sign out, start fresh, restore on top of an old session).
+// Bumping sessionGeneration lets in-flight async work (sync/start/restore
+// calls already in the middle of an await) recognize it's stale and bail out
+// instead of clobbering state that belongs to whatever comes next.
 function clearIdentityBoundState(): void {
   sessionGeneration += 1
   setAccessToken(null)
@@ -137,6 +156,10 @@ export const usePrivateAccess = create<PrivateAccessState>((set, get) => ({
           return
         }
 
+        // Show a locally-known profile immediately, even before the server
+        // round trip confirms it. This is what lets an established
+        // installation stay usable offline (field reporting can't wait on a
+        // network call every time the app opens).
         set({ installation, profile: installation.profileId ? localProfile(installation) : null })
         if (!navigator.onLine) {
           set({
@@ -189,6 +212,9 @@ export const usePrivateAccess = create<PrivateAccessState>((set, get) => ({
           method: 'POST',
           body: JSON.stringify({ installationToken: currentInstallation.installationToken }),
         })
+        // Bail if a sign-out/restore happened while this request was in
+        // flight — applying a stale bootstrap response now would silently
+        // resurrect the identity the user just left.
         if (generation !== sessionGeneration) return false
         setAccessToken(response.accessToken)
 
@@ -221,6 +247,10 @@ export const usePrivateAccess = create<PrivateAccessState>((set, get) => ({
 
         set({ installation: updatedInstallation, profile: response.profile, syncMessage: null })
         if (response.recoverySetupRequired) {
+          // The server flags this when a previous setup was interrupted before
+          // acknowledgement, so the earlier batch is already dead. We have to
+          // rotate again here to get a batch we can actually show the user —
+          // we can't recover the original codes, they were never stored.
           try {
             const batch = await api<RecoveryCodeBatchResponse>('/api/v1/profiles/me/recovery-codes/rotate', {
               method: 'POST',
@@ -244,6 +274,10 @@ export const usePrivateAccess = create<PrivateAccessState>((set, get) => ({
       } catch (error) {
         if (generation !== sessionGeneration) return false
         setAccessToken(null)
+        // The server has no record of this installation token at all — most
+        // likely the backing data was reset (e.g. dev/mock environment) or
+        // this device's record predates a migration. Treat it as if this
+        // browser never had access, rather than getting stuck retrying forever.
         if (error instanceof ApiError && error.code === 'installation_not_found') {
           clearIdentityBoundState()
           const cleanupGeneration = sessionGeneration
@@ -255,6 +289,10 @@ export const usePrivateAccess = create<PrivateAccessState>((set, get) => ({
           })
           return false
         }
+        // Someone (possibly the user, from another device) revoked this
+        // installation via AccessManagementPage.tsx. Clear it locally so the
+        // revoked device can't keep acting as an authorized installation —
+        // it has to go through restore again with a fresh recovery code.
         if (error instanceof ApiError && (error.code === 'installation_revoked' || error.status === 401)) {
           clearIdentityBoundState()
           const cleanupGeneration = sessionGeneration
@@ -358,6 +396,11 @@ export const usePrivateAccess = create<PrivateAccessState>((set, get) => ({
     }
   },
 
+  // Consumed by RecoveryKitSetupPage.tsx once the user confirms they saved
+  // their one-time codes. This is the step that actually flips status to
+  // 'ready' — the codes were already issued by the server, this just marks
+  // locally (and via the acknowledge endpoint) that setup finished, so a
+  // refresh doesn't re-show codes that were already displayed once.
   acknowledgeRecovery: async (displayName) => {
     const installation = get().installation
     const profile = get().profile
@@ -457,6 +500,9 @@ export const usePrivateAccess = create<PrivateAccessState>((set, get) => ({
   },
 }))
 
+// api-client.ts calls this to re-establish a session (fresh access token)
+// when a request comes back unauthorized, instead of importing this store
+// directly and risking a circular import between the two modules.
 setSessionRecovery(() => usePrivateAccess.getState().sync())
 
 /** When the browser reconnects, restore the API session before uploading queued

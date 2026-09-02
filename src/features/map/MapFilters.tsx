@@ -26,6 +26,12 @@ const RISKS: { id: Risk; label: string; dot: string }[] = [
   { id: 'watch', label: 'Watch', dot: '#D9880F' },
 ]
 
+/**
+ * Search box plus species/risk/status filter chips for the threat map. Sits
+ * above the map in ThreatMapPage.tsx; filter state itself lives in
+ * map-view-store.ts so the map's marker-rebuild effect can read it too.
+ * Desktop shows chips inline, mobile opens them in a bottom sheet.
+ */
 export function MapFilters() {
   const isDesktop = useIsDesktop()
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -130,12 +136,15 @@ export function MapFilters() {
   )
 }
 
+/** Small vertical rule between chip groups on the desktop filter bar. */
 function Divider() {
   return <span aria-hidden style={{
     width: 1, height: 22, background: 'var(--border)', margin: '0 4px',
   }} />
 }
 
+/** Mobile-only bottom sheet version of the filter controls, opened from the
+ *  "Filters" trigger button in MapFilters when the screen is too narrow for chips. */
 function FiltersSheet({
   onClose, selectedSpecies, selectedStatuses, selectedRisks,
   toggleSpecies, toggleStatus, toggleRisk, clearFilters, active,
@@ -216,6 +225,7 @@ function FiltersSheet({
   )
 }
 
+/** One labelled section (Risk level / Species / Status) inside the mobile filter sheet. */
 function FilterGroup({ title, description, children }: {
   title: string; description: string; children: React.ReactNode
 }) {
@@ -230,6 +240,7 @@ function FilterGroup({ title, description, children }: {
   )
 }
 
+/** One toggleable row inside a mobile FilterGroup, e.g. a single species checkbox. */
 function FilterOption({ label, on, onClick, dot }: {
   label: string; on: boolean; onClick: () => void; dot?: string
 }) {
@@ -247,6 +258,7 @@ function FilterOption({ label, on, onClick, dot }: {
   )
 }
 
+/** Toggleable pill used for the desktop inline filter bar (species/risk/status). */
 function Chip({ label, on, onClick, dot }: {
   label: string; on: boolean; onClick: () => void; dot?: string
 }) {

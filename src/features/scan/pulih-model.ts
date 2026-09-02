@@ -1,6 +1,21 @@
 import * as ort from 'onnxruntime-web/webgpu'
 import type { IdentifyResult } from '@/types'
 
+/**
+ * This is the actual ONNX inference boundary — it owns the PULIH model
+ * session end to end: downloading and checksum-verifying the model weights,
+ * starting the onnxruntime-web session (WebGPU with a WASM fallback),
+ * turning a photo into the tensor shape the model expects, and turning raw
+ * logits back into an IdentifyResult with an open-set "is this even one of
+ * our 31 species" rejection step.
+ *
+ * plant-model-adapter.ts is the layer above this one. It doesn't touch ONNX
+ * at all — it just picks which model implementation the app should use
+ * (this real one, a fake dev one, or a disabled stub) and adapts whichever
+ * one is chosen to the shape the UI code expects (detect/quality/identify).
+ * Nothing outside plant-model-adapter.ts should import this file directly.
+ */
+
 const MODEL_ROOT = import.meta.env.VITE_MODEL_BASE_URL || '/models/pulih-model1-v4'
 
 interface RuntimeManifest {
@@ -105,6 +120,11 @@ function hex(bytes: ArrayBuffer): string {
   return Array.from(new Uint8Array(bytes), (byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
+// Model weights are fetched in chunks (some CDNs choke on one huge file) and
+// hashed with SHA-256 against the manifest before we ever hand them to
+// onnxruntime. This is on-device inference over an untrusted network path —
+// a corrupted or tampered download must fail loudly here instead of silently
+// producing garbage predictions later.
 async function verifiedModelBytes(manifest: RuntimeManifest, onProgress?: Progress): Promise<Uint8Array> {
   if (!Number.isSafeInteger(manifest.bytes) || manifest.bytes < 1 || manifest.bytes > 128 * 1024 * 1024) {
     throw new PlantModelRuntimeError('integrity', 'The PULIH model manifest size is invalid.')
@@ -177,6 +197,10 @@ async function imageToTensor(image: Blob, config: InferenceConfig): Promise<ort.
   try {
     if (bitmap.width < 1 || bitmap.height < 1) throw new Error('Image dimensions are invalid.')
     const size = config.input_size
+    // 0.875 is the classic "resize short side then center-crop" ratio the
+    // model was trained with (same trick torchvision's ImageNet pipeline
+    // uses). Get this wrong and every prediction is subtly off because the
+    // model is seeing a different field of view than it learned on.
     const resizeShortSide = Math.ceil(size / 0.875)
     const scale = resizeShortSide / Math.min(bitmap.width, bitmap.height)
     const cropWidth = size / scale
@@ -195,6 +219,10 @@ async function imageToTensor(image: Blob, config: InferenceConfig): Promise<ort.
 
     const rgba = context.getImageData(0, 0, size, size).data
     const plane = size * size
+    // ONNX wants channel-first (CHW), but canvas gives us interleaved RGBA
+    // (HWC). This loop both de-interleaves the channels and applies the
+    // per-channel mean/std normalization the model was trained with, in one
+    // pass instead of two, since this runs on every scan on-device.
     const chw = new Float32Array(3 * plane)
     for (let index = 0; index < plane; index += 1) {
       chw[index] = (rgba[index * 4] / 255 - config.mean[0]) / config.std[0]
@@ -220,6 +248,10 @@ function interpret(
   if (logits.length !== config.classes.length) {
     throw new Error(`Expected ${config.classes.length} logits but received ${logits.length}.`)
   }
+  // Temperature scaling: divide logits before softmax so the model's
+  // confidence numbers actually mean something (raw softmax on an
+  // overconfident classifier tends to output near-100% for everything,
+  // which is useless for deciding whether to trust a result).
   const temperature = rejection.classification_temperature
   const scaled = logits.map((value) => value / temperature)
   const maximum = Math.max(...scaled)
@@ -229,6 +261,13 @@ function interpret(
   const ranked = probabilities
     .map((probability, classIndex) => ({ probability, classIndex }))
     .sort((left, right) => right.probability - left.probability)
+  // The model only ever knows about its 31 trained species, so on its own it
+  // can't say "I don't recognise this plant at all" — it'll always pick a
+  // best guess. These four signals (top probability, gap to the runner-up,
+  // energy, entropy) feed a separately-trained logistic regression
+  // (open_set_rejection_config_v1.json) that decides whether the photo is
+  // probably something outside the 31 classes rather than trusting softmax
+  // confidence alone.
   const signals = {
     msp: ranked[0].probability,
     margin: ranked[0].probability - ranked[1].probability,
@@ -238,6 +277,10 @@ function interpret(
       0,
     ) / Math.log(probabilities.length),
   }
+  // Standardize each signal with the scaler stats from training, then run
+  // logistic regression by hand (weights and intercept baked into the
+  // config) to get a probability that this is an "unknown" / out-of-catalog
+  // plant.
   let unknownLogit = rejection.decision.intercept
   rejection.decision.feature_order.forEach((name, index) => {
     unknownLogit += (
@@ -357,6 +400,9 @@ export class PulihModel {
     let provider: ExecutionProvider | null = null
     let webGpuFallback = false
     const webGpuNavigator = navigator as Navigator & { gpu?: unknown }
+    // Prefer WebGPU (much faster) when the device advertises it, but not every
+    // browser that exposes navigator.gpu can actually create a working
+    // session — fall through to WASM rather than failing the whole scan.
     if (webGpuNavigator.gpu) {
       try {
         this.session = await ort.InferenceSession.create(modelBytes, {

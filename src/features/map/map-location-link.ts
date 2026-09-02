@@ -1,3 +1,12 @@
+/**
+ * Lets a screen outside the map (like "My Reports") send someone to a specific
+ * spot on ThreatMapPage.tsx via react-router navigation state, without going
+ * through the public sightings API — useful for a private scan/report that
+ * hasn't been published as a sighting yet. `mapStateForLocation` builds the
+ * state on the sending side, `parseMapLocationTarget` validates it on the map
+ * side (bounds-checked against Malaysia so a bad state object can't fly the
+ * camera somewhere nonsensical).
+ */
 import type { GeoPoint } from '@/types'
 
 export interface MapLocationTarget {

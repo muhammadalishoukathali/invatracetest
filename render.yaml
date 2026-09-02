@@ -1,0 +1,88 @@
+services:
+  - type: web
+    name: invatrace-api
+    runtime: docker
+    plan: free
+    region: singapore
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CREDENTIAL_HASH_KEY
+        generateValue: true
+      - key: LOCATION_PRIVACY_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        sync: false
+      - key: S3_ENDPOINT_URL
+        sync: false
+      - key: S3_PUBLIC_ENDPOINT_URL
+        sync: false
+      - key: S3_REGION
+        value: auto
+      - key: S3_BUCKET
+        value: invatrace-photos
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_FORCE_PATH_STYLE
+        value: "true"
+
+  - type: worker
+    name: invatrace-verification-worker
+    runtime: docker
+    plan: free
+    region: singapore
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerCommand: python -m app.cli worker
+    envVars:
+      - fromService:
+          type: web
+          name: invatrace-api
+          envVarKey: DATABASE_URL
+      - fromService:
+          type: web
+          name: invatrace-api
+          envVarKey: REDIS_URL
+      - fromService:
+          type: web
+          name: invatrace-api
+          envVarKey: JWT_SECRET
+      - fromService:
+          type: web
+          name: invatrace-api
+          envVarKey: CREDENTIAL_HASH_KEY
+      - fromService:
+          type: web
+          name: invatrace-api
+          envVarKey: LOCATION_PRIVACY_KEY
+      - fromService:
+          type: web
+          name: invatrace-api
+          envVarKey: S3_ENDPOINT_URL
+      - fromService:
+          type: web
+          name: invatrace-api
+          envVarKey: S3_ACCESS_KEY_ID
+      - fromService:
+          type: web
+          name: invatrace-api
+          envVarKey: S3_SECRET_ACCESS_KEY
+      - key: S3_REGION
+        value: auto
+      - key: S3_BUCKET
+        value: invatrace-photos
+      - key: S3_FORCE_PATH_STYLE
+        value: "true"
+      - key: APP_ENV
+        value: production

@@ -89,6 +89,11 @@ const REUSABLE_UPLOAD_ERRORS = new Set([
   'upload_changed',
 ])
 
+/** Decides whether a failed submission gets queued for retry or just fails
+ *  outright. Anything that looks transient (offline, network blip, upload
+ *  URL expiry, server overload/rate-limit) is retryable; a rejection from
+ *  the trust pipeline itself (4xx other than the upload-token codes) is not
+ *  — retrying wouldn't change the outcome and would just spam the API. */
 function shouldRetry(error: unknown): boolean {
   if (typeof navigator !== 'undefined' && !navigator.onLine) return true
   if (error instanceof UploadError || error instanceof TypeError) return true
@@ -176,6 +181,10 @@ async function sendQueuedReport(item: QueuedReport): Promise<Report> {
   try {
     return await createReport(item.submission, item.id, true)
   } catch (error) {
+    // A stale/expired upload URL isn't fixable by retrying createReport as-is —
+    // we have to redo the upload with a fresh presigned URL first. The retry
+    // idempotency key is suffixed with the attempt count so it doesn't collide
+    // with the original (now-dead) upload key on the server.
     if (!(error instanceof ApiError) || !error.code || !REUSABLE_UPLOAD_ERRORS.has(error.code)) {
       throw error
     }
@@ -200,6 +209,10 @@ export async function flushQueue(): Promise<{ sent: number; failed: number; skip
   const items = await readQueuedReports()
   let sent = 0, failed = 0, skipped = 0
   for (const item of items) {
+    // The queue is one shared IndexedDB store, so it can hold reports from a
+    // previous private profile on this device (e.g. after a restore) or ones
+    // the trust pipeline already told us won't succeed on retry — skip both
+    // rather than resending them under the wrong identity or forever.
     if (item.ownerProfileId !== ownerProfileId || item.retryable === false) {
       skipped++
       continue

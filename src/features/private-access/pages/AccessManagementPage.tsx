@@ -12,6 +12,9 @@ import { usePageHeadingFocus } from '@/hooks/usePageHeadingFocus'
 import { useDialogA11y } from '@/hooks/useDialogA11y'
 import { looksLikeContactDetail, safeDisplayName } from '@/features/private-access/display-name'
 
+// Rough, non-precise date labels ("Yesterday", "3 days ago") on purpose —
+// exact timestamps for when a device was added aren't something we want to
+// dwell on in a UI about protecting your own devices.
 function approximateDate(value: string): string {
   const date = new Date(value)
   const days = Math.floor((Date.now() - date.getTime()) / 86_400_000)
@@ -25,6 +28,11 @@ function installationLabel(item: AuthorizedInstallation): string {
   return item.current ? 'This device' : `Device added ${approximateDate(item.createdAt)}`
 }
 
+/** The profile's control panel: edit display name, view/rotate recovery
+ *  codes, and list/revoke authorized installations. Everything here reads
+ *  and writes through /api/v1/profiles/me/* directly rather than through
+ *  private-access-store.ts, except sign-out and display-name updates which
+ *  the store already exposes. */
 export function AccessManagementPage() {
   const headingRef = usePageHeadingFocus()
   const navigate = useNavigate()
@@ -47,6 +55,9 @@ export function AccessManagementPage() {
   const [replacement, setReplacement] = useState<RecoveryCodeBatchResponse | null>(null)
 
   const load = useCallback(async () => {
+    // Nothing to fetch offline, and we don't want to show a stuck spinner —
+    // fall through to the empty/loading=false state so the offline notice
+    // below can take over instead.
     if (!online) { setLoading(false); return }
     setLoading(true)
     try {
@@ -58,6 +69,8 @@ export function AccessManagementPage() {
       setLoading(false)
     }
   }, [online])
+  // Re-runs whenever `online` flips, so reconnecting after a network drop
+  // automatically refetches instead of leaving stale/empty data on screen.
   useEffect(() => { void load() }, [load])
 
   const replacementInput = useMemo(() => replacement ? {
@@ -100,6 +113,10 @@ export function AccessManagementPage() {
     } finally { setBusy(null) }
   }
 
+  // Rotating replaces the whole unused-code batch — this matches the server
+  // rule that rotating invalidates every unused code from earlier batches
+  // (docs/product.md), so we show the fresh batch here rather than silently
+  // discarding it, the user needs to save these too.
   const rotate = async () => {
     setBusy('rotate'); setError(null); setMessage(null)
     try {
@@ -113,6 +130,9 @@ export function AccessManagementPage() {
     } finally { setBusy(null) }
   }
 
+  // Revocation is per-installation, not per-profile — the profile and its
+  // reports survive, only this one device loses its ability to act as an
+  // authorized installation (it would need to restore again with a code).
   const revoke = async (installationId: string) => {
     setBusy(installationId); setError(null); setMessage(null)
     try {
@@ -264,6 +284,9 @@ export function AccessManagementPage() {
   )
 }
 
+/** Modal for changing the display name, opened from the pencil icon next to
+ *  the profile heading. Split out mainly so useDialogA11y (focus trap +
+ *  Escape/backdrop close) only has to manage this small subtree. */
 function EditDisplayNameDialog({
   value, error, busy, online, returnFocus, onChange, onClose, onSave,
 }: {

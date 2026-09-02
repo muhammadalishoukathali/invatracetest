@@ -21,7 +21,12 @@ const SESSION_ENTRY_PATHS = new Set([
 
 const isIdentityPath = (path: string) => path.startsWith('/api/v1/profiles')
 
+// Called by the private-access store whenever the token changes (login,
+// refresh, logout) so this module always has the current one without
+// importing the store directly and creating a circular dependency.
 export const setAccessToken = (t: string | null) => { accessToken = t }
+// Lets the private-access store hand this module a callback that re-bootstraps
+// a session, without api-client needing to know how that store works.
 export const setSessionRecovery = (recover: () => Promise<boolean>) => { recoverSession = recover }
 
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {

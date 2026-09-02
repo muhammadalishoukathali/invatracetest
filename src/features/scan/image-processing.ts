@@ -1,3 +1,12 @@
+/**
+ * Prepares a captured or picked photo before the model ever sees it: checks
+ * the file is a real, non-empty image of an accepted type, downscales it to
+ * a sane max dimension and re-encodes it as JPEG, and gives back a cheap
+ * perceptual hash used for the dev-mode fake model and simple duplicate
+ * checks. The real per-model resize/crop/normalize step happens later in
+ * pulih-model.ts — this file's job is just getting a reasonably-sized,
+ * well-formed image blob ready to hand off.
+ */
 const MAX_SIDE = 1024
 export const MAX_SOURCE_BYTES = 10 * 1024 * 1024
 export const ACCEPTED_IMAGE_MIME = ['image/jpeg', 'image/png', 'image/webp'] as const
@@ -47,6 +56,9 @@ export async function resizeImage(file: Blob): Promise<{ bitmap: ImageBitmap; ur
   let blob: Blob
   try {
     if (bitmap.width < 1 || bitmap.height < 1) throw new Error('Photo has invalid dimensions.')
+    // Downscale only — never upscale a small photo, that would just add fake
+    // detail. Full-res phone photos (12+ MP) are way more than the model
+    // needs and slow down both the upload and the later on-device crop.
     const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height))
     const width = Math.max(1, Math.round(bitmap.width * scale))
     const height = Math.max(1, Math.round(bitmap.height * scale))
@@ -58,11 +70,17 @@ export async function resizeImage(file: Blob): Promise<{ bitmap: ImageBitmap; ur
   } finally {
     bitmap.close()
   }
+  // Re-decode the JPEG we just produced rather than reusing the original
+  // bitmap, so the ImageBitmap we hand back actually matches the blob's
+  // pixels (and dimensions) that get uploaded/stored alongside it.
   const resized = await createImageBitmap(blob)
   const url = URL.createObjectURL(blob)
   return { bitmap: resized, url, blob }
 }
 
+// Cheap 8x8-pixel hash, not a real perceptual hash — good enough to pick a
+// deterministic "random" bucket for the dev-mode fake model and to jitter
+// the mock quality-check failures, not for detecting actual duplicate photos.
 export function hashBitmap(bitmap: ImageBitmap): number {
   const canvas = createCanvas(8, 8)
   const context = canvas.getContext('2d')

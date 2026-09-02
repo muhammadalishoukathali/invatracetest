@@ -3,6 +3,12 @@ import { useReportDraft } from '@/features/report/report-draft-store'
 import { useScan } from '@/features/scan/scan-store'
 import './report-submission-result.css'
 
+/**
+ * Terminal screen of the report wizard, shown once ReportPreviewStep.tsx
+ * sets an outcome — either "submitted" (sent to the server, now screening)
+ * or "queued" (saved offline, will retry via report-queue.ts). Not one of
+ * the numbered REPORT_STEPS since it isn't a form step, just the exit.
+ */
 export function ReportSubmissionResult() {
   const navigate = useNavigate()
   const { outcome, reset } = useReportDraft()

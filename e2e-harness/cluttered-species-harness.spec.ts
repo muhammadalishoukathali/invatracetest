@@ -1,3 +1,10 @@
+// Manual QA script, not part of the real e2e suite. Runs the seven cluttered
+// / in-situ field photos through the actual scan flow (against the
+// dev:model-test server on 5174, so it hits the real model, not the MSW mock)
+// and dumps a screenshot + JSON row per image. Point is to eyeball how the
+// classifier copes with messy backgrounds compared to clean known-species
+// shots — nothing here is a pass/fail assertion, it's just a data dump for me
+// to review by hand afterwards.
 import { test, expect, Page } from '@playwright/test'
 import fs from 'node:fs'
 import path from 'node:path'

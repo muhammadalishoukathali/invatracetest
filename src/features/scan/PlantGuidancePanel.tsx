@@ -68,6 +68,15 @@ const TONE_STYLES: Record<
   ok: { bg: 'var(--green-light)', border: 'var(--green-border)', color: 'var(--green)' },
 }
 
+/**
+ * Renders the Malaysia status, identification caveats, and (gated behind an
+ * explicit permission question) removal/reporting steps for a matched
+ * plant. Used both on ScanResultPage after a scan and on the map's sighting
+ * detail sheet, which is why props like `showReferenceImage` and
+ * `decisionContext` exist — the two callers need slightly different framing
+ * around the same guidance content. Falls back to an observe-and-report
+ * notice when there's no guidance entry, or its sources can't be resolved.
+ */
 export function PlantGuidancePanel({
   scientificName,
   speciesName,

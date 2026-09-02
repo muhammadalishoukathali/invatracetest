@@ -1,3 +1,7 @@
+// Targets verify-permission-gate.spec.ts on the mocked dev server (5173).
+// Split out into its own config so the permission-gate checks can be
+// re-run quickly on their own while poking at that part of the UI, without
+// waiting on the rest of the harness suite.
 import { defineConfig, devices } from '@playwright/test'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'

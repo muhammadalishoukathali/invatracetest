@@ -1,6 +1,11 @@
 import { expect, test, type Page } from '@playwright/test'
 import path from 'node:path'
 
+// Pre-release checks that don't fit neatly under one feature: making sure the
+// consent-gated report guidance can't be seen before the user actually picks
+// a land-permission option, and that the core pages don't overflow
+// horizontally on a small phone screen or a normal desktop.
+
 async function startPrivateAccess(page: Page) {
   await page.goto('/')
   await page.getByRole('button', { name: /Start privately/i }).click()
@@ -20,6 +25,9 @@ async function chooseSyntheticGalleryPhoto(page: Page) {
   await expect(page).toHaveURL(/\/scan\/result$/, { timeout: 15_000 })
 }
 
+// The permission guidance text carries legal/safety info, so it should only
+// appear once the user has picked an option — not shown by default, and not
+// showing the other option's text at the same time as this one's.
 test('gallery scans can be reported and reveal guidance only after a permission choice', async ({ page }) => {
   await startPrivateAccess(page)
   await chooseSyntheticGalleryPhoto(page)
@@ -37,6 +45,9 @@ test('gallery scans can be reported and reveal guidance only after a permission 
   await expect(page.getByText('Protected land or no permission')).toHaveCount(0)
 })
 
+// Runs the same page-by-page overflow check at a small phone width and a
+// desktop width — horizontal scroll is the kind of regression that's easy to
+// miss by eye but breaks usability on a real device.
 for (const viewport of [
   { name: 'small mobile', width: 320, height: 780 },
   { name: 'desktop', width: 1280, height: 800 },

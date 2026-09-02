@@ -30,6 +30,12 @@ const KIND_TINT: Record<NotificationKind, string> = {
   system: 'var(--muted)',
 }
 
+/**
+ * The bell icon and its dropdown/sheet of notifications, rendered in the app
+ * header on every screen. Reads notification data from useNotifications.ts;
+ * clicking an item marks it read and follows `linkTo` if the server set one
+ * (e.g. straight to a screened report or the relevant map sighting).
+ */
 export function NotificationsPanel() {
   const [open, setOpen] = useState(false)
   const wrapper = useRef<HTMLDivElement>(null)
@@ -117,6 +123,8 @@ export function NotificationsPanel() {
   )
 }
 
+/** The actual list of notifications, shared between the desktop dropdown and
+ *  mobile sheet layouts so we only style the list markup once. */
 function PanelBody({
   items, unread, onItem, onMarkAll, onClose, layout,
 }: {

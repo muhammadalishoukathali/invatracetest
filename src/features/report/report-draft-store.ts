@@ -2,6 +2,13 @@
  * Report draft store. The Result screen calls `beginFromScan()` to seed a
  * draft from the last scan result; the wizard mutates it step-by-step and
  * hands it to `submitReport()` on the final step.
+ *
+ * This is a plain in-memory zustand store with no persist middleware, so a
+ * page reload mid-wizard loses the whole draft, including the in-memory
+ * photo Blob (ReportWizardPage.tsx then redirects back to /scan since draft
+ * and outcome are both null). We don't try to persist this to IndexedDB —
+ * scan-history-store.ts keeps scan metadata across reloads, but not the raw
+ * photo bytes, so there'd be nothing to resume the wizard with anyway.
  */
 import { create } from 'zustand'
 import type {

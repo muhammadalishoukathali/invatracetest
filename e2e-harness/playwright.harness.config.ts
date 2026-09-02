@@ -1,3 +1,8 @@
+// Targets image-harness.spec.ts (the EXIF-present vs EXIF-stripped
+// comparison) on the dev:model-test server, port 5174, so it exercises the
+// real classifier. Separate from playwright.known.config.ts and
+// playwright.cluttered.config.ts purely so each harness spec can be run in
+// isolation without the others' image sets slowing things down.
 import { defineConfig, devices } from '@playwright/test'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'

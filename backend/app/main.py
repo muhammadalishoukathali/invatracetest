@@ -1,3 +1,12 @@
+"""FastAPI app factory and process-wide wiring.
+
+Builds the actual FastAPI instance: registers every router, sets up
+CORS, structlog, and a request-context middleware that stamps a
+request ID and a handful of security headers onto every response.
+Uvicorn/gunicorn point at the `app` object created at the bottom of
+this file.
+"""
+
 from __future__ import annotations
 
 import re
@@ -31,10 +40,15 @@ structlog.configure(
     ]
 )
 log = structlog.get_logger("invatrace.api")
+# Client-supplied X-Request-ID has to look like this before we trust it and echo
+# it back - otherwise we just generate our own uuid4 below.
 REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{8,100}$")
 
 
 def create_app() -> FastAPI:
+    """Assemble the FastAPI app. Called once at import time to build the
+    module-level `app` object below - keeping it in a function (rather than
+    top-level statements) makes it easy to spin up a fresh app in tests."""
     settings = get_settings()
     app = FastAPI(
         title="InvaTrace API",
@@ -60,6 +74,10 @@ def create_app() -> FastAPI:
 
     @app.middleware("http")
     async def request_context(request: Request, call_next):
+        # Reuse an incoming request id (useful when a client/gateway already
+        # set one, e.g. for tracing across services) as long as it's not junk;
+        # otherwise mint our own so every log line and response can be tied
+        # back to a single request.
         incoming = request.headers.get("x-request-id", "")
         request_id = incoming if REQUEST_ID_PATTERN.fullmatch(incoming) else str(uuid.uuid4())
         token = request_id_var.set(request_id)
@@ -79,6 +97,8 @@ def create_app() -> FastAPI:
                 response.headers["Strict-Transport-Security"] = (
                     "max-age=31536000; includeSubDomains"
                 )
+            # Profile data and anything sent with an auth header is per-identity and
+            # private - make sure a shared proxy/browser cache never keeps a copy.
             if request.url.path.startswith("/api/v1/profiles") or request.headers.get(
                 "authorization"
             ):
@@ -96,6 +116,8 @@ def create_app() -> FastAPI:
             request_id_var.reset(token)
 
     install_error_handlers(app)
+    # Order doesn't matter for routing (paths are distinct) but keeping health
+    # first is nice for readability when scanning the OpenAPI docs.
     for router in (
         health.router,
         identity.router,

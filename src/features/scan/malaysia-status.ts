@@ -1,5 +1,14 @@
 import type { IdentifyResult, MalaysiaStatusState } from '@/types'
 
+/**
+ * Maps the raw malaysiaStatus string the model/catalog attaches to a scan
+ * result down to the three states the UI actually branches on: invasive
+ * (reportable), information_only (identified but not part of the pilot's
+ * report-eligible list), or status_uncertain (we don't trust the status
+ * enough to let it drive a report). The current pilot scope is Malaysia
+ * only, per docs/product.md, so this file has no notion of any other
+ * jurisdiction's rules.
+ */
 const STATUS_UNCERTAIN_VALUES = new Set([
   'status_requires_expert_review',
   'cryptogenic_uncertain',
@@ -21,6 +30,9 @@ export function deriveMalaysiaStatusState(result: IdentifyResult): MalaysiaStatu
   if (raw === 'invasive') return 'invasive'
   if (STATUS_UNCERTAIN_VALUES.has(raw)) return 'status_uncertain'
   if (INFORMATION_ONLY_VALUES.has(raw)) return 'information_only'
+  // Any status value we don't explicitly recognise falls back to uncertain
+  // rather than being treated as safe-to-report — a new/unmapped status code
+  // from the catalog should never silently unlock reporting.
   return 'status_uncertain'
 }
 

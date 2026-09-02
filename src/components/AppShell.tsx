@@ -17,6 +17,12 @@ const TITLES: Record<string, [string, string]> = {
   '/reports': ['My records', 'Your submitted field reports'],
 }
 
+/**
+ * Root layout for every authenticated screen (map, profile, records). Renders
+ * the sidebar or bottom tabs depending on viewport, a shared header with the
+ * page title, and an Outlet for the active route. Mounted at "/" in
+ * src/app/router.tsx behind RequirePrivateAccess.
+ */
 export function AppShell() {
   const isDesktop = useIsDesktop()
   const profile = usePrivateAccess((state) => state.profile)
@@ -25,8 +31,14 @@ export function AppShell() {
   const navigate = useNavigate()
   const headingRef = useRef<HTMLHeadingElement>(null)
 
+  // Move focus to the page heading on every route change so screen-reader
+  // users get an announcement of where they landed, same as a full page load
+  // would give them — react-router doesn't reset focus on its own.
   useEffect(() => { headingRef.current?.focus() }, [pathname])
 
+  // RequirePrivateAccess should stop us getting here without a profile, but
+  // this guards the brief render between that check resolving and the
+  // profile actually landing in the store.
   if (!profile) return null
   const [title, subtitle] = pathname.startsWith('/reports/')
     ? ['Report details', 'Status and screening result']

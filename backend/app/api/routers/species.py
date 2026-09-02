@@ -9,10 +9,21 @@ from app.db.base import get_session
 from app.db.models import Species
 from app.domain.action_guidance import current_action_guide
 
+"""Species catalogue and on-device model config — mostly reference data.
+
+Backs the species browser/detail screens and the "what am I allowed to
+report" logic. Also exposes the acceptance threshold and supported model
+versions so the app's on-device classifier knows what the server currently
+expects (see model_acceptance_threshold usage in reports.py).
+"""
+
 router = APIRouter(prefix="/api/v1/species", tags=["species"])
 model_config_router = APIRouter(prefix="/api/v1/model-config", tags=["model"])
 
 
+# Tells the app which on-device model version(s) the server accepts and what
+# confidence cutoff counts as "confident enough to report as invasive" — the
+# app fetches this on startup so the two sides don't drift out of sync.
 @model_config_router.get("")
 def model_config() -> dict[str, object]:
     settings = get_settings()
@@ -22,6 +33,9 @@ def model_config() -> dict[str, object]:
     }
 
 
+# The DB tracks Malaysia's official invasive-status categories in more
+# detail than the UI needs — this collapses them down to the three states
+# the frontend actually renders differently (invasive / info-only / uncertain).
 _STATUS_TO_UI: dict[str, MalaysiaStatus] = {
     "invasive": "invasive",
     "alien_not_marked_invasive": "information_only",
@@ -41,6 +55,9 @@ def _ui_malaysia_status(item: Species) -> MalaysiaStatus:
     return "status_uncertain"
 
 
+# Species picker list — used e.g. when the user browses/searches species
+# outside of a scan result. Kept lightweight (SpeciesSummary, not the full
+# detail record) since this can return the whole catalogue at once.
 @router.get("", response_model=SpeciesListResponse)
 def list_species(session: Session = Depends(get_session)) -> SpeciesListResponse:
     species = session.scalars(select(Species).order_by(Species.name)).all()
@@ -57,6 +74,8 @@ def list_species(session: Session = Depends(get_session)) -> SpeciesListResponse
     )
 
 
+# Species detail screen — traits, removal steps, native look-alike, and
+# whether the user is even allowed to report/act on this species right now.
 @router.get("/{species_id}", response_model=SpeciesDetail)
 def species_detail(species_id: str, session: Session = Depends(get_session)) -> SpeciesDetail:
     item = session.get(Species, species_id)
@@ -65,6 +84,9 @@ def species_detail(species_id: str, session: Session = Depends(get_session)) -> 
     ui_status = _ui_malaysia_status(item)
     guide = current_action_guide(item)
     # AC 1.2.3: information-only / uncertain MUST have action_eligible=false and report_eligible=false
+    # current_action_guide already handles seasonality; "report_only" mode
+    # means there's no active removal guidance right now, so don't let the UI
+    # offer a removal action even if the species record itself is flagged eligible.
     has_active_guide = guide is not None and guide.guidance_mode != "report_only"
     action_eligible = bool(item.action_eligible) and ui_status == "invasive" and has_active_guide
     report_eligible = bool(item.reportable) and ui_status == "invasive"

@@ -1,3 +1,9 @@
+// Checks how the scan UI behaves when the model download fails. Runs under
+// playwright.model.config.ts, which spins up its own dev server on :5174 —
+// it needs a clean environment so the fetch mocking here reliably fakes the
+// download failure without racing other specs. Guards against losing the
+// user's photo or letting them navigate onto a stale result screen when
+// analysis gets interrupted.
 import { expect, test, type Page } from '@playwright/test'
 
 async function startPrivateAccess(page: Page) {
@@ -31,6 +37,8 @@ async function attachTestPhoto(page: Page) {
   await expect(page.getByText('Photo quality check passed')).toBeVisible()
 }
 
+// If analysis fails, the user shouldn't have to retake the photo — it needs
+// to still be there when they hit Analyse again.
 test('a model download failure keeps the photo available for retry', async ({ page }) => {
   await page.addInitScript(() => {
     const realFetch = globalThis.fetch.bind(globalThis)
@@ -51,6 +59,11 @@ test('a model download failure keeps the photo available for retry', async ({ pa
   await expect(page).toHaveURL(/\/scan$/)
 })
 
+// Regression test for a timing bug: the user backs out mid-analysis, then the
+// stalled download finally resolves after they've already left the page. That
+// late response shouldn't be able to shove them onto the result screen. The
+// __releaseModelDownload hook lets the test hold the fetch open and resolve
+// it on demand instead of racing a real timeout.
 test('leaving an interrupted analysis cannot navigate back to a stale result', async ({ page }) => {
   await page.addInitScript(() => {
     const realFetch = globalThis.fetch.bind(globalThis)

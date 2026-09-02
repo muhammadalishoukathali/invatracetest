@@ -13,7 +13,13 @@ interface Props {
   activeProfileId: string | null
 }
 
-/** Right-side drawer listing IndexedDB-queued reports awaiting sync. */
+/**
+ * Right-side drawer listing IndexedDB-queued reports awaiting sync, opened
+ * from ReportQueueStatusBanner.tsx. The banner only has room for a count,
+ * so this is where you actually see per-item state — attempt count, last
+ * error, whether it belongs to a different private profile (can't send
+ * those without switching profiles first), and per-item discard/retry.
+ */
 export function ReportQueueDrawer({
   queue, onClose, onRetry, onDiscard, flushing, activeProfileId,
 }: Props) {

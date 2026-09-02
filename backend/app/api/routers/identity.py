@@ -41,12 +41,25 @@ from app.db.models import (
     RecoveryCodeBatch,
 )
 
+"""Pseudonymous "private access" auth — no email/password, just an installation secret.
+
+Covers the whole account lifecycle for InvaTrace's identity model: a profile
+gets created on first app open (start), an existing installation re-derives
+its access token on later opens (bootstrap), and a lost device gets a fresh
+installation via a recovery code (restore). Also handles profile settings,
+recovery code rotation, and installation management (the "my devices" list).
+This is the backend for the app's onboarding flow and the account/settings screen.
+"""
+
 router = APIRouter(prefix="/api/v1/profiles", tags=["private access"])
+# Deliberately vague — don't tell an attacker whether the profile ID or the
+# recovery code was the wrong part.
 GENERIC_RESTORE_ERROR = (
     "We couldn’t restore this access. Check the profile ID and recovery code, then try again."
 )
 
 
+# Shared shape for returning a Profile out of any of the endpoints below.
 def profile_response(profile: Profile) -> ProfileResponse:
     return ProfileResponse(
         id=profile.public_id,
@@ -56,6 +69,8 @@ def profile_response(profile: Profile) -> ProfileResponse:
     )
 
 
+# Small wrapper so every identity-related mutation leaves an AuditEvent behind
+# without repeating the same six kwargs everywhere.
 def audit(
     session: Session,
     event_type: str,
@@ -76,6 +91,9 @@ def audit(
     )
 
 
+# Generates a fresh set of 10 one-time recovery codes and stores their hashes
+# (never the raw codes — those only exist in the response, once). Used on
+# first profile creation and whenever the user rotates their codes.
 def create_recovery_batch(session: Session, profile_id: uuid.UUID) -> tuple[list[str], datetime]:
     now = utcnow()
     raw_codes = [random_grouped_secret(16) for _ in range(10)]
@@ -94,6 +112,10 @@ def create_recovery_batch(session: Session, profile_id: uuid.UUID) -> tuple[list
     return raw_codes, now
 
 
+# First-run flow — called once when the app is freshly installed. Client
+# generates a random installation_token locally (this endpoint never sees a
+# password) and we mint a brand new pseudonymous profile for it, starting at
+# trust_level="New" (see app/core/privacy.py for what that restricts).
 @router.post("/start", response_model=StartProfileResponse, status_code=201)
 def start_profile(
     body: StartProfileRequest,
@@ -102,6 +124,8 @@ def start_profile(
 ) -> StartProfileResponse:
     rate_limiter.check("profile_start", client_address(request))
     token_hash = keyed_hash(body.installation_token)
+    # Same token used twice would mean two profiles sharing one installation
+    # secret, which breaks the whole "one installation = one profile" model.
     if session.scalar(select(Installation.id).where(Installation.token_hash == token_hash)):
         raise ApiProblem(409, "installation_exists", "Private access could not be started.")
 
@@ -128,6 +152,9 @@ def start_profile(
     )
 
 
+# Called every time the PWA opens on a device that already has an
+# installation_token in local storage — exchanges it for a short-lived access
+# token. This is basically "log in silently" since there's no password to type.
 @router.post("/bootstrap", response_model=BootstrapResponse)
 def bootstrap(
     body: BootstrapRequest,
@@ -155,6 +182,9 @@ def bootstrap(
     )
 
 
+# Recovery flow for "I got a new phone / cleared my browser storage" — trades
+# a profile ID + one of the 10 recovery codes for a new installation on the
+# same profile. Called from the app's "restore access" screen.
 @router.post("/restore", response_model=RestoreResponse)
 def restore(
     body: RestoreRequest,
@@ -188,6 +218,9 @@ def restore(
             if hmac.compare_digest(candidate.code_hash, supplied_hash):
                 matched_code = candidate
     else:
+        # No such profile — still do a dummy hash comparison so the response
+        # time doesn't leak "profile exists" vs "profile doesn't exist" via
+        # a timing side channel.
         hmac.compare_digest(keyed_hash("dummy-recovery-code"), supplied_hash)
 
     if not profile or not matched_code:
@@ -195,6 +228,9 @@ def restore(
         raise ApiProblem(400, "restore_failed", GENERIC_RESTORE_ERROR)
 
     now = utcnow()
+    # Conditional UPDATE on used_at IS NULL — if two requests race to spend
+    # the same code, only one rowcount comes back as 1. Cheap way to make
+    # "spend this one-time code" atomic without a separate lock.
     result = session.execute(
         update(RecoveryCode)
         .where(RecoveryCode.id == matched_code.id, RecoveryCode.used_at.is_(None))
@@ -227,6 +263,7 @@ def restore(
     )
 
 
+# Called from the account settings screen when the user edits their display name.
 @router.patch("/me", response_model=ProfileResponse)
 def update_profile(
     body: UpdateProfileRequest,
@@ -239,6 +276,9 @@ def update_profile(
     return profile_response(auth.profile)
 
 
+# User confirms they've actually saved their recovery codes somewhere — flips
+# a flag so we stop nagging them on every app open (see recovery_setup_required
+# on the bootstrap response).
 @router.post("/me/recovery-setup/acknowledge", status_code=204)
 def acknowledge_recovery_setup(
     auth: AuthContext = Depends(require_auth),
@@ -256,6 +296,8 @@ def acknowledge_recovery_setup(
     return Response(status_code=204)
 
 
+# Burns any unused codes from previous batches and issues 10 new ones — for
+# when a user suspects their old codes leaked, or just wants a clean set.
 @router.post("/me/recovery-codes/rotate", response_model=RecoveryBatchResponse)
 def rotate_recovery_codes(
     auth: AuthContext = Depends(require_auth),
@@ -263,6 +305,8 @@ def rotate_recovery_codes(
 ) -> RecoveryBatchResponse:
     rate_limiter.check("recovery_rotate", str(auth.profile.id))
     now = utcnow()
+    # Invalidate the whole previous batch rather than deleting rows, so old
+    # codes fail cleanly instead of just disappearing from the table.
     session.execute(
         update(RecoveryCodeBatch)
         .where(
@@ -283,6 +327,9 @@ def rotate_recovery_codes(
     return RecoveryBatchResponse(recovery_codes=codes, created_at=created_at)
 
 
+# Powers the "devices & recovery" section of account settings — how many
+# unused recovery codes are left and which installations (devices) are
+# currently linked to this profile.
 @router.get("/me/access", response_model=AccessOverviewResponse)
 def access_overview(
     auth: AuthContext = Depends(require_auth),
@@ -321,6 +368,7 @@ def access_overview(
     )
 
 
+# Lets a user kick a lost/old device off their profile from the device list.
 @router.post("/me/installations/{installation_id}/revoke", status_code=204)
 def revoke_installation(
     installation_id: uuid.UUID,
@@ -328,6 +376,8 @@ def revoke_installation(
     session: Session = Depends(get_session),
 ) -> Response:
     rate_limiter.check("installation_revoke", str(auth.profile.id))
+    # Can't revoke the device you're currently using — that'd lock you out
+    # mid-request with no way back in.
     if installation_id == auth.installation.id:
         raise ApiProblem(
             400, "current_installation", "The current installation cannot revoke itself."

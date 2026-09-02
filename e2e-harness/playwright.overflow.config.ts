@@ -1,3 +1,7 @@
+// Runs overflow-audit.spec.ts against the normal mocked dev server (5173).
+// Longer timeout (180s) than the other configs because it walks ten routes
+// across three viewport widths in a single serial test per viewport — a lot
+// more page loads than the other harness specs do.
 import { defineConfig, devices } from '@playwright/test'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'

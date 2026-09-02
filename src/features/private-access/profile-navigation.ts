@@ -1,3 +1,7 @@
+// Single job: decide where "Back" goes from the profile/records screens.
+// Both functions currently just return '/map' no matter what's passed in —
+// that's intentional (see the comment below), not a stub waiting to be filled in.
+
 export interface ProfileNavigationState {
   returnTo: '/map' | '/reports'
 }

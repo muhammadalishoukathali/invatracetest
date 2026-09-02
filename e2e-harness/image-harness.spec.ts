@@ -1,3 +1,9 @@
+// Manual QA script. Runs the same 7 reference photos twice — once with their
+// original EXIF metadata intact and once stripped — to check whether the
+// scan pipeline behaves differently when GPS/orientation data is missing
+// (which is common for images downloaded off the web vs taken on a phone).
+// Not in the main e2e suite because it needs the real model server
+// (dev:model-test on port 5174) rather than the mocked API.
 import { test, expect, Page } from '@playwright/test'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -96,6 +102,8 @@ test.beforeEach(async ({ page }) => {
   await preparePage(page)
 })
 
+// Each image gets a with_exif run and a stripped run so the two can be
+// diffed side by side afterwards.
 for (const img of IMAGES) {
   test(`with_exif img-${img.id} ${img.species}`, async ({ page }) => {
     await runImage(page, 'with_exif', img)

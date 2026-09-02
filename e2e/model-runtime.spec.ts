@@ -1,5 +1,14 @@
+// Exercises the PULIH on-device model loader directly (bypassing the scan UI):
+// a chunked download that fails partway through, falling back to WASM when
+// WebGPU isn't available, and making sure concurrent load() calls share one
+// session instead of loading the model several times over. Needs the model
+// files to actually be served under /models for the fetch mocking here to
+// mean anything.
 import { expect, test } from '@playwright/test'
 
+// Bundled into one test because all three checks share the same expensive
+// model download: retrying a failed chunk, falling back off WebGPU, and
+// deduping concurrent load() calls into a single in-flight session.
 test('PULIH runtime retries a failed download, falls back to WASM, and reuses one session', async ({ page }) => {
   test.setTimeout(45_000)
   await page.addInitScript(() => {

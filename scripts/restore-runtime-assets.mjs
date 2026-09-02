@@ -4,12 +4,20 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+// Inverse of pack-runtime-assets.mjs: reads assets/runtime-packed/manifest.json
+// and rebuilds the original binary files (logos, reference photos, the ONNX
+// model) on disk. Not invoked directly by any package.json script, instead
+// prepare-model-assets.mjs imports restoreRuntimeAssets() and runs it before
+// every dev server start and build. It can also be run standalone with
+// `node scripts/restore-runtime-assets.mjs` for debugging or manual restores.
 const scriptPath = fileURLToPath(import.meta.url)
 const projectRoot = resolve(dirname(scriptPath), '..')
 const manifestPath = resolve(projectRoot, 'assets', 'runtime-packed', 'manifest.json')
 
 const digest = (value) => createHash('sha256').update(value).digest('hex')
 
+// Guards against a manifest entry pointing outside the project (e.g. via
+// `../../` path traversal) writing files somewhere it shouldn't.
 function resolveInside(root, relativePath, label) {
   if (isAbsolute(relativePath)) throw new Error(`${label} must be relative: ${relativePath}`)
   const resolved = resolve(root, relativePath)
@@ -20,6 +28,8 @@ function resolveInside(root, relativePath, label) {
   return resolved
 }
 
+// Lets restoreRuntimeAssets skip files that are already correct on disk
+// instead of re-decompressing everything on every dev/build run.
 async function matchesExpectedFile(path, expectedBytes, expectedSha256) {
   try {
     const value = await readFile(path)
@@ -30,6 +40,9 @@ async function matchesExpectedFile(path, expectedBytes, expectedSha256) {
   }
 }
 
+// Verifies and, if needed, rebuilds every asset listed in the packed
+// manifest. outputRoot is overridable so tests or CI can restore into a
+// scratch directory instead of the real project tree.
 export async function restoreRuntimeAssets({ outputRoot = projectRoot } = {}) {
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
   if (manifest.schemaVersion !== 'invatrace.runtime-packed.v1' || !Array.isArray(manifest.assets)) {
@@ -72,6 +85,8 @@ export async function restoreRuntimeAssets({ outputRoot = projectRoot } = {}) {
   console.log(`Verified ${manifest.assets.length} runtime assets; restored ${restored}.`)
 }
 
+// Only run automatically when this file is executed directly (not when it's
+// imported by prepare-model-assets.mjs), so importing it never has side effects.
 if (process.argv[1] && resolve(process.argv[1]) === scriptPath) {
   const outputFlag = process.argv.indexOf('--output-root')
   if (outputFlag !== -1 && !process.argv[outputFlag + 1]) {

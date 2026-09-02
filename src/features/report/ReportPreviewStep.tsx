@@ -10,6 +10,12 @@ const EXTENT_LABEL = {
   large_area: 'Large area',
 } as const
 
+/**
+ * Step 4 of 4 in the report wizard (location, extent, consent, preview) —
+ * the final review-and-submit screen. Kicks off submitReport(), which may
+ * finish immediately or fall back to the offline queue; either way the
+ * result gets stored as the draft outcome for ReportSubmissionResult.tsx.
+ */
 export function ReportPreviewStep() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const {

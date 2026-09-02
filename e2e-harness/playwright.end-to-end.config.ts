@@ -1,3 +1,7 @@
+// Drives verify-end-to-end-flow.spec.ts against the normal mocked dev
+// server (5173, same port as the main config) rather than the model-test
+// server. Isolated into its own config just so this one long journey spec
+// can be run on its own without pulling in the rest of /e2e.
 import { defineConfig, devices } from '@playwright/test'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'

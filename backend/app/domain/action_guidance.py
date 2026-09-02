@@ -1,3 +1,12 @@
+"""Turns the raw JSON blobs on Species.action_guides into API-ready guidance.
+
+Removal advice is seasonal (a plant might be fine to pull in the dry season
+and a bad idea to disturb while seeding), so a species can have several
+guides, each valid for a set of months. This module picks the one that
+covers a given observation date and normalises the messy stored shape into
+a proper SeasonalActionGuide schema.
+"""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -7,6 +16,9 @@ from app.api.schemas import GuidanceSource, SeasonalActionGuide
 from app.db.models import Species
 
 
+# older seeded guides used an "action_mode" field with different values than
+# what the API contract settled on later ("guidance_mode") — this maps the
+# old vocabulary forward so we don't have to backfill every stored guide
 _OLD_TO_NEW_MODE = {
     "remove": "active_guidance",
     "contain": "active_guidance",
@@ -17,7 +29,14 @@ _OLD_TO_NEW_MODE = {
 
 
 def _hydrate_guide(species: Species, raw: dict[str, Any]) -> SeasonalActionGuide:
-    """Fill AC-required fields on a stored guide dict, deriving from species where missing."""
+    """Fill AC-required fields on a stored guide dict, deriving from species where missing.
+
+    The stored JSON is a bit of a grab-bag — some guides were written with
+    camelCase keys, some snake_case, some fields live on the guide itself and
+    others fell back to species.guidance_metadata over time. Every .get()
+    chain below is working around that inconsistency rather than anything
+    being wrong with the current data model.
+    """
     action_mode = raw.get("actionMode") or raw.get("action_mode") or "report_only"
     guidance_mode = raw.get("guidanceMode") or raw.get("guidance_mode")
     if not guidance_mode:
@@ -73,6 +92,10 @@ def current_action_guide(
 
 
 def _observe_and_report_fallback(species: Species) -> SeasonalActionGuide:
+    # used when a species has no guide covering the current month (or no
+    # guides at all) — the client should never render an empty guidance
+    # screen, so this stub always gives it something to show, just with
+    # removal actively discouraged rather than silently omitted
     metadata = species.guidance_metadata or {}
     sources_raw = metadata.get("sources") or []
     return SeasonalActionGuide(
@@ -100,6 +123,8 @@ def _observe_and_report_fallback(species: Species) -> SeasonalActionGuide:
 
 
 def action_summary(species: Species, *, observed_at: datetime | None = None) -> str:
+    # short one-liner for places that just need summary text (e.g. a
+    # notification body) and don't want the full guide object
     guide = current_action_guide(species, observed_at=observed_at)
     if guide is None:
         return "Report only. No reviewed seasonal removal guide is available."

@@ -1,3 +1,5 @@
+// Single source of truth for the app's primary nav. Both BottomTabs and
+// Sidebar read from here so mobile and desktop never drift out of sync.
 import type { Role } from '@/types'
 
 export interface NavItem {

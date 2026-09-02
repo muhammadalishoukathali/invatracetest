@@ -3,6 +3,15 @@ import { modelSpeciesCatalog } from '@/data/model-species-catalog'
 import { hashBitmap } from './image-processing'
 import { PulihModel } from './pulih-model'
 
+/**
+ * This is the seam between the scan UI and the model. It picks which
+ * ModelAdapter implementation gets used (the real PULIH ONNX model from
+ * pulih-model.ts, a deterministic fake for local dev, or a fail-closed stub
+ * when no model is configured) and gives all three the same
+ * detect/quality/identify shape so ScanCapturePage doesn't need to know or
+ * care which one is running. pulih-model.ts owns the actual ONNX session;
+ * this file just decides when to use it and normalizes its output.
+ */
 interface ModelAdapter {
   detect(image: ImageBitmap): Promise<{ box: BBox | null }>
   quality(image: ImageBitmap): Promise<QualityResult>
@@ -139,6 +148,10 @@ let adapter: ModelAdapter | null = null
 export function getAdapter(): ModelAdapter {
   if (!adapter) {
     const fakeModelSetting = import.meta.env.VITE_ENABLE_FAKE_MODEL
+    // Only ever fake the model in dev. VITE_ENABLE_FAKE_MODEL is the explicit
+    // switch; if it's unset we still fall back to fake when the rest of the
+    // app is already running on mocked API data (VITE_ENABLE_MOCKS), so
+    // "mock mode" doesn't require downloading the real ~30 MiB model.
     const fakeAllowed = import.meta.env.DEV && (
       fakeModelSetting === 'true'
       || (fakeModelSetting !== 'false' && import.meta.env.VITE_ENABLE_MOCKS === 'true')

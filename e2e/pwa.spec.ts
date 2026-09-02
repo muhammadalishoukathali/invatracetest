@@ -1,5 +1,12 @@
+// Confirms the production PWA actually installs a service worker and works
+// offline. Has to run against the built preview server (npm run preview), not
+// the Vite dev server, because service workers don't register the same way in
+// dev mode. Uses playwright.pwa.config.ts (port 4173).
 import { expect, test } from '@playwright/test'
 
+// Also checks the service worker isn't caching profile/bootstrap responses —
+// those carry session-specific data, so caching them could leak one visitor's
+// session details into a later visit on the same device.
 test('production shell installs, works offline, and does not cache private access requests', async ({ page, context }) => {
   await page.goto('/private-access')
   await expect(page.getByRole('heading', { name: 'Field reporting without a personal account.' })).toBeVisible()

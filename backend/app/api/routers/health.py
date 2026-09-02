@@ -11,14 +11,26 @@ from app.db.base import get_session
 from app.db.models import VerificationJob
 from app.services.storage import storage
 
+"""Health/readiness probes for whatever's running this service (Docker, k8s, uptime checks).
+
+No auth, no business logic — just "is the process up" vs "are its
+dependencies (Postgres, Redis, object storage) actually reachable."
+"""
+
 router = APIRouter(tags=["health"])
 
 
+# Dumbest possible liveness check — just proves the process is running and
+# can respond. Doesn't touch the DB or anything else, so it won't false-alarm
+# a container restart just because Postgres had a blip.
 @router.get("/health/live")
 def live() -> dict[str, str]:
     return {"status": "ok"}
 
 
+# Slightly heavier check that also pings Postgres. Mostly here for
+# load balancers / monitoring dashboards that want a quick ok/not-ok plus
+# a 503 they can alert on.
 @router.get("/health", response_model=HealthResponse)
 def health(response: Response, session: Session = Depends(get_session)) -> HealthResponse:
     try:
@@ -30,6 +42,10 @@ def health(response: Response, session: Session = Depends(get_session)) -> Healt
     return HealthResponse(status="ok" if database == "ok" else "unavailable", database=database)
 
 
+# Full readiness probe — checks every dependency the app actually needs to
+# serve traffic (Postgres, Redis for rate limiting, R2/MinIO for photos) plus
+# the size of the screening backlog, so ops can tell "up" from "up but drowning
+# in unprocessed reports."
 @router.get("/health/ready", response_model=HealthResponse)
 def ready(response: Response, session: Session = Depends(get_session)) -> HealthResponse:
     try:

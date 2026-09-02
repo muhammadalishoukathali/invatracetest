@@ -8,6 +8,12 @@ interface Props {
   variant?: 'primary' | 'submit'
 }
 
+/**
+ * Shared primary CTA button used across every step of the report wizard
+ * (ReportLocationStep.tsx, ReportExtentStep.tsx, ReportConsentStep.tsx,
+ * ReportPreviewStep.tsx). "submit" variant swaps the chevron for a send
+ * icon and shows a spinner while the final submission is in flight.
+ */
 export function ReportNextButton({ disabled, onClick, label, loading, variant = 'primary' }: Props) {
   return (
     <button type="button" onClick={onClick} disabled={disabled || loading}

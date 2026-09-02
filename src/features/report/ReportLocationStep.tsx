@@ -19,6 +19,12 @@ function inMalaysia(p: { lat: number; lng: number } | null): boolean {
     && p.lng >= MY_LNG_MIN && p.lng <= MY_LNG_MAX
 }
 
+/**
+ * Step 1 of 4 in the report wizard (location, extent, consent, preview).
+ * Tries to reuse the GPS fix taken during the scan so the user isn't asked
+ * for location twice, and gates progress on both accuracy and Malaysia
+ * bounds since the trust pipeline needs a usable fix to screen the report.
+ */
 export function ReportLocationStep() {
   const { draft, setLocation, next, reset } = useReportDraft()
   const navigate = useNavigate()

@@ -1,5 +1,10 @@
+// Small suite for profile page navigation and the saved-record map popup.
+// Nothing backend-heavy here — mostly back-button behaviour and focus
+// management, which are easy to break silently during a routing refactor.
 import { expect, test } from '@playwright/test'
 
+// Regression test for a back-button trap: profile -> records -> back should
+// land somewhere other than profile, not just bounce the user in a loop.
 test('leaving profile for records does not trap Back between the two pages', async ({ page }) => {
   await page.goto('/private-access')
   await page.getByRole('button', { name: 'Start privately' }).click()
@@ -15,6 +20,9 @@ test('leaving profile for records does not trap Back between the two pages', asy
   await expect(page).not.toHaveURL(/\/profile$/)
 })
 
+// Seeds a fake scan record straight into localStorage instead of running a
+// real scan, then checks the map marker for it opens a dialog with the right
+// details and hands focus back to the marker properly once closed.
 test('a saved record marker opens its record details from the map', async ({ page }) => {
   await page.goto('/private-access')
   await page.getByRole('button', { name: 'Start privately' }).click()

@@ -1,3 +1,12 @@
+"""Tests for app/services/storage.py - the R2/MinIO wrapper.
+
+Uploads go to a temporary "uploads/..." key via presigned URL, then get
+moved to a permanent "evidence/..." key once the report is created. These
+tests check that move uses an ETag-conditional copy (so we don't finalize
+a photo that changed underneath us) and that the temp object gets cleaned
+up afterwards.
+"""
+
 from __future__ import annotations
 
 import io
@@ -5,6 +14,8 @@ import io
 from app.services.storage import ObjectMetadata, storage
 
 
+# minimal stand-in for the boto3 S3 client, just enough surface for the
+# storage service to call against without hitting real R2/MinIO.
 class FakeS3Client:
     def __init__(self) -> None:
         self.copied: dict[str, object] | None = None
@@ -27,6 +38,11 @@ class FakeS3Client:
 
 
 def test_finalize_upload_uses_etag_and_removes_the_temporary_object(monkeypatch) -> None:
+    # the copy has to be conditional on the ETag we recorded when the
+    # upload was presigned - that's what stops us finalizing a report
+    # against an object that got overwritten by a second upload attempt
+    # in between. Once copied to its permanent key, the staging object
+    # should get deleted so it doesn't hang around forever.
     client = FakeS3Client()
     monkeypatch.setattr(storage, "internal", client)
     storage.finalize_upload(

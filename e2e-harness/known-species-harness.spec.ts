@@ -1,3 +1,9 @@
+// Manual QA script. This is the "control group" for the cluttered-species
+// harness — same seven target species but clean, textbook single-plant
+// photos instead of messy field shots. Comparing the two result sets tells
+// me how much accuracy the model loses once backgrounds get busy. Runs
+// against dev:model-test (port 5174) so it's hitting the real classifier,
+// not the mock used by the main e2e suite.
 import { test, expect, Page } from '@playwright/test'
 import fs from 'node:fs'
 import path from 'node:path'

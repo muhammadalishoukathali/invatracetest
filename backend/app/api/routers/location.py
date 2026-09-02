@@ -1,4 +1,10 @@
-"""AC 4.3.1 / 4.3.2 — nearest OpenStreetMap-derived feature within 5km, with fallback."""
+"""AC 4.3.1 / 4.3.2 — nearest OpenStreetMap-derived feature within 5km, with fallback.
+
+Given a lat/lng, finds the nearest named trail/park/forest/wood from the
+OSM-derived tables so the report/sighting UI can show something like "near
+Bukit Kiara Trail" instead of raw coordinates. Used by the report submission
+flow when the app wants to label where a sighting happened.
+"""
 
 from __future__ import annotations
 
@@ -26,6 +32,8 @@ class LocationContextResponse(ApiModel):
     context_status: Literal["available", "temporarily_unavailable"] = "available"
 
 
+# OSM doesn't have a clean single tag for "what kind of green space is this,"
+# so we sniff the raw tags we stored to bucket it into one of our three types.
 def _classify_area(name: str, metadata: dict) -> Literal["park", "forest", "wood"]:
     tags = ((metadata or {}).get("tags") or {})
     if tags.get("landuse") == "forest":
@@ -35,6 +43,8 @@ def _classify_area(name: str, metadata: dict) -> Literal["park", "forest", "wood
     return "park"
 
 
+# lat/lon bounds are roughly Malaysia's bounding box — anything outside that
+# gets rejected by FastAPI's own validation before we even touch the DB.
 @router.get("", response_model=LocationContextResponse)
 def location_context(
     lat: float = Query(..., ge=0.8, le=7.5),

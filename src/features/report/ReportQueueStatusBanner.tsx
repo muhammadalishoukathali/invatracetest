@@ -1,5 +1,10 @@
-/** Shows the connection state and the number of reports waiting to upload.
- *  Selecting the pending count opens the queue details drawer. */
+/**
+ * Sticky banner shown app-wide (not just in the wizard) whenever there's
+ * something the user should know about sync: offline, private-access
+ * session needs restoring, or reports sitting in the local queue. Stays a
+ * one-line banner by design — full per-item detail (attempts, errors,
+ * discard) lives in ReportQueueDrawer.tsx, opened from "View queue" here.
+ */
 import { useCallback, useEffect, useState } from 'react'
 import { Icon } from '@/components/Icon'
 import { useOnline } from '@/hooks/useOnline'
@@ -28,6 +33,8 @@ export function ReportQueueStatusBanner() {
   }, [activeProfileId])
 
   useEffect(() => {
+    // report-queue.ts is a module-level IndexedDB store, not React state, so
+    // we poll its own change event rather than relying on props/re-renders.
     void refresh()
     return onReportQueueChange(() => { void refresh() })
   }, [refresh])
@@ -35,6 +42,8 @@ export function ReportQueueStatusBanner() {
   const doFlush = useCallback(async () => {
     setFlushing(true)
     try {
+      // Queued reports need a live private-access session to submit under;
+      // restore it first instead of letting every queued item fail and re-queue.
       const sessionReady = identityStatus === 'ready' || await syncIdentity()
       if (!sessionReady) return
       await flushQueue()

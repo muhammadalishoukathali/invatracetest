@@ -1,3 +1,9 @@
+// Shared request/response shapes for the whole app. UI components, feature
+// stores, and src/mocks/handlers.ts all import from here so they agree on one
+// contract instead of each feature defining its own version of a Report or a
+// Sighting. Roughly grouped below: identity/access, scan and species data,
+// report data, map data, and notifications.
+
 /** A role controls which actions a profile may perform. Trust level describes
  *  how much review its evidence needs, so the two values stay separate. */
 export type Role = 'Detector' | 'Volunteer' | 'Expert' | 'Admin'

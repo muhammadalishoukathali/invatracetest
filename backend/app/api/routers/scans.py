@@ -1,4 +1,10 @@
-"""AC 2.2.1 — persist client-side scan results so report submissions can be re-verified."""
+"""AC 2.2.1 — persist client-side scan results so report submissions can be re-verified.
+
+The on-device model runs inference in the app before the user ever decides
+to report anything (the "point camera at plant, get an instant guess" flow).
+This endpoint records what the model actually said so create_report in
+reports.py can later check the submitted report wasn't tampered with client-side.
+"""
 
 from __future__ import annotations
 
@@ -15,6 +21,10 @@ from app.db.models import Scan, Species
 router = APIRouter(prefix="/api/v1/scans", tags=["scans"])
 
 
+# Called right after the on-device classifier finishes on a capture, before
+# the user decides whether to submit a report at all. capture_id ties this
+# scan back to a specific photo capture on the client so the report endpoint
+# can cross-check it later.
 @router.post("", response_model=ScanResponse, status_code=201)
 def create_scan(
     body: ScanCreateRequest,
@@ -28,6 +38,8 @@ def create_scan(
     if body.predicted_species_id and not session.get(Species, body.predicted_species_id):
         raise ApiProblem(422, "unknown_species", "The predicted species is not supported.")
 
+    # Same capture_id submitted twice (retry, double-tap) just returns the
+    # scan we already recorded instead of creating a duplicate row.
     existing = session.scalar(
         select(Scan).where(
             Scan.capture_id == body.capture_id,

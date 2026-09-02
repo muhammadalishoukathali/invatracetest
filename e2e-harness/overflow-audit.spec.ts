@@ -1,3 +1,9 @@
+// Ad-hoc layout audit, not a real e2e test — nothing here asserts pass/fail
+// in the Playwright sense, it just walks every major screen at three
+// viewport widths and flags any element that pokes past the visible edge.
+// Useful after CSS changes to catch horizontal scroll bugs on mobile before
+// a supervisor demo. Writes findings + screenshots straight to Downloads so
+// they're easy to skim outside the terminal.
 import { test, Page } from '@playwright/test'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -42,6 +48,9 @@ async function bootstrap(page: Page) {
   await page.waitForTimeout(800)
 }
 
+// Draws a green blob canvas and feeds it in as a fake photo, so the audit
+// can reach the scan-result screen without needing a real plant image or a
+// live model — this config runs against the mocked API on 5173.
 async function uploadSyntheticGreen(page: Page) {
   await page.goto('http://localhost:5173/scan')
   await page.waitForTimeout(500)
@@ -112,6 +121,9 @@ async function checkOverflow(page: Page, viewport: typeof VIEWPORTS[number], rou
   }
 }
 
+// Serial so each viewport walks the full route list in one page session —
+// running these in parallel would just multiply flakiness for no benefit,
+// since we're not measuring speed here.
 test.describe.configure({ mode: 'serial' })
 
 for (const vp of VIEWPORTS) {

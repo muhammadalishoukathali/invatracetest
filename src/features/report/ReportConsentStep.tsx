@@ -2,6 +2,11 @@ import { Icon } from '@/components/Icon'
 import { useReportDraft } from '@/features/report/report-draft-store'
 import { ReportNextButton } from './components/ReportNextButton'
 
+/**
+ * Step 3 of 4 in the report wizard (location, extent, consent, preview).
+ * Makes the contributor explicitly confirm accuracy and that the photo has
+ * no personal info before we let them see the submission preview.
+ */
 export function ReportConsentStep() {
   const { draft, setConsent, next } = useReportDraft()
   if (!draft) return null

@@ -1,5 +1,13 @@
+// Contract smoke test against the actual FastAPI backend rather than the mock
+// service worker. Needs the Docker Compose stack running first (backend on
+// localhost:8000) and is meant to run via playwright.real.config.ts, not the
+// default config. Catches drift between the mock handlers and what the real
+// API actually returns.
 import { expect, test } from '@playwright/test'
 
+// Hits /health/live first so this fails fast with an obvious reason if the
+// backend just isn't up yet, instead of failing confusingly later on a UI
+// timeout.
 test('private access starts and bootstraps against the real API', async ({ page, request }) => {
   const health = await request.get('http://localhost:8000/health/live')
   expect(health.status()).toBe(200)

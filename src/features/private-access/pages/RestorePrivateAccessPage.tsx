@@ -8,6 +8,11 @@ import { usePageHeadingFocus } from '@/hooks/usePageHeadingFocus'
 
 const GENERIC_RESTORE_ERROR = 'We couldn’t restore this access. Check the profile ID and recovery code, then try again.'
 
+/** Cross-device recovery form: public profile ID plus one unused recovery
+ *  code, which the store exchanges for a new authorized installation on
+ *  this device (existing installations elsewhere stay active). See the
+ *  "same error either way" comment near the bottom — that's deliberate,
+ *  not a missed case. */
 export function RestorePrivateAccessPage() {
   const navigate = useNavigate()
   const online = useOnline()
@@ -34,11 +39,17 @@ export function RestorePrivateAccessPage() {
     }
     try {
       await restorePrivate(profileId, recoveryCode)
+      // restorePrivate can also land on 'storage-error' if the IndexedDB
+      // write failed, in which case we don't navigate yet — the retry-storage
+      // button below handles that path instead.
       if (usePrivateAccess.getState().status === 'ready') {
         setSuccess(true)
         window.setTimeout(() => navigate('/map', { replace: true }), 650)
       }
     } catch {
+      // Same generic message for a bad profile ID, a used-up code, and a
+      // wrong code — see the privacy note at the bottom of the page. Don't
+      // let this message get more specific, that would leak which part failed.
       setError(GENERIC_RESTORE_ERROR)
     }
   }

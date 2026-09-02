@@ -1,3 +1,14 @@
+"""Command-line entry point for InvaTrace's operational commands.
+
+Everything you'd run by hand or from a cron/systemd unit lives behind
+this one `invatrace` CLI: seeding dev data, running the screening
+worker, running the upload-cleanup sweep, importing OSM places, and
+granting a profile a role/trust level. There's no in-process
+scheduler - each subcommand is its own process, restarted by whatever
+process manager you use (see the "worker" and "cleanup-worker"
+commands, which just loop forever until killed).
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -22,6 +33,10 @@ log = structlog.get_logger("invatrace.cli")
 
 
 def cleanup_uploads_once(limit: int) -> int:
+    """One pass of the upload-cleanup sweep: expired staged uploads that were
+    never submitted, plus anything queued for deletion (old evidence/thumbnail
+    keys from deleted reports/sightings). Shared by both the `cleanup-uploads`
+    one-shot command and the `cleanup-worker` loop below."""
     with SessionLocal() as session:
         expired = remove_expired_uploads(session, limit=limit)
         deleted = remove_pending_objects(session, limit=limit)
@@ -29,6 +44,10 @@ def cleanup_uploads_once(limit: int) -> int:
 
 
 def set_profile_access(profile_id: str, role: str, trust: str) -> None:
+    """Admin-only escape hatch for granting a profile a role/trust level -
+    there's no self-service way to become an Admin/Expert or jump trust
+    tiers, on purpose. Locks the row and writes an AuditEvent so every
+    privilege change is traceable after the fact."""
     with SessionLocal() as session:
         profile = session.scalar(
             select(Profile).where(Profile.public_id == profile_id).with_for_update()
@@ -51,6 +70,10 @@ def set_profile_access(profile_id: str, role: str, trust: str) -> None:
 
 
 def main() -> None:
+    """argparse wiring for the `invatrace` CLI - see the module docstring
+    for what each subcommand does. Kept as one flat main() since there
+    are only a handful of commands; not worth splitting into subcommand
+    modules yet."""
     parser = argparse.ArgumentParser(prog="invatrace")
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("seed", help="seed factual development species and public map data")
@@ -67,6 +90,9 @@ def main() -> None:
     )
     osm.add_argument("path", type=Path)
     osm.add_argument("--source-date", type=datetime.fromisoformat, required=True)
+    # We don't clip the extract ourselves - this flag is just a manual
+    # "yes I already did that" guard so nobody accidentally imports a
+    # planet-sized file and floods the DB with places outside Malaysia.
     osm.add_argument(
         "--confirm-malaysia-clipped",
         action="store_true",
@@ -116,6 +142,9 @@ def main() -> None:
                 removed = cleanup_uploads_once(args.limit)
                 log.info("expired_upload_cleanup_completed", removed=removed)
             except Exception:
+                # Don't let one bad pass kill the loop - log it and retry sooner
+                # than the normal interval so a transient storage/DB blip doesn't
+                # leave expired uploads sitting around for a full hour.
                 log.exception("expired_upload_cleanup_failed")
                 delay = min(60, interval)
             time.sleep(delay)

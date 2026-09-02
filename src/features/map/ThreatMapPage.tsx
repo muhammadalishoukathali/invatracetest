@@ -1,7 +1,17 @@
 /**
+ * Route screen for the map feature and its main entry point (`/map`).
  * Displays reported sightings on a MapLibre map. The map uses a light raster
  * basemap so the risk-coloured markers stay readable. Camera bounds keep users
  * inside Malaysia, and provider attribution remains visible on every screen.
+ *
+ * End-to-end flow: MapFilters.tsx writes species/status/risk/search into
+ * map-view-store.ts, which this page reads to fetch and filter sightings and
+ * rebuild markers. MapLegend.tsx floats over the map explaining pin colours.
+ * Clicking a pin (or a row in the screen-reader-only list below the map) calls
+ * `select()` on the store, which SightingDetailsSheet.tsx picks up to open the
+ * detail sheet. A `?sighting=` query param or a "My Reports" navigation state
+ * (see map-location-link.ts) can also drive the initial camera position and
+ * open a specific sighting or private saved-record sheet on load.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -306,6 +316,8 @@ export function ThreatMapPage() {
       markers.current.push(marker)
     }
 
+    // Deep-linking from a notification or "My Reports" needs the marker to exist
+    // before we can select and fly to it, so this only runs after markers are rebuilt.
     if (requestedSightingId) {
       const requested = filtered.find((sighting) => sighting.id === requestedSightingId)
       if (requested) {
@@ -394,6 +406,12 @@ export function ThreatMapPage() {
   )
 }
 
+/**
+ * Detail sheet for a private scan/report location opened via the "My Reports"
+ * marker (see requestedLocation / map-location-link.ts). Kept separate from
+ * SightingDetailsSheet.tsx because this data comes from navigation state, not
+ * the public sightings API, and the record may not be a published sighting yet.
+ */
 function SavedRecordDetailsSheet({
   target,
   open,
@@ -457,6 +475,7 @@ function SavedRecordDetailsSheet({
   )
 }
 
+/** One label/value row in the saved-record sheet's fact list. */
 function SavedRecordFact({ label, value, mono = false }: {
   label: string
   value: string

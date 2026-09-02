@@ -10,6 +10,15 @@ import { findModelSpecies, modelReferenceImageUrl } from '@/data/model-species-c
 import type { IdentifyResult, SpeciesDetail } from '@/types'
 import './scan-result.css'
 
+/**
+ * Shows the outcome of a finished scan (target species, other plant, or
+ * uncertain), the confidence band, and — for identified species — the
+ * Malaysia status and PlantGuidancePanel with removal/reporting guidance.
+ * This is the E1 identification result review screen from the product docs:
+ * the point where the user checks the model's suggestion before deciding
+ * whether to start a report. Redirects back to capture if there's no result
+ * in scan-store yet (e.g. a direct link or a page refresh mid-flow).
+ */
 export function ScanResultPage() {
   const navigate = useNavigate()
   const location = useLocation()

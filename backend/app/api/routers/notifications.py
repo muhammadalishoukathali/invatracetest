@@ -13,9 +13,18 @@ from app.core.security import AuthContext, require_auth
 from app.db.base import get_session
 from app.db.models import Notification
 
+"""Notification inbox — status updates on a user's reports, plus system messages.
+
+Rows get created elsewhere (screening worker, admin actions) whenever
+something happens to one of a profile's reports; this module just exposes
+the read side for the bell icon / notifications screen in the app.
+"""
+
 router = APIRouter(prefix="/api/v1/notifications", tags=["notifications"])
 
 
+# Backs the notifications list screen — offset-based pagination via
+# core/pagination.py, plus an unread count so the app can show a badge.
 @router.get("", response_model=NotificationListResponse)
 def list_notifications(
     limit: int = Query(default=50, ge=1, le=100),
@@ -58,6 +67,7 @@ def list_notifications(
     )
 
 
+# "Mark all as read" button — bulk clears read_at for everything unread.
 @router.post("/read-all", response_model=OkResponse)
 def read_all(
     auth: AuthContext = Depends(require_auth),
@@ -72,6 +82,9 @@ def read_all(
     return OkResponse()
 
 
+# Marks a single notification read, e.g. when the user taps it. The
+# profile_id filter in the WHERE clause is what stops someone from marking
+# another user's notification as read just by guessing an id.
 @router.post("/{notification_id}/read", response_model=OkResponse)
 def read_one(
     notification_id: uuid.UUID,

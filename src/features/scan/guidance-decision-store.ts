@@ -1,3 +1,13 @@
+/**
+ * Persists the user's own permission/safety choice for a given scan or map
+ * sighting ("protected land or unsure" vs "I have the land manager's
+ * permission") in localStorage, keyed by a scan/sighting id. This is
+ * deliberately separate from scan-history-store.ts: it's not a record of
+ * what was scanned, it's a private safety note the device remembers so
+ * PlantGuidancePanel doesn't ask the same question again if the user comes
+ * back to the same result. It never changes official land status — see the
+ * `decisionContext` doc comment on PlantGuidancePanel's props.
+ */
 export type GuidanceDecisionChoice = 'protected_or_unsure' | 'manager_permission'
 
 export interface GuidanceDecision {

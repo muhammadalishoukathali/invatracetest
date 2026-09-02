@@ -1,3 +1,8 @@
+// Small one-off check: the gallery-upload path (as opposed to the camera
+// input) is only enabled in dev builds, and it's easy for that dev-only
+// wiring to silently break. This confirms uploading via gallery still gets
+// you all the way to a working "Report sighting" button and the /report
+// route — the thing that actually matters for demoing without a camera.
 import { test, expect } from '@playwright/test'
 
 test('gallery upload unlocks Report sighting button in DEV', async ({ page }) => {

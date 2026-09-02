@@ -40,6 +40,12 @@ function speciesName(speciesId: string | null): string {
     .replace(/\b\w/g, (letter) => letter.toUpperCase())
 }
 
+/**
+ * "My records" screen — merges submitted reports fetched from the API with
+ * scans that only exist in local scan history (not submitted yet, or queued
+ * offline). Lets the user jump back into any record's map location or
+ * tracking page. Reached from the profile screen, not part of the wizard.
+ */
 export function MyReportsPage() {
   const online = useOnline()
   const profileId = usePrivateAccess((state) => state.profile?.id ?? null)
