@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 from types import SimpleNamespace
 
+from app.core.errors import ApiProblem
 from app.services import upload_cleanup
 
 
@@ -63,3 +64,32 @@ def test_cleanup_rejects_similar_but_invalid_staging_keys(monkeypatch) -> None:
 
     assert upload_cleanup.remove_expired_uploads(session) == len(invalid)
     assert deleted_objects == []
+
+
+def test_object_deletion_retries_after_storage_recovers(monkeypatch) -> None:
+    job = SimpleNamespace(
+        id=uuid.uuid4(),
+        object_key=f"evidence/{uuid.uuid4()}/{uuid.uuid4()}.jpg",
+        attempts=0,
+        available_at=None,
+        last_error=None,
+    )
+    session = FakeSession([[job], [job]])
+    calls = 0
+
+    def delete_object(_key: str) -> None:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise ApiProblem(503, "storage_unavailable", "Object storage unavailable")
+
+    monkeypatch.setattr(upload_cleanup.storage, "delete", delete_object)
+
+    assert upload_cleanup.remove_pending_objects(session) == 0
+    assert job.attempts == 1
+    assert job.last_error == "storage_unavailable"
+    assert session.deleted == []
+
+    assert upload_cleanup.remove_pending_objects(session) == 1
+    assert session.deleted == [job]
+    assert session.commits == 2

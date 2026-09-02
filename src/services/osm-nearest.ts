@@ -1,5 +1,5 @@
 /**
- * AC 4.3.1 — client for the nearest named OSM feature within 5 km. Queries the
+ * Finds the nearest named OSM feature within 5 km. Queries the
  * public Overpass API for `highway=path|footway|track`, `leisure=park`,
  * `landuse=forest`, and `natural=wood` in that priority order, and returns the
  * nearest tagged feature with its human-readable name and geodesic distance.
@@ -36,7 +36,7 @@ interface OverpassResponse {
 }
 
 function buildQuery(lat: number, lon: number): string {
-  // One combined Overpass request over the four AC-listed tag groups; the
+  // One combined request covers every supported tag group; the
   // client picks the nearest per priority afterwards.
   const around = `around:${RADIUS_M},${lat},${lon}`
   return `

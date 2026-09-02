@@ -1,24 +1,19 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { router } from '@/app/router'
 import { installPrivateAccessConnectivity, usePrivateAccess } from '@/features/private-access/private-access-store'
 import { flushQueue } from '@/features/report/report-queue'
+import { queryClient } from '@/services/query-client'
 import './styles/global.css'
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 3,
-      retryDelay: (n) => Math.min(1000 * 2 ** n, 15000),
-      staleTime: 30_000,
-    },
-  },
-})
-
 async function start() {
-  if (import.meta.env.DEV && import.meta.env.VITE_ENABLE_MOCKS === 'true') {
+  // Default to mocks in dev when the flag is unset so a fresh `npm run dev`
+  // works with no .env file. Set VITE_ENABLE_MOCKS=false to hit the real API.
+  const mocksEnabled = import.meta.env.DEV
+    && import.meta.env.VITE_ENABLE_MOCKS !== 'false'
+  if (mocksEnabled) {
     const { worker } = await import('@/mocks/browser')
     // The development mock service worker handles API calls only. Other files,
     // including MapLibre workers, map tiles, fonts, and Vite updates, must pass

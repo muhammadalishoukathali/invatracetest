@@ -1,0 +1,486 @@
+{
+  "schemaVersion": "invatrace.runtime-packed.v1",
+  "assets": [
+    {
+      "output": "public/invatrace-logo-192.png",
+      "bytes": 61493,
+      "sha256": "53eb94eeecbde99a5d489ae55306c0c0d3038b68e6dce0a50c0b86da5b2237d9",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/invatrace-logo-192.png.gz.part-000.hex",
+          "bytes": 61531,
+          "sha256": "9025a1499741666ab8bfaa0633f04a92c9787e3d2e7634ac59495e5df9dda83f"
+        }
+      ]
+    },
+    {
+      "output": "public/invatrace-logo-512.png",
+      "bytes": 391607,
+      "sha256": "92bf1bf930abf2bf7856ae15dc0f81b41e066deaeadd8b383e3f635e56a4262d",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/invatrace-logo-512.png.gz.part-000.hex",
+          "bytes": 391696,
+          "sha256": "1a50aa34cb5baf44313958a7afa53de5f6c1e48f1e7e60b0fbb328f427e289ae"
+        }
+      ]
+    },
+    {
+      "output": "public/reference-images/ageratina_adenophora.jpg",
+      "bytes": 268634,
+      "sha256": "ba3097ee430902463928b1290f6370496f47e05b6378a1e947ad30984d397ca6",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/reference-images/ageratina_adenophora.jpg.gz.part-000.hex",
+          "bytes": 266020,
+          "sha256": "2f5409f5f99419acba024786df647d36d46e8f9915028eae59b3e5ce9134696f"
+        }
+      ]
+    },
+    {
+      "output": "public/reference-images/ageratum_conyzoides.jpg",
+      "bytes": 251647,
+      "sha256": "1017df76a34acfc0d12b47e9bc405252afd9599add80eea49719784dcfd31909",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/reference-images/ageratum_conyzoides.jpg.gz.part-000.hex",
+          "bytes": 249019,
+          "sha256": "8b68fa0ca0cb930963bddf2cab454c45e8b2ffae82fa1081932e9d407786bd71"
+        }
+      ]
+    },
+    {
+      "output": "public/reference-images/alternanthera_philoxeroides.jpg",
+      "bytes": 179591,
+      "sha256": "e6551f2f265fc86a7784a3b15e8b1536d24182923b1e5dfcf6185842de7a4eff",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/reference-images/alternanthera_philoxeroides.jpg.gz.part-000.hex",
+          "bytes": 179381,
+          "sha256": "58f764ca8f877b3139613945b6267f0dbfbfc651bb7e99b6311531d52a4e88f1"
+        }
+      ]
+    },
+    {
+      "output": "public/reference-images/asclepias_curassavica.jpg",
+      "bytes": 205226,
+      "sha256": "844f0da91ae67d2518d32d8117a5061f88275219b234b11d89eb5011758e5fe7",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/reference-images/asclepias_curassavica.jpg.gz.part-000.hex",
+          "bytes": 202273,
+          "sha256": "1b5e627ceb0f378c4dc03084d23e895a721d83085eaa5a91e1e11fb7542c5c64"
+        }
+      ]
+    },
+    {
+      "output": "public/reference-images/bidens_pilosa.jpg",
+      "bytes": 103075,
+      "sha256": "83a8f907159bc9b10d8deb2d3d0772b1f75da6cfc4a3a7e500003415401607df",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/reference-images/bidens_pilosa.jpg.gz.part-000.hex",
+          "bytes": 99874,
+          "sha256": "e6c3959020bb261fd463e621f521a2b6d48ddca067605a9babc600312688fa44"
+        }
+      ]
+    },
+    {
+      "output": "public/reference-images/carica_papaya.jpg",
+      "bytes": 397555,
+      "sha256": "e21fc0b6668d1cebc6ad5d03126df1528ae830e4f8c421d11c05d8b2746e3bd1",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/reference-images/carica_papaya.jpg.gz.part-000.hex",
+          "bytes": 395426,
+          "sha256": "b7cf75ce52d42c40fa69ffd30f2fe1aaa02f690547c48b216fc89d6557ae1417"
+        }
+      ]
+    },
+    {
+      "output": "public/reference-images/catharanthus_roseus.jpg",
+      "bytes": 372236,
+      "sha256": "be3e33f0a3cd8321d6771eaa7335e71a7712ff6363a487c26249fda6b8fe895f",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/reference-images/catharanthus_roseus.jpg.gz.part-000.hex",
+          "bytes": 371949,
+          "sha256": "45c55998bac00f66e9e5efd8faa5339c0d85437b00ff53c16eb2fcfef194b851"
+        }
+      ]
+    },
+    {
+      "output": "public/reference-images/centella_asiatica.jpg",
+      "bytes": 424037,
+      "sha256": "a1fc9a243e27878f3c904b8291279d9564cf3a619d2e528bbc1a4b6323714d6e",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/reference-images/centella_asiatica.jpg.gz.part-000.hex",
+          "bytes": 423774,
+          "sha256": "2c634db3233e7e05fc26d58d113502d48ab627e7d4c1fb17a792fdf2425b91f1"
+        }
+      ]
+    },
+    {
+      "output": "public/reference-images/chromolaena_odorata.jpg",
+      "bytes": 225400,
+      "sha256": "73660b87698f9fe66420fa5c1df87a59436339d8dbc6058cd30d3c6cbd62f057",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/reference-images/chromolaena_odorata.jpg.gz.part-000.hex",
+          "bytes": 225257,
+          "sha256": "7fa50dd83514f45dd460d94bfaa7c0369a044e0b1130340d9fb9b1735ddfb1b2"
+        }
+      ]
+    },
+    {
+      "output": "public/reference-images/clitoria_ternatea.jpg",
+      "bytes": 190720,
+      "sha256": "c1c6a29a7f465399c487c295525739d1d54e4da741fffebf034d245a6740cbeb",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/reference-images/clitoria_ternatea.jpg.gz.part-000.hex",
+          "bytes": 190198,
+          "sha256": "9b22c8859c42cfb1f15760c6c2be7725b70638d5a18b65822634c397e2167367"
+        }
+      ]
+    },
+    {
+      "output": "public/reference-images/cocos_nucifera.jpg",
+      "bytes": 294660,
+      "sha256": "08b50fce28078c8ddcb49209b898ba48c3f02af6da97151c05ac4de3511dd96e",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/reference-images/cocos_nucifera.jpg.gz.part-000.hex",
+          "bytes": 288997,
+          "sha256": "8e34c8c7522907dd4c2adcd5c2f570388157c6cf2c1b8331fbe73ef87e4cfd43"
+        }
+      ]
+    },
+    {
+      "output": "public/reference-images/colocasia_esculenta.jpg",
+      "bytes": 383131,
+      "sha256": "f805763c9a437aaa684f8dd4c39e812aa7dde10fad048b5f2106e662df4a2280",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/reference-images/colocasia_esculenta.jpg.gz.part-000.hex",
+          "bytes": 382717,
+          "sha256": "9175ac675bd48b95af370ac5d7c5f29a8bac3bc2f0b0fb3b04d487d14c2165cc"
+        }
+      ]
+    },
+    {
+      "output": "public/reference-images/dicranopteris_linearis.jpg",
+      "bytes": 434780,
+      "sha256": "16c9a68012405ec98840bfa3bffb7b4415fdebd3177b6d7d93be05870021e498",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/reference-images/dicranopteris_linearis.jpg.gz.part-000.hex",
+          "bytes": 434395,
+          "sha256": "7beaa25cb3c22349f38a28e2276faadc287e16f0cb8a54c732d9cd61c423e63b"
+        }
+      ]
+    },
+    {
+      "output": "public/reference-images/eichhornia_crassipes.jpg",
+      "bytes": 261416,
+      "sha256": "fe3e4823d5fb32e9f4894ed380cf0330943b0ce49d5fee2f2d181a159cf9d9bc",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/reference-images/eichhornia_crassipes.jpg.gz.part-000.hex",
+          "bytes": 261060,
+          "sha256": "233e07287c1d7bb2199aabd391cacd96555f3f8f0041341b33de44155266c8bd"
+        }
+      ]
+    },
+    {
+      "output": "public/reference-images/imperata_cylindrica.jpg",
+      "bytes": 465662,
+      "sha256": "fabd1594a9d4761b6641f58a953315651baf7495bead89fe77cb6e1e1828c66d",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/reference-images/imperata_cylindrica.jpg.gz.part-000.hex",
+          "bytes": 465590,
+          "sha256": "49a73f30c86c6ad625979a8ff18343fe5475b0add19781ef5696b547499bc4d3"
+        }
+      ]
+    },
+    {
+      "output": "public/reference-images/lantana_camara.jpg",
+      "bytes": 202728,
+      "sha256": "52a3d72600a44aee72a11a62ee7438b9c3ed953055febc36f0eb75fc9a1fcacd",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/reference-images/lantana_camara.jpg.gz.part-000.hex",
+          "bytes": 199899,
+          "sha256": "d1e0ef57e275bc17f659a3fac5ef795b1323fb49ec0286384c35f479b1ad2d9e"
+        }
+      ]
+    },
+    {
+      "output": "public/reference-images/leucaena_leucocephala.jpg",
+      "bytes": 241815,
+      "sha256": "f44ac700156caae33f61f6c3cb63da6d605d9219ce1c5a1c34ee0de40c77a6e6",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/reference-images/leucaena_leucocephala.jpg.gz.part-000.hex",
+          "bytes": 241472,
+          "sha256": "9259135068ea4dc20c67410ea6ca0a36f1a280b8d87531f6572477f88c7d7f11"
+        }
+      ]
+    },
+    {
+      "output": "public/reference-images/macaranga_tanarius.jpg",
+      "bytes": 419471,
+      "sha256": "b3286faa8c2e9b5fc103519895abfb2643e59f3e01ebd7d8c2ba5784ae9076b0",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/reference-images/macaranga_tanarius.jpg.gz.part-000.hex",
+          "bytes": 415170,
+          "sha256": "95eff697a940172d9c46507c7fe6edf791d9cbd155ddb674a256efb2f2fc8810"
+        }
+      ]
+    },
+    {
+      "output": "public/reference-images/megathyrsus_maximus.jpg",
+      "bytes": 297625,
+      "sha256": "7b57d4a2466f600439120149de2365f522512a261eff597cb96a51e13c2cffbd",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/reference-images/megathyrsus_maximus.jpg.gz.part-000.hex",
+          "bytes": 293262,
+          "sha256": "8d2de536aecc47372fe9dbce93d744d946eb95af5f492c712bff6df57ea914a5"
+        }
+      ]
+    },
+    {
+      "output": "public/reference-images/miconia_crenata.jpg",
+      "bytes": 345887,
+      "sha256": "2868afeac3919a5ba4467d7fef4094312abdc7c6fc1325b29263053311c70bf5",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/reference-images/miconia_crenata.jpg.gz.part-000.hex",
+          "bytes": 345503,
+          "sha256": "7a393b11b99f78552f8aa6ca5f2767154023b01ec6d8583b41bc5835056e16eb"
+        }
+      ]
+    },
+    {
+      "output": "public/reference-images/mikania_micrantha.jpg",
+      "bytes": 155000,
+      "sha256": "96735583ec819c582d17aa5728784e47e9547b4d3412204fe9aec1a714820847",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/reference-images/mikania_micrantha.jpg.gz.part-000.hex",
+          "bytes": 154543,
+          "sha256": "8527dd9b686ab7f4a1fadecd115bc7f44c42dbd615cb1c8007c2053b20456ea5"
+        }
+      ]
+    },
+    {
+      "output": "public/reference-images/mimosa_diplotricha.jpg",
+      "bytes": 635980,
+      "sha256": "6bbf1268c677627fe02239375f207ec434a9b4f229886f9a24302eea2b2123b4",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/reference-images/mimosa_diplotricha.jpg.gz.part-000.hex",
+          "bytes": 631069,
+          "sha256": "d80e8fde2a7b3fe77627140d6c450a0fa26e4048ddc85ba94c7176450be7ebf0"
+        }
+      ]
+    },
+    {
+      "output": "public/reference-images/mimosa_pigra.jpg",
+      "bytes": 284323,
+      "sha256": "8f377a0155f82255eb57c85b830577d0e6be18520d713fee16a926eefb50e6c5",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/reference-images/mimosa_pigra.jpg.gz.part-000.hex",
+          "bytes": 283906,
+          "sha256": "beade4e2d9c5a52b11ab86e972954265b08426f127ce3de7f140275f01aaf4b0"
+        }
+      ]
+    },
+    {
+      "output": "public/reference-images/mimosa_pudica.jpg",
+      "bytes": 255597,
+      "sha256": "2a9a1859e33099211c6d33c1510af60ca31989eb92fb98b48c210213b1980b1f",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/reference-images/mimosa_pudica.jpg.gz.part-000.hex",
+          "bytes": 255474,
+          "sha256": "12e7c5ef53c28ea046c69c57416480b5a92460c4ab6c1833be26fb6e607637ac"
+        }
+      ]
+    },
+    {
+      "output": "public/reference-images/oxalis_corniculata.jpg",
+      "bytes": 116387,
+      "sha256": "15aa6546e161145e77c7aa92623cfe5fc50dee65c48d0c4cdbb71c56ac61220e",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/reference-images/oxalis_corniculata.jpg.gz.part-000.hex",
+          "bytes": 115825,
+          "sha256": "fed5726cdbad227dfee935b7c2bd2f0d03f1520efdbbdf02661c58a7d4311181"
+        }
+      ]
+    },
+    {
+      "output": "public/reference-images/parthenium_hysterophorus.jpg",
+      "bytes": 604981,
+      "sha256": "90653fc0a1261da3e8261c05cbbc34b9d9927a98ca1f00a8bc6285d2c77c21bc",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/reference-images/parthenium_hysterophorus.jpg.gz.part-000.hex",
+          "bytes": 604944,
+          "sha256": "ccc009673a4fd79eeb5c87111e87dca00ed59b4cfa11dfa5cc08f6f8a4fc1098"
+        }
+      ]
+    },
+    {
+      "output": "public/reference-images/pistia_stratiotes.jpg",
+      "bytes": 300694,
+      "sha256": "132df1b1c717ddf366e62beb7fa2417239a09224719cb60a34f46695da645d17",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/reference-images/pistia_stratiotes.jpg.gz.part-000.hex",
+          "bytes": 300530,
+          "sha256": "28546de3b3e847eda8473cc8c5d899bd31f6e67015f78422b242cb8338d10ff5"
+        }
+      ]
+    },
+    {
+      "output": "public/reference-images/psidium_guajava.jpg",
+      "bytes": 159344,
+      "sha256": "cb7966595e4fad81b116beb26b93def320f4c98227297ef130fbde530d36a01d",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/reference-images/psidium_guajava.jpg.gz.part-000.hex",
+          "bytes": 158682,
+          "sha256": "1f465fc4d159b4615071e41fa1ee98672c0a2971a1bc28595edc918615a8087e"
+        }
+      ]
+    },
+    {
+      "output": "public/reference-images/pteris_vittata.jpg",
+      "bytes": 249774,
+      "sha256": "969c01feb5cbe1b7044401180b552e8865bfc70a5ff66865809c2745b57a96a2",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/reference-images/pteris_vittata.jpg.gz.part-000.hex",
+          "bytes": 249641,
+          "sha256": "598371c19a32b8590c4a985a16706d3d49095c4f3f34b081f8fcaca5a7500110"
+        }
+      ]
+    },
+    {
+      "output": "public/reference-images/sida_acuta.jpg",
+      "bytes": 194133,
+      "sha256": "6e12cc81600c37cef0ae455eba8772d1d6fac176bd7cce633baab642cb7dca15",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/reference-images/sida_acuta.jpg.gz.part-000.hex",
+          "bytes": 193768,
+          "sha256": "923f21fbea406c3c8edeb503e5a3639f2b3a10c7aa87edcbaf5d4f5b05e4e70d"
+        }
+      ]
+    },
+    {
+      "output": "public/reference-images/sphagneticola_trilobata.jpg",
+      "bytes": 242048,
+      "sha256": "6e9e092cd7ef58eeafed56082ba720f5ca2d9842f19a9266a51b834df213553d",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/public/reference-images/sphagneticola_trilobata.jpg.gz.part-000.hex",
+          "bytes": 241633,
+          "sha256": "dd82dffc77e5b2345060942345617521e3c88fe8b168d60427c79184c9093b06"
+        }
+      ]
+    },
+    {
+      "output": "vendor/PULIH_Model1_v4_FP16_Web_Kit/model/efficientnet_v2_s_oe_v4_31class_web_fp16.onnx",
+      "bytes": 40488343,
+      "sha256": "7c07181c10020d8ec9a74a21684ab08f73b1ec6a6b168c091ecf715803c5fe56",
+      "compression": "gzip",
+      "encoding": "hex",
+      "parts": [
+        {
+          "path": "assets/runtime-packed/vendor/PULIH_Model1_v4_FP16_Web_Kit/model/efficientnet_v2_s_oe_v4_31class_web_fp16.onnx.gz.part-000.hex",
+          "bytes": 20971520,
+          "sha256": "0ad758619fb7a9632a5007113896f159bcffd30132d0cf1e896131ad47e1b37a"
+        },
+        {
+          "path": "assets/runtime-packed/vendor/PULIH_Model1_v4_FP16_Web_Kit/model/efficientnet_v2_s_oe_v4_31class_web_fp16.onnx.gz.part-001.hex",
+          "bytes": 16458585,
+          "sha256": "d3c874dd65c37b86a336d6fa595d9edafc4a1a7cbcc4e9e6e670558e23bba439"
+        }
+      ]
+    }
+  ]
+}

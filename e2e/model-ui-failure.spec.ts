@@ -3,13 +3,13 @@ import { expect, test, type Page } from '@playwright/test'
 async function startPrivateAccess(page: Page) {
   await page.goto('/')
   await page.getByRole('button', { name: 'Start privately' }).click()
-  await page.getByRole('checkbox', { name: 'I have saved my recovery information' }).check()
+  await page.getByRole('checkbox', { name: 'I have saved my recovery kit' }).check()
   await page.getByRole('button', { name: 'Continue to InvaTrace' }).click()
   await expect(page).toHaveURL(/\/map$/)
 }
 
 async function attachTestPhoto(page: Page) {
-  await page.getByRole('button', { name: 'New scan' }).click()
+  await page.goto('/scan')
   await expect(page.getByRole('heading', { name: 'Photograph a clear plant feature' })).toBeVisible()
   await page.evaluate(async () => {
     const canvas = document.createElement('canvas')

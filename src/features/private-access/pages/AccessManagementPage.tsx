@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import type { AccessOverview, AuthorizedInstallation, RecoveryCodeBatchResponse } from '@/types'
 import { PrivateAccessButton, PrivateAccessField, PrivateAccessLink, RecoveryCodeGrid, PrivateAccessNotice } from '@/features/private-access/components/PrivateAccessControls'
@@ -8,6 +9,8 @@ import { usePrivateAccess } from '@/features/private-access/private-access-store
 import { useOnline } from '@/hooks/useOnline'
 import { copyText, downloadRecoveryKit, recoveryKitText } from '@/features/private-access/recovery-kit'
 import { usePageHeadingFocus } from '@/hooks/usePageHeadingFocus'
+import { useDialogA11y } from '@/hooks/useDialogA11y'
+import { looksLikeContactDetail, safeDisplayName } from '@/features/private-access/display-name'
 
 function approximateDate(value: string): string {
   const date = new Date(value)
@@ -22,28 +25,6 @@ function installationLabel(item: AuthorizedInstallation): string {
   return item.current ? 'This device' : `Device added ${approximateDate(item.createdAt)}`
 }
 
-/** Never render an email or phone shape as the profile chip — even if an
- *  older display name that predates the input guard is still stored. */
-export function safeDisplayName(value?: string | null): string {
-  if (!value) return 'Local reporter'
-  if (looksLikeContactDetail(value)) return 'Local reporter'
-  return value
-}
-
-/** Blocks display-name inputs that look like an email or a phone number.
- *  Prevents a well-meaning user from stamping their real contact details
- *  across every screen that renders the profile chip. */
-export function looksLikeContactDetail(value: string): boolean {
-  const trimmed = value.trim()
-  if (!trimmed) return false
-  // Email: something@something.tld
-  if (/\S+@\S+\.\S+/.test(trimmed)) return true
-  // Phone: 7 or more digits with the usual separators.
-  const digits = trimmed.replace(/[\s()+\-.]/g, '')
-  if (/^\d{7,}$/.test(digits)) return true
-  return false
-}
-
 export function AccessManagementPage() {
   const headingRef = usePageHeadingFocus()
   const navigate = useNavigate()
@@ -54,6 +35,9 @@ export function AccessManagementPage() {
   const [confirmSignOut, setConfirmSignOut] = useState(false)
   const [overview, setOverview] = useState<AccessOverview | null>(null)
   const [displayName, setDisplayName] = useState(profile.displayName ?? '')
+  const [editingName, setEditingName] = useState(false)
+  const [nameError, setNameError] = useState<string | null>(null)
+  const editNameButtonRef = useRef<HTMLButtonElement>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -85,24 +69,34 @@ export function AccessManagementPage() {
   const savedDisplayName = profile.displayName ?? ''
   const activeInstallations = (overview?.installations ?? []).filter((item) => !item.revokedAt)
 
+  const openNameEditor = () => {
+    setDisplayName(savedDisplayName)
+    setNameError(null)
+    setEditingName(true)
+  }
+
+  const closeNameEditor = () => {
+    if (busy === 'name') return
+    setDisplayName(savedDisplayName)
+    setNameError(null)
+    setEditingName(false)
+  }
+
   const saveName = async () => {
-    setBusy('name'); setError(null); setMessage(null)
-    // Privacy guard — reject email / phone-shaped strings so a curious tester
-    // can't stamp their real contact details across every screen that shows
-    // the profile chip. Keeps the pseudonymous promise on the landing page
-    // honest even when the user tries to defeat it.
+    setBusy('name'); setNameError(null); setError(null); setMessage(null)
     const trimmed = displayName.trim()
     if (looksLikeContactDetail(trimmed)) {
       setBusy(null)
-      setError('Display name can\'t contain an email address or phone number — keep it a nickname.')
+      setNameError('Use a nickname without an email address or phone number.')
       return
     }
     try {
       await updateDisplayName(trimmed)
       setDisplayName(usePrivateAccess.getState().profile?.displayName ?? '')
       setMessage(trimmed ? 'Display name updated.' : 'Display name removed.')
+      setEditingName(false)
     } catch (nameError) {
-      setError(nameError instanceof Error ? nameError.message : 'Display name could not be updated.')
+      setNameError(nameError instanceof Error ? nameError.message : 'Display name could not be updated.')
     } finally { setBusy(null) }
   }
 
@@ -136,15 +130,11 @@ export function AccessManagementPage() {
     catch { setError('Clipboard access is unavailable in this browser.') }
   }
 
-  const goBack = () => {
-    if (window.history.length > 1) navigate(-1)
-    else navigate('/map')
-  }
-
   const handleSignOut = async () => {
     setBusy('sign-out')
     try {
       await signOut()
+      navigate('/private-access', { replace: true })
     } finally {
       setBusy(null)
       setConfirmSignOut(false)
@@ -153,32 +143,25 @@ export function AccessManagementPage() {
 
   return (
     <div className="access-management">
-      <div className="access-management__toolbar">
-        <button
-          type="button"
-          className="access-back-button"
-          onClick={goBack}
-          aria-label="Go back"
-        >
-          <Icon name="ChevronLeft" size={18} />
-          <span>Back</span>
-        </button>
-        <PrivateAccessLink href="/reports" icon="ClipboardList" replace>My reports</PrivateAccessLink>
-      </div>
       <header className="access-profile-summary">
         <span className="access-profile-summary__avatar" aria-hidden>
           <Icon name="User" size={24} />
         </span>
         <div className="access-profile-summary__identity">
           <h2 ref={headingRef} tabIndex={-1}>{safeDisplayName(profile.displayName)}</h2>
-          <p>
-            <span className="access-role-chip">{profile.role}</span>
-            <span className="access-trust-chip">{profile.trustLevel} trust</span>
-          </p>
+          <button
+            ref={editNameButtonRef}
+            type="button"
+            className="access-name-edit"
+            aria-label="Edit display name"
+            aria-haspopup="dialog"
+            aria-expanded={editingName}
+            onClick={openNameEditor}
+          >
+            <Icon name="Pencil" size={15} />
+          </button>
         </div>
-        <p className="access-profile-summary__description">
-          Pseudonymous profile that links your field reports across devices.
-        </p>
+        <PrivateAccessLink href="/reports" icon="ClipboardList" replace>View my records</PrivateAccessLink>
       </header>
 
       {!online && <PrivateAccessNotice tone="warning" title="You are offline">Reconnect to change recovery codes, your display name, or devices.</PrivateAccessNotice>}
@@ -190,10 +173,6 @@ export function AccessManagementPage() {
         <div className="profile-id-row">
           <div><span>Public profile ID</span><code>{profileId}</code></div>
           <PrivateAccessButton kind="quiet" icon="Copy" onClick={() => void copy(profileId, 'Public profile ID copied.')}>Copy ID</PrivateAccessButton>
-        </div>
-        <div className="access-name-editor">
-          <PrivateAccessField id="access-display-name" label="Display name" hint="Optional nickname shown on your reports. Don't use your real name, email, or phone number." value={displayName} maxLength={80} onChange={(event) => setDisplayName(event.target.value)} />
-          <PrivateAccessButton kind="secondary" onClick={() => void saveName()} disabled={!online || busy === 'name' || displayName === savedDisplayName}>{busy === 'name' ? 'Saving…' : 'Save name'}</PrivateAccessButton>
         </div>
       </section>
 
@@ -243,21 +222,12 @@ export function AccessManagementPage() {
             ))}
           </ul>
         )}
-      </section>
-
-      <section className="access-management__section" aria-labelledby="sign-out-heading">
-        <div className="section-heading-row">
-          <div>
-            <h3 id="sign-out-heading">Sign out of this device</h3>
-            <p>Removes this browser's private profile. You can restore it later with your profile ID and a recovery code.</p>
-          </div>
-        </div>
         {confirmSignOut ? (
-          <div className="destructive-confirmation">
-            <Icon name="AlertTriangle" size={22} color="var(--amber-text)" />
+          <div className="destructive-confirmation access-sign-out-confirmation">
+            <Icon name="AlertTriangle" size={22} color="var(--red-text)" />
             <div>
-              <strong>Sign out?</strong>
-              <p>Queued reports on this device stay only until you sign out. Make sure they are uploaded first.</p>
+              <strong>Sign out of this browser?</strong>
+              <p>This removes the local profile. You will need your profile ID and an unused recovery code to return.</p>
             </div>
             <div>
               <PrivateAccessButton kind="danger" onClick={() => void handleSignOut()} disabled={busy === 'sign-out'}>
@@ -267,16 +237,89 @@ export function AccessManagementPage() {
             </div>
           </div>
         ) : (
-          <PrivateAccessButton kind="secondary" icon="LogOut" onClick={() => setConfirmSignOut(true)}>
-            Sign out
-          </PrivateAccessButton>
+          <div className="access-session-footer">
+            <div>
+              <strong>Finished on this device?</strong>
+              <p>Sign out without deleting your reports or profile.</p>
+            </div>
+            <PrivateAccessButton className="access-sign-out-button" kind="quiet" icon="LogOut" onClick={() => setConfirmSignOut(true)}>
+              Sign out
+            </PrivateAccessButton>
+          </div>
         )}
       </section>
-
-      <div className="access-loss-warning">
-        <Icon name="AlertTriangle" size={18} />
-        <p>Lose every device and every recovery code and this profile is gone for good.</p>
-      </div>
+      {editingName && (
+        <EditDisplayNameDialog
+          value={displayName}
+          error={nameError}
+          busy={busy === 'name'}
+          online={online}
+          returnFocus={() => editNameButtonRef.current}
+          onChange={setDisplayName}
+          onClose={closeNameEditor}
+          onSave={() => void saveName()}
+        />
+      )}
     </div>
+  )
+}
+
+function EditDisplayNameDialog({
+  value, error, busy, online, returnFocus, onChange, onClose, onSave,
+}: {
+  value: string
+  error: string | null
+  busy: boolean
+  online: boolean
+  returnFocus: () => HTMLElement | null
+  onChange: (value: string) => void
+  onClose: () => void
+  onSave: () => void
+}) {
+  const dialogRef = useRef<HTMLElement>(null)
+  useDialogA11y(dialogRef, onClose, { returnFocus })
+
+  return createPortal(
+    <>
+      <div className="access-modal-backdrop" aria-hidden onClick={onClose} />
+      <section
+        ref={dialogRef}
+        className="access-name-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="edit-display-name-title"
+        tabIndex={-1}
+      >
+        <header className="access-name-dialog__header">
+          <div>
+            <h2 id="edit-display-name-title">Edit display name</h2>
+            <p>This nickname appears with your submitted records.</p>
+          </div>
+          <button type="button" aria-label="Close" onClick={onClose} disabled={busy}>
+            <Icon name="X" size={18} />
+          </button>
+        </header>
+        <form onSubmit={(event) => { event.preventDefault(); onSave() }}>
+          <PrivateAccessField
+            id="access-display-name"
+            label="Display name"
+            hint="Use a nickname, not your real name, email, or phone number."
+            error={error}
+            value={value}
+            maxLength={80}
+            autoComplete="off"
+            data-dialog-initial
+            onChange={(event) => onChange(event.target.value)}
+          />
+          <div className="access-name-dialog__actions">
+            <PrivateAccessButton type="button" kind="quiet" onClick={onClose} disabled={busy}>Cancel</PrivateAccessButton>
+            <PrivateAccessButton type="submit" disabled={!online || busy}>
+              {busy ? 'Saving…' : 'Save name'}
+            </PrivateAccessButton>
+          </div>
+        </form>
+      </section>
+    </>,
+    document.body,
   )
 }

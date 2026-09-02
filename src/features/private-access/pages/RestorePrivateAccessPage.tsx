@@ -5,7 +5,6 @@ import { PrivateAccessButton, PrivateAccessField, PrivateAccessNotice } from '@/
 import { usePrivateAccess } from '@/features/private-access/private-access-store'
 import { useOnline } from '@/hooks/useOnline'
 import { usePageHeadingFocus } from '@/hooks/usePageHeadingFocus'
-import { Icon } from '@/components/Icon'
 
 const GENERIC_RESTORE_ERROR = 'We couldn’t restore this access. Check the profile ID and recovery code, then try again.'
 
@@ -55,8 +54,8 @@ export function RestorePrivateAccessPage() {
     <PrivateAccessLayout compact>
       <section className="access-form-panel">
         <Link className="access-back-link" to="/private-access">
-          <Icon name="ChevronLeft" size={17} />
-          <span>Back to private access</span>
+          <span aria-hidden="true">←</span>
+          <span>Private access</span>
         </Link>
         <h1 ref={headingRef} tabIndex={-1}>Restore existing access</h1>
         <p className="access-form-panel__lead">

@@ -1,4 +1,5 @@
 import guidanceJson from './plant-guidance.json'
+import { findModelSpecies } from './model-species-catalog'
 
 export type GuidanceMode =
   | 'general_information'
@@ -89,7 +90,70 @@ export interface PlantGuidanceDataset {
   plants: PlantGuidance[]
 }
 
-export const plantGuidanceDataset = guidanceJson as unknown as PlantGuidanceDataset
+const rawPlantGuidanceDataset = guidanceJson as unknown as PlantGuidanceDataset
+
+const MODEL_STATUS_PRESENTATION: Record<string, Pick<MalaysiaStatus, 'category' | 'display_label' | 'confidence'>> = {
+  invasive: {
+    category: 'invasive', display_label: 'Invasive in Malaysia', confidence: 'high',
+  },
+  alien_not_marked_invasive: {
+    category: 'information_only', display_label: 'Alien plant · not a target', confidence: 'high',
+  },
+  common_cultivated_status_not_inferred: {
+    category: 'information_only', display_label: 'Cultivated plant · status not inferred', confidence: 'medium',
+  },
+  introduced: {
+    category: 'information_only', display_label: 'Introduced plant · information only', confidence: 'high',
+  },
+  native: {
+    category: 'information_only', display_label: 'Native plant · information only', confidence: 'high',
+  },
+  naturalised: {
+    category: 'information_only', display_label: 'Naturalised plant · information only', confidence: 'high',
+  },
+  status_requires_expert_review: {
+    category: 'status_uncertain', display_label: 'Malaysia status needs expert review', confidence: 'low',
+  },
+  cryptogenic_uncertain: {
+    category: 'status_uncertain', display_label: 'Malaysia status uncertain', confidence: 'low',
+  },
+  watchlist_not_present: {
+    category: 'status_uncertain', display_label: 'Watchlist · not recorded in Malaysia', confidence: 'medium',
+  },
+}
+
+/**
+ * Guidance remains curated content, but identification status always comes
+ * from the exact catalogue bundled with the model. This prevents an older
+ * guidance review from relabelling a model class in the result UI.
+ */
+export const plantGuidanceDataset: PlantGuidanceDataset = {
+  ...rawPlantGuidanceDataset,
+  plants: rawPlantGuidanceDataset.plants.map((plant) => {
+    const modelSpecies = findModelSpecies({
+      speciesId: plant.plant_id,
+      scientificName: plant.scientific_name,
+    })
+    if (!modelSpecies) return plant
+    return {
+      ...plant,
+      malaysia_status: modelMalaysiaStatus(modelSpecies.malaysia_status, modelSpecies.status_source),
+    }
+  }),
+}
+
+function modelMalaysiaStatus(rawStatus: string, source: string): MalaysiaStatus {
+  const status = MODEL_STATUS_PRESENTATION[rawStatus] ?? {
+    category: 'status_uncertain',
+    display_label: 'Malaysia status needs review',
+    confidence: 'low' as const,
+  }
+  return {
+    ...status,
+    note: `Model catalogue status source: ${source}.`,
+    source_ids: [],
+  }
+}
 
 const byScientificName = new Map<string, PlantGuidance>()
 const byModelLabel = new Map<string, PlantGuidance>()

@@ -1,243 +1,430 @@
-import { useEffect, useState } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { Icon } from '@/components/Icon'
 import { useScan } from '@/features/scan/scan-store'
 import { useReportDraft } from '@/features/report/report-draft-store'
 import { PlantGuidancePanel } from '@/features/scan/PlantGuidancePanel'
 import { deriveMalaysiaStatusState, isReportEligible } from '@/features/scan/malaysia-status'
 import { findPlantGuidance } from '@/data/plant-guidance'
+import { findModelSpecies, modelReferenceImageUrl } from '@/data/model-species-catalog'
 import type { IdentifyResult, SpeciesDetail } from '@/types'
 import './scan-result.css'
 
-const HIGH_CONFIDENCE_THRESHOLD = 0.7
-
 export function ScanResultPage() {
   const navigate = useNavigate()
-  const { imageUrl, result, speciesDetail, captureSource } = useScan()
-  const [reportError, setReportError] = useState<string | null>(null)
+  const location = useLocation()
+  const { imageUrl, result, speciesDetail, captureSource, captureId } = useScan()
 
-  useEffect(() => {
-    window.scrollTo({ top: 0 })
-    document.querySelector<HTMLElement>('.scan-flow__main')?.scrollTo({ top: 0 })
-  }, [])
-
-  if (!result) return <Navigate to="/scan" replace />
+  if (!result) {
+    return <Navigate to="/scan" replace state={location.state} />
+  }
 
   const scanAgain = () => {
     useScan.getState().reset()
-    navigate('/scan', { replace: true })
+    navigate('/scan', { replace: true, state: location.state })
   }
 
   const startReport = () => {
-    const scan = useScan.getState()
-    const trusted = scan.captureSource === 'camera' || scan.captureSource === 'gallery'
-    if (!scan.imageBlob || !scan.imageUrl || !scan.observedAt || !scan.captureId || !trusted) {
-      setReportError('This scan is missing its photo details. Take another photo before reporting it.')
-      return
-    }
+    const {
+      imageBlob, imageUrl: url, observedAt, captureId, captureSource: source,
+    } = useScan.getState()
+    if (!imageBlob || !url || !observedAt || !captureId) return
+    const trusted = source === 'camera' || source === 'gallery'
+    if (!trusted) return
     useReportDraft.getState().beginFromScan({
-      result,
-      imageBlob: scan.imageBlob,
-      imageUrl: scan.imageUrl,
-      observedAt: scan.observedAt,
-      captureId: scan.captureId,
+      result, imageBlob, imageUrl: url, observedAt, captureId, captureSource: source,
     })
-    navigate('/report')
+    navigate('/report', { state: location.state })
   }
 
   const statusState = deriveMalaysiaStatusState(result)
   const statusUncertain = statusState === 'status_uncertain'
-  const reportEligible = speciesDetail?.reportEligible ?? isReportEligible(statusState)
+  const clientReportEligible = isReportEligible(statusState)
+  // An explicit server gate takes priority
+  // over the client-side derivation. Absent flag falls back to the derived
+  // state so unknown species stay report-blocked.
+  const serverReportEligible = speciesDetail?.reportEligible
+  const reportEligible = serverReportEligible === undefined
+    ? clientReportEligible
+    : serverReportEligible
+  // Both camera capture and file-picker upload are trusted for the report
+  // flow. Desktop testers and users without camera permission would otherwise
+  // hit a dead-end when the identification succeeds but Report never appears.
   const trustedCapture = captureSource === 'camera' || captureSource === 'gallery'
   const canReport = trustedCapture
-    && result.confidence >= HIGH_CONFIDENCE_THRESHOLD
     && !statusUncertain
     && reportEligible
-    && result.outcome === 'target'
-    && result.reportable
+    && (result.outcome === 'uncertain' || (result.outcome === 'target' && result.reportable))
 
   return (
-    <article className="scan-result">
+    <div className="scan-result">
+      <OutcomeBadge outcome={result.outcome} />
+
       {imageUrl && (
-        <figure className="scan-result__photo-wrap">
-          <img className="scan-result__photo" src={imageUrl} alt="Plant photographed for identification" />
-          <figcaption>Your photo</figcaption>
-        </figure>
+        <img src={imageUrl} alt="Scanned plant" style={{
+          width: '100%', maxHeight: 220, objectFit: 'cover',
+          borderRadius: 'var(--r-card)', marginTop: 16, display: 'block',
+        }} />
       )}
 
-      <section className={`scan-result__summary scan-result__summary--${result.outcome}`} aria-labelledby="scan-result-heading">
-        <OutcomeLabel outcome={result.outcome} />
-        {result.outcome === 'target' && speciesDetail && (
-          <TargetResult result={result} detail={speciesDetail} imageUrl={imageUrl} />
-        )}
-        {result.outcome === 'target' && !speciesDetail && <UnsupportedTargetResult result={result} />}
-        {result.outcome === 'other_plant' && <OtherPlantResult result={result} />}
-        {result.outcome === 'uncertain' && <UncertainResult result={result} />}
-
-        <div className={`scan-result__actions ${canReport ? 'scan-result__actions--split' : ''}`}>
-          {canReport && (
-            <button className="scan-result__button scan-result__button--primary" type="button" onClick={startReport}>
-              <Icon name="Send" size={18} color="currentColor" />
-              Report sighting
-            </button>
-          )}
-          <button
-            className={`scan-result__button ${canReport ? 'scan-result__button--secondary' : 'scan-result__button--primary'}`}
-            type="button"
-            onClick={scanAgain}
-          >
-            <Icon name={result.outcome === 'uncertain' ? 'Camera' : 'RotateCcw'} size={18} color="currentColor" />
-            {result.outcome === 'uncertain' ? 'Take another photo' : 'Scan again'}
-          </button>
-        </div>
-        {reportError && <p className="scan-result__error" role="alert">{reportError}</p>}
-      </section>
+      {result.outcome === 'target' && result.reportable && speciesDetail && (
+        <TargetResult result={result} detail={speciesDetail} imageUrl={imageUrl} />
+      )}
+      {result.outcome === 'target' && (!result.reportable || !speciesDetail) && (
+        <UnsupportedTargetResult result={result} />
+      )}
+      {result.outcome === 'other_plant' && <OtherPlantResult result={result} />}
+      {result.outcome === 'uncertain' && <UncertainResult result={result} />}
 
       {statusUncertain && (
-        <aside className="scan-result__notice" role="note">
-          <Icon name="Info" size={18} color="var(--amber-text)" />
-          <div>
-            <strong>Malaysian status needs review</strong>
-            <p>Do not remove or report this plant from this result. Take another photo or ask a local expert to confirm it.</p>
-          </div>
-        </aside>
+        <div style={{
+          marginTop: 16, padding: '12px 14px', borderRadius: 'var(--r-input)',
+          background: '#FEF3E2', border: '1px solid #F0D9A8',
+        }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--amber)' }}>Status uncertain</div>
+          <p style={{ marginTop: 4, fontSize: 12.5, color: 'var(--body)', lineHeight: 1.55 }}>
+            Our reviewed sources do not clearly show how Malaysia classifies this plant.
+            Leave it where it is, and do not report it from this result.
+          </p>
+        </div>
       )}
 
       {result.outcome !== 'uncertain' && !statusUncertain && (
-        <section className="scan-result__guidance" aria-label="Plant information and field guidance">
-          <div className="scan-result__section-heading">
-            <span>What to know next</span>
-            <p>Identification details and safe field guidance for Malaysia.</p>
-          </div>
-          <PlantGuidancePanel
-            scientificName={result.scientificName}
-            speciesName={result.speciesName}
-            plantId={result.speciesId}
-            actionEligible={speciesDetail?.actionEligible}
-          />
-        </section>
+        <PlantGuidancePanel
+          scientificName={result.scientificName}
+          speciesName={result.speciesName}
+          plantId={result.speciesId}
+          // A server block always hides removal guidance.
+          actionEligible={speciesDetail?.actionEligible}
+          decisionContext={captureId ? { id: `scan:${captureId}`, kind: 'scan' } : undefined}
+        />
       )}
 
-      <footer className="scan-result__meta">
-        {(speciesDetail?.statusReviewedAt || speciesDetail?.statusSourceId) && (
-          <span>
-            {speciesDetail.statusReviewedAt && `Malaysia status reviewed ${humanReviewedDate(speciesDetail.statusReviewedAt)}`}
-            {speciesDetail.statusReviewedAt && speciesDetail.statusSourceId && ' · '}
-            {speciesDetail.statusSourceId}
-          </span>
+      {/* Keep review metadata secondary to the identification result. */}
+      {(speciesDetail?.statusReviewedAt || speciesDetail?.statusSourceId) && (
+        <p style={{
+          marginTop: 10,
+          fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.55,
+          wordBreak: 'break-word',
+        }}>
+          {speciesDetail.statusReviewedAt && `Malaysia status reviewed ${humanReviewedDate(speciesDetail.statusReviewedAt)}`}
+          {speciesDetail.statusReviewedAt && speciesDetail.statusSourceId && ' · '}
+          {speciesDetail.statusSourceId}
+        </p>
+      )}
+
+      <div className="scan-result__action-dock" role="group" aria-label="Scan result actions">
+        {canReport && (
+          <div className="scan-result__action-copy">
+            <strong>Help confirm this sighting</strong>
+            <span>Send the photo and location for review.</span>
+          </div>
         )}
-        <span>Identified by the InvaTrace model. Check the plant in person before acting on it.</span>
-      </footer>
-    </article>
+
+        <div className="scan-result__action-buttons">
+          <button type="button" onClick={scanAgain} className="scan-result__secondary-action">
+          <Icon name="RotateCcw" size={16} color="var(--body)" />
+          Scan again
+          </button>
+
+          {canReport && (
+            <button type="button" onClick={startReport} className="scan-result__report-action">
+              <Icon name="Send" size={17} color="#fff" />
+              Report sighting
+            </button>
+          )}
+        </div>
+      </div>
+
+    </div>
   )
 }
 
 const OUTCOME_CONFIG = {
-  target: { label: 'Possible invasive plant', icon: 'AlertTriangle' },
-  other_plant: { label: 'Not a tracked invasive', icon: 'Check' },
-  uncertain: { label: 'No reliable match', icon: 'HelpCircle' },
+  target: { label: 'Invasive species detected', bg: 'var(--red-light)', border: 'var(--red-border)', color: 'var(--red)', icon: 'AlertTriangle' },
+  other_plant: { label: 'Not a target species', bg: 'var(--green-light)', border: 'var(--green-border)', color: 'var(--green)', icon: 'Check' },
+  uncertain: { label: 'Uncertain result. Take another photo.', bg: '#FEF3E2', border: '#F0D9A8', color: 'var(--amber)', icon: 'HelpCircle' },
 } as const
 
-function OutcomeLabel({ outcome }: { outcome: IdentifyResult['outcome'] }) {
-  const config = OUTCOME_CONFIG[outcome]
-  return <div className="scan-result__outcome"><Icon name={config.icon} size={18} color="currentColor" /><span>{config.label}</span></div>
+function OutcomeBadge({ outcome }: { outcome: IdentifyResult['outcome'] }) {
+  const c = OUTCOME_CONFIG[outcome]
+  return (
+    <div style={{
+      display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 14px',
+      borderRadius: 'var(--r-chip)', background: c.bg, border: `1px solid ${c.border}`,
+    }}>
+      <Icon name={c.icon} size={16} color={c.color} />
+      <span style={{ fontSize: 13, fontWeight: 600, color: c.color }}>{c.label}</span>
+    </div>
+  )
 }
 
-function TargetResult({ result, detail, imageUrl }: { result: IdentifyResult; detail: SpeciesDetail; imageUrl: string | null }) {
+function TargetResult({
+  result, detail, imageUrl,
+}: { result: IdentifyResult; detail: SpeciesDetail; imageUrl: string | null }) {
+  const modelSpecies = findModelSpecies({
+    speciesId: result.speciesId ?? null,
+    scientificName: result.scientificName ?? detail.latinName,
+  })
+  const referenceImage = detail.referenceImageUrl
+    ?? (modelSpecies ? modelReferenceImageUrl(modelSpecies) : null)
+  // Detailed safety and removal guidance is rendered once in the shared panel.
   return (
     <>
-      <header className="scan-result__identity">
-        <h2 id="scan-result-heading">{detail.name}</h2>
-        <p className="scan-result__scientific">{detail.latinName}</p>
-        {detail.commonNames.length > 0 && <p>Also called {detail.commonNames.join(', ')}</p>}
-      </header>
+      <div style={{ marginTop: 16 }}>
+        <h2 style={{ fontSize: 20, fontWeight: 700 }}>{detail.name}</h2>
+        <p style={{ fontSize: 13, color: 'var(--muted)', fontStyle: 'italic' }}>{detail.latinName}</p>
+        {detail.commonNames.length > 0 && (
+          <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
+            Also known as: {detail.commonNames.join(', ')}
+          </p>
+        )}
+      </div>
+
       <ConfidenceBand confidence={result.confidence} />
+
       {detail.nativeTwin && (
-        <details className="scan-result__comparison">
-          <summary>Compare with a similar native plant</summary>
-          <div className="scan-result__comparison-grid">
-            <ComparisonCard label="Your photo" imageUrl={imageUrl} imageAlt="The photographed plant" />
-            <ComparisonCard label="Native look-alike" imageUrl={detail.nativeTwin.referenceImageUrl} imageAlt={`Reference photo of ${detail.nativeTwin.name}`} name={detail.nativeTwin.name} credit={detail.nativeTwin.referenceImageCredit} />
+        <Section title="Compare with the native look-alike" icon="Leaf">
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 10 }}>
+            <ComparisonCard
+              tone="warn"
+              badge="Your scan"
+              imageUrl={imageUrl}
+              imageAlt="Your scanned plant"
+              caption="Possible invasive"
+            />
+            <ComparisonCard
+              tone="ok"
+              badge="Native"
+              imageUrl={detail.nativeTwin.referenceImageUrl}
+              imageCredit={detail.nativeTwin.referenceImageCredit}
+              imageAlt={`Reference photo of ${detail.nativeTwin.name}`}
+              title={detail.nativeTwin.name}
+              subtitle={detail.nativeTwin.latinName}
+              caption="Native. Do not remove."
+            />
           </div>
-          <ul>{detail.nativeTwin.distinguishingTraits.map((trait) => <li key={trait}>{trait}</li>)}</ul>
-        </details>
+          <ul style={{ marginTop: 10, paddingLeft: 18, fontSize: 13, color: 'var(--body)', lineHeight: 1.65 }}>
+            {detail.nativeTwin.distinguishingTraits.map((trait) => <li key={trait}>{trait}</li>)}
+          </ul>
+        </Section>
+      )}
+
+      {referenceImage && (
+        <Section title="Typical appearance" icon="ImagePlus">
+          <ReferenceImage src={referenceImage} alt={`Reference photo of ${detail.name}`}
+            credit={detail.referenceImageCredit} />
+        </Section>
       )}
     </>
   )
 }
 
-function ComparisonCard({ label, imageUrl, imageAlt, name, credit }: { label: string; imageUrl?: string | null; imageAlt: string; name?: string; credit?: string }) {
+function ComparisonCard({
+  tone, badge, imageUrl, imageAlt, imageCredit, title, subtitle, caption,
+}: {
+  tone: 'warn' | 'ok'; badge: string; imageUrl?: string | null; imageAlt: string;
+  imageCredit?: string; title?: string; subtitle?: string; caption: string
+}) {
+  const bg = tone === 'warn' ? 'var(--red-light)' : 'var(--green-light)'
+  const captionColor = tone === 'warn' ? 'var(--red-text)' : 'var(--green-dark)'
   return (
-    <figure className="scan-result__comparison-card">
-      {imageUrl ? <img src={imageUrl} alt={imageAlt} loading="lazy" /> : <div>No photo available</div>}
-      <figcaption><strong>{label}</strong>{name && <span>{name}</span>}{credit && <small>{credit}</small>}</figcaption>
+    <div style={{ overflow: 'hidden', borderRadius: 'var(--r-input)', background: bg }}>
+      {imageUrl ? (
+        <img src={imageUrl} alt={imageAlt} loading="lazy" style={{
+          width: '100%', aspectRatio: '4 / 3', objectFit: 'cover', display: 'block',
+        }} />
+      ) : (
+        <div aria-hidden style={{
+          width: '100%', aspectRatio: '4 / 3',
+          background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: 'var(--muted)', fontSize: 11,
+        }}>No reference photo</div>
+      )}
+      <div style={{ padding: '10px 11px' }}>
+        <span style={{
+          display: 'inline-block', fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4,
+          textTransform: 'uppercase', color: captionColor,
+        }}>{badge}</span>
+        {title && <div style={{ marginTop: 4, fontSize: 13, fontWeight: 650 }}>{title}</div>}
+        {subtitle && <div style={{ fontSize: 11.5, color: 'var(--muted)', fontStyle: 'italic' }}>{subtitle}</div>}
+        <p style={{ marginTop: 6, color: captionColor, fontSize: 11.5, fontWeight: 600 }}>{caption}</p>
+        {imageCredit && (
+          <p style={{ marginTop: 4, fontSize: 10, color: 'var(--muted)' }}>{imageCredit}</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function ReferenceImage({ src, alt, credit }: { src: string; alt: string; credit?: string }) {
+  return (
+    <figure style={{ margin: 0 }}>
+      <img src={src} alt={alt} loading="lazy" style={{
+        width: '100%', maxHeight: 260, objectFit: 'cover',
+        borderRadius: 'var(--r-input)', display: 'block',
+      }} />
+      {credit && <figcaption style={{ marginTop: 4, fontSize: 10.5, color: 'var(--muted)' }}>{credit}</figcaption>}
     </figure>
   )
 }
 
 function OtherPlantResult({ result }: { result: IdentifyResult }) {
+  const modelSpecies = findModelSpecies({
+    speciesId: result.speciesId ?? null,
+    scientificName: result.scientificName ?? null,
+  })
   return (
-    <>
-      <header className="scan-result__identity">
-        <h2 id="scan-result-heading">{result.speciesName ?? 'This plant is not on the report list'}</h2>
-        {result.scientificName && result.scientificName !== result.speciesName && <p className="scan-result__scientific">{result.scientificName}</p>}
-        <p>Leave it in place. If it still looks suspicious, photograph a different leaf or flower.</p>
-      </header>
+    <div style={{ marginTop: 16, padding: '16px 18px', borderRadius: 'var(--r-card)', background: 'var(--surface)', border: '1px solid var(--border)' }}>
+      <h2 style={{ fontSize: 18, fontWeight: 650 }}>{result.speciesName ?? 'Not a tracked invasive'}</h2>
+      {result.scientificName && result.scientificName !== result.speciesName && (
+        <p style={{ color: 'var(--muted)', fontSize: 12.5, fontStyle: 'italic' }}>{result.scientificName}</p>
+      )}
+      <p style={{ fontSize: 13.5, color: 'var(--body)', marginTop: 8, lineHeight: 1.6 }}>
+        This plant is not on InvaTrace's removal list. Leave it in place.
+        If it still looks suspicious, take another photo from a different angle.
+      </p>
+      {modelSpecies && (
+        <ReferenceImage
+          src={modelReferenceImageUrl(modelSpecies)}
+          alt={`Reference photo of ${modelSpecies.scientific_name}`}
+          credit="Species reference image"
+        />
+      )}
       <ConfidenceBand confidence={result.confidence} />
-    </>
+    </div>
   )
 }
 
 function UncertainResult({ result }: { result: IdentifyResult }) {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const retake = () => {
+    useScan.getState().reset()
+    navigate('/scan', { replace: true, state: location.state })
+  }
   return (
-    <>
-      <header className="scan-result__identity">
-        <h2 id="scan-result-heading">We could not identify this plant</h2>
-        <p>Try one more photo with the plant filling most of the frame.</p>
-      </header>
-      <div className="scan-result__tips" aria-label="Tips for the next photo"><span>Use daylight</span><span>Move closer</span><span>Show a leaf or flower</span></div>
+    <div style={{ marginTop: 16, padding: '16px 18px', borderRadius: 'var(--r-card)', background: 'var(--surface)', border: '1px solid var(--border)' }}>
+      <h2 style={{ fontSize: 16, fontWeight: 600 }}>Could not determine species</h2>
+      <p style={{ fontSize: 13.5, color: 'var(--body)', marginTop: 8, lineHeight: 1.6 }}>
+        We could not identify the plant from this photo. Try again with:
+      </p>
+      <ul style={{ marginTop: 8, paddingLeft: 18, fontSize: 13, color: 'var(--body)', lineHeight: 1.7 }}>
+        <li>Even lighting without harsh shadows</li>
+        <li>A closer photo with the plant in focus</li>
+        <li>One leaf or flower clearly visible</li>
+      </ul>
       <ConfidenceBand confidence={result.confidence} />
-    </>
+      <button type="button" onClick={retake} style={{
+        marginTop: 14, width: '100%', height: 'var(--h-primary)',
+        borderRadius: 'var(--r-button)', border: 'none',
+        background: 'var(--green)', color: '#fff', fontWeight: 600, fontSize: 14,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer',
+      }}>
+        <Icon name="Camera" size={16} color="#fff" />
+        Retake photo
+      </button>
+    </div>
   )
 }
 
 function UnsupportedTargetResult({ result }: { result: IdentifyResult }) {
   const displayName = result.speciesName ?? result.scientificName ?? 'Possible invasive plant'
-  const guidance = findPlantGuidance({ scientificName: result.scientificName ?? null, modelLabel: result.speciesName ?? null, plantId: result.speciesId ?? null })
+  const scientific = result.scientificName && result.scientificName !== displayName ? result.scientificName : null
+  // A catalogue reference photo remains useful when detailed guidance is absent.
+  const guidance = findPlantGuidance({
+    scientificName: result.scientificName ?? null,
+    modelLabel: result.speciesName ?? null,
+    plantId: result.speciesId ?? null,
+  })
+  const modelSpecies = findModelSpecies({
+    speciesId: result.speciesId ?? null,
+    scientificName: result.scientificName ?? null,
+  })
+  const referenceImage = guidance?.reference_image
+    ?? (modelSpecies ? modelReferenceImageUrl(modelSpecies) : null)
+  const referenceCredit = guidance?.reference_image_credit ?? 'Species reference image'
   return (
-    <>
-      <header className="scan-result__identity">
-        <h2 id="scan-result-heading">{displayName}</h2>
-        {result.scientificName && result.scientificName !== displayName && <p className="scan-result__scientific">{result.scientificName}</p>}
-        <p>{guidance?.general_information ? firstSentence(guidance.general_information) : 'We do not have enough reviewed information to recommend action.'}</p>
-      </header>
+    <div style={{ marginTop: 16, padding: '16px 18px', borderRadius: 'var(--r-card)', background: 'var(--amber-light)' }}>
+      <h2 style={{ fontSize: 18, fontWeight: 650 }}>{displayName}</h2>
+      {scientific && (
+        <p style={{ color: 'var(--muted)', fontSize: 12.5, fontStyle: 'italic', marginTop: 2 }}>{scientific}</p>
+      )}
+      {referenceImage && (
+        <figure style={{ margin: '10px 0 0' }}>
+          <img
+            src={referenceImage}
+            alt={`Reference photo of ${scientific ?? displayName}`}
+            loading="lazy"
+            style={{
+              width: '100%', maxHeight: 220, objectFit: 'cover',
+              borderRadius: 'var(--r-input)', display: 'block',
+            }}
+          />
+          <figcaption style={{ marginTop: 4, fontSize: 10.5, color: 'var(--muted)' }}>
+            Reference photo · {referenceCredit}
+          </figcaption>
+        </figure>
+      )}
+      {/* Keep the result summary short; full guidance follows below. */}
+      <p style={{ marginTop: 8, color: 'var(--body)', fontSize: 13.5, lineHeight: 1.6 }}>
+        {guidance?.general_information
+          ? firstSentence(guidance.general_information)
+          : 'We do not have reviewed field advice for this plant yet. Leave it in place.'}
+      </p>
       <ConfidenceBand confidence={result.confidence} />
-    </>
-  )
-}
-
-function ConfidenceBand({ confidence }: { confidence: number }) {
-  const pct = Math.round(confidence * 100)
-  const level = confidence >= HIGH_CONFIDENCE_THRESHOLD ? 'high' : confidence >= 0.5 ? 'medium' : 'low'
-  const label = level === 'high' ? 'Strong match' : level === 'medium' ? 'Possible match' : 'Low confidence'
-  return (
-    <div className={`scan-result__confidence scan-result__confidence--${level}`}>
-      <div><span>{label}</span><strong>{pct}%</strong></div>
-      <div className="scan-result__meter" role="meter" aria-label="Identification confidence" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}><span style={{ width: `${pct}%` }} /></div>
     </div>
   )
 }
 
+/** Trims a longer description down to its first sentence for compact result
+ *  boxes. Falls back to the full text if no sentence boundary is found. */
 function firstSentence(text: string): string {
   const match = text.match(/^.*?[.!?](?=\s|$)/)
   return match ? match[0] : text
 }
 
+/** Converts an ISO date to a month and year, or returns an invalid value unchanged. */
 function humanReviewedDate(iso: string): string {
   const match = iso.match(/^(\d{4})-(\d{2})/)
   if (!match) return iso
   const [, year, monthNum] = match
   const monthIndex = Number(monthNum) - 1
   if (monthIndex < 0 || monthIndex > 11) return iso
-  return `${new Intl.DateTimeFormat('en', { month: 'long' }).format(new Date(2020, monthIndex, 1))} ${year}`
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ]
+  return `${months[monthIndex]} ${year}`
+}
+
+function ConfidenceBand({ confidence }: { confidence: number }) {
+  const pct = Math.round(confidence * 100)
+  const color = confidence >= 0.7 ? 'var(--green)' : confidence >= 0.5 ? 'var(--amber)' : 'var(--red)'
+  return (
+    <div style={{ marginTop: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
+        <span style={{ color: 'var(--muted)', fontWeight: 500 }}>Confidence</span>
+        <span style={{ fontWeight: 600, color }}>{pct}%</span>
+      </div>
+      <div style={{
+        height: 6, borderRadius: 3, background: 'var(--border)', overflow: 'hidden',
+      }}>
+        <div style={{
+          width: `${pct}%`, height: '100%', borderRadius: 3, background: color,
+        }} />
+      </div>
+    </div>
+  )
+}
+
+function Section({ title, icon, children }: { title: string; icon?: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginTop: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+        {icon && <Icon name={icon} size={16} color="var(--body)" />}
+        <h3 style={{ fontSize: 14, fontWeight: 600 }}>{title}</h3>
+      </div>
+      {children}
+    </div>
+  )
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Icon } from '@/components/Icon'
 import { useReportDraft } from '@/features/report/report-draft-store'
 import { useScan } from '@/features/scan/scan-store'
@@ -7,18 +7,31 @@ import { ReportNextButton } from './components/ReportNextButton'
 
 type Status = 'idle' | 'locating' | 'located' | 'denied' | 'unavailable'
 
+// Match the server's Malaysia bounds so invalid coordinates fail in the form.
+const MY_LAT_MIN = 0.8
+const MY_LAT_MAX = 7.5
+const MY_LNG_MIN = 99.3
+const MY_LNG_MAX = 119.5
+
+function inMalaysia(p: { lat: number; lng: number } | null): boolean {
+  if (!p) return false
+  return p.lat >= MY_LAT_MIN && p.lat <= MY_LAT_MAX
+    && p.lng >= MY_LNG_MIN && p.lng <= MY_LNG_MAX
+}
+
 export function ReportLocationStep() {
   const { draft, setLocation, next, reset } = useReportDraft()
   const navigate = useNavigate()
+  const location = useLocation()
   const scanLoc = useScan((s) => s.location)
   const scanLocStatus = useScan((s) => s.locationStatus)
   const [status, setStatus] = useState<Status>('idle')
 
   const cancelReport = () => {
-    // AC 4.1.2: leaving the report keeps the valid scan around so the user can
-    // retry from the result page without losing their identification.
+    // Keep the valid scan so the user can return and try again without losing
+    // the identification.
     reset()
-    navigate('/scan/result')
+    navigate('/scan/result', { state: location.state })
   }
 
   const loc = draft?.location ?? null
@@ -60,7 +73,9 @@ export function ReportLocationStep() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scanLocStatus])
 
-  const canProceed = !!loc && accuracy !== null && accuracy <= 100
+  const withinAccuracy = accuracy !== null && accuracy <= 100
+  const withinMalaysia = inMalaysia(loc)
+  const canProceed = !!loc && withinAccuracy && withinMalaysia
 
   return (
     <div style={{ padding: 16, maxWidth: 520, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -101,11 +116,19 @@ export function ReportLocationStep() {
                })()} />
         )}
 
-        {loc && !canProceed && (
+        {loc && !withinAccuracy && (
           <div style={{ marginTop: 12 }}>
             <Row icon="AlertTriangle" tint="var(--amber)"
                  title="A more accurate GPS fix is needed"
-                 body="Move to an open area and use the location button again. Reports require accuracy within 100 m." />
+                 body="Move to an open area and use the location button again. Reports require accuracy within 100 metres." />
+          </div>
+        )}
+
+        {loc && withinAccuracy && !withinMalaysia && (
+          <div style={{ marginTop: 12 }}>
+            <Row icon="AlertTriangle" tint="var(--amber)"
+                 title="Location is outside Malaysia"
+                 body="InvaTrace currently accepts reports inside Malaysia only. Re-locate on a device inside the country." />
           </div>
         )}
 

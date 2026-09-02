@@ -153,7 +153,13 @@ function PanelBody({
 
       <ul className="notification-list">
         {items.length === 0 && (
-          <li className="notification-list__empty">No notifications yet.</li>
+          <li className="notification-list__empty">
+            <span className="notification-list__empty-icon" aria-hidden>
+              <Icon name="Bell" size={24} color="currentColor" />
+            </span>
+            <strong>No updates yet</strong>
+            <p>Report screening and sync updates will appear here.</p>
+          </li>
         )}
         {items.map((n) => (
           <li key={n.id}>

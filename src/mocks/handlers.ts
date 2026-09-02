@@ -3,6 +3,9 @@ import type {
   AppNotification, Report, ReportSubmission, Sighting,
   AccessOverview, PseudonymousProfile, SightingDetail,
 } from '@/types'
+import {
+  findModelSpecies, modelReferenceImageUrl, modelSpeciesCatalog,
+} from '@/data/model-species-catalog'
 
 const url = (p: string) => `*${p}`
 
@@ -16,8 +19,8 @@ const sessions = new Map<string, { profile: PseudonymousProfile; installationId:
 const MOCK_SERVER_KEY = 'invatrace-mock-server-v2'
 const MOCK_HASH_PEPPER = 'development-only-invatrace-mock-pepper'
 
-// AC 2.3.3 — sliding-window submission counters. In-memory; sufficient for
-// mock-backend enforcement. Real backend would use Redis or a token bucket.
+// Sliding-window submission counters are sufficient for the browser mock.
+// Production enforcement uses shared server-side storage.
 const REPORT_RATE_PER_TOKEN = 10
 const REPORT_RATE_PER_IP = 30
 const REPORT_RATE_WINDOW_MS = 10 * 60 * 1000
@@ -55,7 +58,7 @@ function enforceReportRateLimit(profileId: string, clientIp: string): {
   return { blocked: false }
 }
 
-// AC 2.3.2 — great-circle distance in metres between two WGS84 points.
+// Great-circle distance in metres between two WGS84 points.
 function haversineMetres(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
   const R = 6_371_000
   const toRad = (deg: number) => (deg * Math.PI) / 180
@@ -162,10 +165,8 @@ function issueSession(record: MockProfileRecord, installationId: string) {
   return accessToken
 }
 
-// AC 2.1.4 — strict "5 failed restores per profile+IP within a 15-minute
-// window" enforcement. Sliding window over timestamps; per-profile counter
-// and per-IP counter each cap at 5. Overflow returns 429 with Retry-After
-// equal to seconds until the oldest failure in that window ages out.
+// Cap failed restores per profile and network within a rolling 15-minute
+// window. Retry-After points to the oldest failure leaving that window.
 const RESTORE_MAX_ATTEMPTS = 5
 const RESTORE_WINDOW_MS = 15 * 60 * 1000
 const restoreFailureTimestamps = new Map<string, number[]>()
@@ -427,19 +428,45 @@ export const handlers = [
 
   http.get(url('/api/v1/species'), () =>
     HttpResponse.json({
-      items: [
-        { id: 'mikania-micrantha', name: 'Mikania micrantha', latinName: 'Mikania micrantha', isInvasive: true },
-        { id: 'chromolaena-odorata', name: 'Siam weed', latinName: 'Chromolaena odorata', isInvasive: true },
-        { id: 'eichhornia-crassipes', name: 'Water hyacinth', latinName: 'Eichhornia crassipes', isInvasive: true },
-        { id: 'clidemia-hirta', name: "Koster's curse", latinName: 'Clidemia hirta', isInvasive: true },
-        { id: 'dicranopteris-linearis', name: 'Resam fern', latinName: 'Dicranopteris linearis', isInvasive: false },
-      ],
+      items: modelSpeciesCatalog.classes.map((species) => ({
+        id: species.machine_label.replaceAll('_', '-'),
+        name: species.display_name,
+        latinName: species.scientific_name,
+        isInvasive: species.malaysia_status === 'invasive',
+        malaysiaStatus: species.malaysia_status,
+        statusSource: species.status_source,
+      })),
     })),
 
   http.get(url('/api/v1/species/:id'), ({ params }) => {
-    const detail = SPECIES_DETAIL[params.id as string]
-    if (!detail) return HttpResponse.json({ detail: 'Not found' }, { status: 404 })
-    return HttpResponse.json(detail)
+    const id = params.id as string
+    const modelSpecies = findModelSpecies({ speciesId: id })
+    if (!modelSpecies) return HttpResponse.json({ detail: 'Species not found.' }, { status: 404 })
+    const invasive = modelSpecies.malaysia_status === 'invasive'
+    const detail = SPECIES_DETAIL[id] as Record<string, unknown> | undefined
+    return HttpResponse.json({
+      commonNames: [],
+      risk: invasive ? 'high' : 'watch',
+      actionEligible: false,
+      statusReviewedAt: null,
+      traits: [],
+      nativeTwin: null,
+      removalSteps: [],
+      doNotDo: invasive
+        ? ['Detailed field guidance for this plant is not yet available in InvaTrace.']
+        : ['Leave this plant in place. It is not a model-listed invasive target.'],
+      ...detail,
+      id,
+      name: modelSpecies.display_name,
+      latinName: modelSpecies.scientific_name,
+      isInvasive: invasive,
+      reportable: invasive,
+      reportEligible: invasive,
+      malaysiaStatus: modelSpecies.malaysia_status,
+      statusSourceId: modelSpecies.status_source,
+      referenceImageUrl: modelReferenceImageUrl(modelSpecies),
+      referenceImageCredit: 'Species reference image',
+    })
   }),
 
   http.get(url('/api/v1/notifications'), ({ request }) => {
@@ -519,9 +546,8 @@ export const handlers = [
       return HttpResponse.json({ code: 'invalid_idempotency_key', detail: 'A valid Idempotency-Key is required.' }, { status: 400 })
     }
 
-    // AC 2.3.3 — token + IP submission rate limit. Sliding 10-minute window;
-    // 10 per token, 30 per IP. Reads a stand-in IP from a proxy header (falls
-    // back to a per-session identifier for MSW where no real client IP exists).
+    // Match the server's rolling submission limits. MSW has no real client IP,
+    // so the session identifier is the fallback network key.
     const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0].trim()
       || `session:${session.token.slice(0, 12)}`
     const rateCheck = enforceReportRateLimit(session.profile.id, clientIp)
@@ -546,9 +572,8 @@ export const handlers = [
       return HttpResponse.json(existing.response, { status: 201 })
     }
 
-    // AC 2.2.2 / 4.1.2: clamp any client observedAt that lies more than five
-    // minutes in the future back to the server's submission time. Prevents
-    // spoofed clocks from placing sightings ahead of the current moment.
+    // Clamp observations more than five minutes in the future to submission
+    // time so a bad device clock cannot create future-dated sightings.
     const createdAt = new Date()
     const FIVE_MIN_MS = 5 * 60 * 1000
     const rawObserved = submission.observedAt ? new Date(submission.observedAt) : null
@@ -556,9 +581,8 @@ export const handlers = [
       ? createdAt.toISOString()
       : submission.observedAt
 
-    // AC 2.3.1 — exact-image duplicate: same owner + same SHA-256 + same
-    // species → return the existing report ID with status:'merged'. No second
-    // public marker is created.
+    // Reuse the existing report when one profile submits the same image and
+    // species again. This avoids creating a second public marker.
     if (submission.imageSha256) {
       const dup = mockReports.find((r) =>
         r.submission.imageSha256 === submission.imageSha256
@@ -568,8 +592,8 @@ export const handlers = [
       if (dup) return HttpResponse.json({ ...dup, status: 'merged' as const }, { status: 200 })
     }
 
-    // AC 2.3.2 — near-duplicate merge: same owner + same species + within
-    // 25 m + within 10 min → return the earlier report with status:'merged'.
+    // Nearby reports from the same profile and species merge when they arrive
+    // within ten minutes and 25 metres.
     const TEN_MIN_MS = 10 * 60 * 1000
     const NEAR_M = 25
     const near = mockReports.find((r) => {
@@ -762,7 +786,7 @@ const SEEDED_REPORTS: Report[] = [
   seedReport('seed-new-03', 'mikania-micrantha', 'uncertain', 0.51,
     3.1524, 101.6421, null, 'small_patch',
     'Not sure if same vine — looks slightly different.', 7),
-  seedReport('seed-trusted-04', 'clidemia-hirta', 'target', 0.87,
+  seedReport('seed-trusted-04', 'lantana-camara', 'target', 0.87,
     3.1476, 101.6432, 8, 'large_area',
     'Dense understory patch spreading fast.', 12),
   seedReport('seed-new-05', 'eichhornia-crassipes', 'target', 0.94,
@@ -805,8 +829,8 @@ const SEED: Omit<Sighting, 'location' | 'precisionReduced' | 'lastReportedAt' | 
   { id: 's-05', speciesId: 'chromolaena-odorata', speciesName: 'Siam weed', latinName: 'Chromolaena odorata', status: 'screened', risk: 'high', reportCount: 1 },
   { id: 's-06', speciesId: 'eichhornia-crassipes', speciesName: 'Water hyacinth', latinName: 'Eichhornia crassipes', status: 'screened', risk: 'high', reportCount: 5 },
   { id: 's-07', speciesId: 'eichhornia-crassipes', speciesName: 'Water hyacinth', latinName: 'Eichhornia crassipes', status: 'screened', risk: 'high', reportCount: 2 },
-  { id: 's-08', speciesId: 'clidemia-hirta', speciesName: "Koster's curse", latinName: 'Clidemia hirta', status: 'screened', risk: 'watch', reportCount: 3 },
-  { id: 's-09', speciesId: 'clidemia-hirta', speciesName: "Koster's curse", latinName: 'Clidemia hirta', status: 'screened', risk: 'watch', reportCount: 1 },
+  { id: 's-08', speciesId: 'lantana-camara', speciesName: 'Lantana camara', latinName: 'Lantana camara', status: 'screened', risk: 'high', reportCount: 3 },
+  { id: 's-09', speciesId: 'lantana-camara', speciesName: 'Lantana camara', latinName: 'Lantana camara', status: 'screened', risk: 'high', reportCount: 1 },
   { id: 's-10', speciesId: 'mikania-micrantha', speciesName: 'Mikania micrantha', latinName: 'Mikania micrantha', status: 'removed', risk: 'high', reportCount: 2 },
 ]
 
@@ -847,11 +871,23 @@ const SIGHTINGS: Sighting[] = SEED.map((sighting, index) => {
   }
 })
 
-const SIGHTING_SPECIES: Record<string, Pick<Sighting, 'speciesName' | 'latinName' | 'risk'>> = {
-  'mikania-micrantha': { speciesName: 'Mikania micrantha', latinName: 'Mikania micrantha', risk: 'high' },
-  'chromolaena-odorata': { speciesName: 'Siam weed', latinName: 'Chromolaena odorata', risk: 'high' },
-  'eichhornia-crassipes': { speciesName: 'Water hyacinth', latinName: 'Eichhornia crassipes', risk: 'high' },
-  'clidemia-hirta': { speciesName: "Koster's curse", latinName: 'Clidemia hirta', risk: 'watch' },
+const SIGHTING_SPECIES: Record<string, Pick<Sighting, 'speciesName' | 'latinName' | 'risk'>> = Object.fromEntries(
+  modelSpeciesCatalog.classes.map((modelClass) => [
+    modelClass.machine_label.replaceAll('_', '-'),
+    {
+      speciesName: modelClass.display_name,
+      latinName: modelClass.scientific_name,
+      risk: modelClass.malaysia_status === 'invasive' ? 'high' as const : 'watch' as const,
+    },
+  ]),
+)
+
+export function resolveSightingSpecies(
+  speciesId: string,
+): Pick<Sighting, 'speciesName' | 'latinName' | 'risk'> {
+  return SIGHTING_SPECIES[speciesId] ?? {
+    speciesName: 'Reported plant', latinName: 'Identification unavailable', risk: 'watch',
+  }
 }
 
 /** Publish a screened report as its own map sighting at the submitted point. */
@@ -860,9 +896,7 @@ function publishReportSighting(report: Report): string {
   if (SIGHTINGS.some((sighting) => sighting.id === sightingId)) return sightingId
 
   const speciesId = report.submission.speciesId ?? 'unknown-species'
-  const species = SIGHTING_SPECIES[speciesId] ?? {
-    speciesName: 'Reported plant', latinName: 'Identification unavailable', risk: 'watch' as const,
-  }
+  const species = resolveSightingSpecies(speciesId)
   const closestPlace = PLACES
     .map((place) => ({ place, distance: haversineMetres(report.submission.location, place) }))
     .sort((a, b) => a.distance - b.distance)[0]
@@ -904,7 +938,7 @@ const SPECIES_DETAIL: Record<string, unknown> = {
     actionEligible: true,
     statusReviewedAt: '2026-07-15',
     statusSourceId: 'MYBIS-IAS-2024.1',
-    referenceImageUrl: '/reference-images/mikania-micrantha.jpg',
+    referenceImageUrl: '/reference-images/mikania_micrantha.jpg',
     referenceImageCredit: 'Wikimedia · CC BY-SA',
     traits: [
       { label: 'Leaf shape', value: 'Heart-shaped, opposite, 5–13 cm' },
@@ -921,7 +955,7 @@ const SPECIES_DETAIL: Record<string, unknown> = {
         'No heart-shaped leaves',
         'Does not climb or smother other plants',
       ],
-      referenceImageUrl: '/reference-images/dicranopteris-linearis.jpg',
+      referenceImageUrl: '/reference-images/dicranopteris_linearis.jpg',
       referenceImageCredit: 'Wikimedia · Starr Environmental',
     },
     removalSteps: [
@@ -943,12 +977,12 @@ const SPECIES_DETAIL: Record<string, unknown> = {
     isInvasive: true,
     risk: 'high',
     reportable: false,
-    // Chromolaena reporting deferred until Iteration 2 look-alike guide ships.
+    // Chromolaena remains non-reportable until its look-alike guidance is reviewed.
     reportEligible: false,
     actionEligible: false,
     statusReviewedAt: '2026-07-15',
     statusSourceId: 'GRIIS-MYS-1.3',
-    referenceImageUrl: '/reference-images/chromolaena-odorata.jpg',
+    referenceImageUrl: '/reference-images/chromolaena_odorata.jpg',
     referenceImageCredit: 'Wikimedia · CC BY-SA',
     traits: [
       { label: 'Leaf shape', value: 'Opposite, ovate, 5–12 cm with serrated edges' },

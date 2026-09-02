@@ -526,7 +526,7 @@ def _notify_resolution(session, report: Report) -> None:
         ),
         "needs_rescan": (
             "A new scan is needed",
-            "Automated rules could not accept this evidence. Retake it with the in-app camera.",
+            "Automated rules could not accept this evidence. Capture or upload a new photo.",
         ),
         "rejected": (
             "Duplicate evidence rejected",

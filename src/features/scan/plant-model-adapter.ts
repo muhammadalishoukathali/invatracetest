@@ -1,4 +1,5 @@
 import type { BBox, QualityResult, IdentifyResult } from '@/types'
+import { modelSpeciesCatalog } from '@/data/model-species-catalog'
 import { hashBitmap } from './image-processing'
 import { PulihModel } from './pulih-model'
 
@@ -8,7 +9,41 @@ interface ModelAdapter {
   identify(image: Blob, onProgress?: (loaded: number, total: number) => void): Promise<IdentifyResult>
 }
 
-const DEVELOPMENT_MODEL_VERSION = 'development-model-v1'
+const DEVELOPMENT_MODEL_VERSION = `development-${modelSpeciesCatalog.model_version}`
+const DEVELOPMENT_UNKNOWN_BUCKETS = 5
+
+/**
+ * Deterministic stand-in for local UI development. It mirrors the real
+ * model's complete class catalogue and Malaysia-status split instead of
+ * maintaining a second, hand-written species list.
+ */
+export function developmentIdentifyResultForHash(imageHash: number): IdentifyResult {
+  const classes = modelSpeciesCatalog.classes
+  const bucket = Math.abs(imageHash) % (classes.length + DEVELOPMENT_UNKNOWN_BUCKETS)
+  if (bucket >= classes.length) {
+    return {
+      outcome: 'uncertain',
+      confidence: 0.42,
+      modelVersion: DEVELOPMENT_MODEL_VERSION,
+      reportable: false,
+    }
+  }
+
+  const species = classes[bucket]
+  const invasive = species.malaysia_status === 'invasive'
+  return {
+    outcome: invasive ? 'target' : 'other_plant',
+    speciesId: species.machine_label.replaceAll('_', '-'),
+    speciesName: species.display_name,
+    scientificName: species.scientific_name,
+    malaysiaStatus: species.malaysia_status,
+    statusSource: species.status_source,
+    isInvasive: invasive,
+    confidence: Math.min(0.96, 0.82 + (Math.abs(imageHash) % 15) / 100),
+    modelVersion: DEVELOPMENT_MODEL_VERSION,
+    reportable: invasive,
+  }
+}
 
 class DevelopmentModelAdapter implements ModelAdapter {
   async detect(image: ImageBitmap): Promise<{ box: BBox | null }> {
@@ -41,20 +76,7 @@ class DevelopmentModelAdapter implements ModelAdapter {
     const bitmap = await createImageBitmap(image)
     const imageHash = hashBitmap(bitmap)
     bitmap.close()
-    const bucket = imageHash % 10
-
-    if (bucket < 6) {
-      return {
-        outcome: 'target', speciesId: 'mikania-micrantha', speciesName: 'Mikania micrantha',
-        scientificName: 'Mikania micrantha', isInvasive: true, confidence: 0.87,
-        malaysiaStatus: 'invasive',
-        modelVersion: DEVELOPMENT_MODEL_VERSION, reportable: true,
-      }
-    }
-    if (bucket < 8) {
-      return { outcome: 'other_plant', confidence: 0.73, modelVersion: DEVELOPMENT_MODEL_VERSION, reportable: false }
-    }
-    return { outcome: 'uncertain', confidence: 0.42, modelVersion: DEVELOPMENT_MODEL_VERSION, reportable: false }
+    return developmentIdentifyResultForHash(imageHash)
   }
 
 }

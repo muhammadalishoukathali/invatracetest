@@ -1,5 +1,8 @@
 import { create } from 'zustand'
 import type { GeoPoint, QualityResult, IdentifyResult, SpeciesDetail } from '@/types'
+import { saveScanHistoryRecord } from './scan-history-store'
+
+let locationRequestGeneration = 0
 
 type ScanStep = 'capture' | 'processing' | 'result'
 
@@ -42,6 +45,29 @@ interface ScanState {
   reset: () => void
 }
 
+function saveCurrentScan(
+  scan: ScanState,
+  result: IdentifyResult,
+  detail: SpeciesDetail | null,
+  location: ScanLocation | null,
+): void {
+  if (!scan.captureId || !scan.observedAt || !scan.captureSource) return
+  saveScanHistoryRecord({
+    captureId: scan.captureId,
+    observedAt: scan.observedAt,
+    captureSource: scan.captureSource,
+    outcome: result.outcome,
+    speciesId: result.speciesId ?? null,
+    speciesName: result.speciesName ?? detail?.name ?? null,
+    scientificName: result.scientificName ?? detail?.latinName ?? null,
+    confidence: result.confidence,
+    modelVersion: result.modelVersion,
+    reportable: result.reportable,
+    location: location?.point ?? null,
+    locationAccuracyM: location?.accuracyM ?? null,
+  })
+}
+
 export const useScan = create<ScanState>((set, get) => ({
   step: 'capture',
   imageUrl: null,
@@ -72,14 +98,23 @@ export const useScan = create<ScanState>((set, get) => ({
   cancelProcessing: () => set({ step: 'capture' }),
 
   setResult: (r, detail) => {
-    get().imageBitmap?.close()
+    const scan = get()
+    scan.imageBitmap?.close()
+    saveCurrentScan(scan, r, detail, scan.location)
     set({ step: 'result', imageBitmap: null, result: r, speciesDetail: detail })
   },
 
-  setLocation: (loc) => set({ location: loc, locationStatus: 'ok' }),
+  setLocation: (loc) => {
+    const scan = get()
+    // A warm model can finish before the GPS request. Update the already-saved
+    // history row when that late fix arrives so View on map is still available.
+    if (scan.result) saveCurrentScan(scan, scan.result, scan.speciesDetail, loc)
+    set({ location: loc, locationStatus: 'ok' })
+  },
   setLocationStatus: (s) => set({ locationStatus: s }),
 
   reset: () => {
+    locationRequestGeneration += 1
     const previous = get()
     if (previous.imageUrl) URL.revokeObjectURL(previous.imageUrl)
     previous.imageBitmap?.close()
@@ -95,13 +130,17 @@ export const useScan = create<ScanState>((set, get) => ({
 /** Start a location request without blocking the scan screen. The result or
  *  failure state is saved in the scan store for the report form to read later. */
 export function captureScanLocation() {
+  const requestGeneration = ++locationRequestGeneration
+  useScan.setState({ location: null, locationStatus: 'locating' })
   if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
-    useScan.getState().setLocationStatus('unavailable')
+    if (requestGeneration === locationRequestGeneration) {
+      useScan.getState().setLocationStatus('unavailable')
+    }
     return
   }
-  useScan.getState().setLocationStatus('locating')
   navigator.geolocation.getCurrentPosition(
     (pos) => {
+      if (requestGeneration !== locationRequestGeneration) return
       useScan.getState().setLocation({
         point: { lat: pos.coords.latitude, lng: pos.coords.longitude },
         accuracyM: Number.isFinite(pos.coords.accuracy) ? Math.round(pos.coords.accuracy) : null,
@@ -109,6 +148,7 @@ export function captureScanLocation() {
       })
     },
     (err) => {
+      if (requestGeneration !== locationRequestGeneration) return
       useScan.getState().setLocationStatus(
         err.code === err.PERMISSION_DENIED ? 'denied'
           : err.code === err.TIMEOUT ? 'timeout' : 'unavailable',

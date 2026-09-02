@@ -1,6 +1,10 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { setupServer } from 'msw/node'
-import { handlers } from './handlers'
+import { handlers, resolveSightingSpecies } from './handlers'
+import { modelSpeciesCatalog } from '@/data/model-species-catalog'
+import { plantGuidanceDataset } from '@/data/plant-guidance'
+import { developmentIdentifyResultForHash } from '@/features/scan/plant-model-adapter'
+import { MAP_FILTER_SPECIES } from '@/features/map/MapFilters'
 
 class MemoryStorage implements Storage {
   private values = new Map<string, string>()
@@ -34,6 +38,92 @@ beforeAll(() => {
 })
 afterAll(() => server.close())
 beforeEach(() => localStorage.clear())
+
+describe('reported sighting species labels', () => {
+  it('exposes exactly the 31 model classes with the catalogue status split', async () => {
+    const response = await fetch('http://localhost/api/v1/species')
+    const body = await response.json() as {
+      items: Array<{ id: string; isInvasive: boolean; malaysiaStatus: string }>
+    }
+    expect(response.status).toBe(200)
+    expect(body.items).toHaveLength(31)
+    expect(body.items.filter((item) => item.isInvasive)).toHaveLength(16)
+    expect(body.items.filter((item) => !item.isInvasive)).toHaveLength(15)
+    expect(new Set(body.items.map((item) => item.id))).toEqual(new Set(
+      modelSpeciesCatalog.classes.map((item) => item.machine_label.replaceAll('_', '-')),
+    ))
+  })
+
+  it('makes the fake development model emit every catalogue class with its real status', () => {
+    const results = modelSpeciesCatalog.classes.map((_, index) => developmentIdentifyResultForHash(index))
+    expect(results.map((result) => result.speciesId)).toEqual(
+      modelSpeciesCatalog.classes.map((item) => item.machine_label.replaceAll('_', '-')),
+    )
+    expect(results.filter((result) => result.outcome === 'target')).toHaveLength(16)
+    expect(results.filter((result) => result.outcome === 'other_plant')).toHaveLength(15)
+    expect(developmentIdentifyResultForHash(31).outcome).toBe('uncertain')
+  })
+
+  it('derives map filters and guidance status from the model catalogue', () => {
+    const invasive = modelSpeciesCatalog.classes.filter((item) => item.malaysia_status === 'invasive')
+    expect(MAP_FILTER_SPECIES).toHaveLength(16)
+    expect(MAP_FILTER_SPECIES.map((item) => item.id)).toEqual(
+      invasive.map((item) => item.machine_label.replaceAll('_', '-')),
+    )
+    for (const plant of plantGuidanceDataset.plants) {
+      const modelClass = modelSpeciesCatalog.classes.find((item) => item.machine_label === plant.plant_id)
+      expect(modelClass).toBeDefined()
+      expect(plant.malaysia_status.category === 'invasive').toBe(
+        modelClass?.malaysia_status === 'invasive',
+      )
+    }
+  })
+
+  it('keeps the model identification for Mimosa diplotricha on the map', () => {
+    expect(resolveSightingSpecies('mimosa-diplotricha')).toEqual({
+      speciesName: 'Mimosa diplotricha',
+      latinName: 'Mimosa diplotricha',
+      risk: 'high',
+    })
+  })
+
+  it('uses the unavailable fallback only for IDs outside the reviewed catalogue', () => {
+    expect(resolveSightingSpecies('not-a-reviewed-species')).toMatchObject({
+      speciesName: 'Reported plant',
+      latinName: 'Identification unavailable',
+    })
+  })
+
+  it('has exact display coverage for every class the model can emit', () => {
+    expect(modelSpeciesCatalog.class_count).toBe(31)
+    expect(modelSpeciesCatalog.classes).toHaveLength(31)
+    for (const modelClass of modelSpeciesCatalog.classes) {
+      const speciesId = modelClass.machine_label.replaceAll('_', '-')
+      expect(resolveSightingSpecies(speciesId)).toMatchObject({
+        speciesName: modelClass.display_name,
+        latinName: modelClass.scientific_name,
+      })
+    }
+  })
+
+  it('returns a general reference image for every model species detail', async () => {
+    for (const modelClass of modelSpeciesCatalog.classes) {
+      const speciesId = modelClass.machine_label.replaceAll('_', '-')
+      const response = await fetch(`http://localhost/api/v1/species/${speciesId}`)
+      const detail = await response.json() as {
+        latinName: string
+        isInvasive: boolean
+        reportEligible: boolean
+        referenceImageUrl: string | null
+      }
+      expect(response.status).toBe(200)
+      expect(detail.latinName).toBe(modelClass.scientific_name)
+      expect(detail.isInvasive).toBe(modelClass.malaysia_status === 'invasive')
+      expect(detail.reportEligible).toBe(modelClass.malaysia_status === 'invasive')
+      expect(detail.referenceImageUrl).toMatch(/^\/reference-images\/.+\.jpg$/)
+    }
+  })
+})
 
 describe('private access mock contract', () => {
   it('creates explicit Detector/New access, returns ten 128-bit codes, and persists only hashes', async () => {

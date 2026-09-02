@@ -1,7 +1,7 @@
 # InvaTrace backend
 
 FastAPI service for the InvaTrace React/Vite PWA. It implements pseudonymous
-private access, S3-compatible photo uploads, idempotent reporting, PostGIS
+private access, object-storage photo uploads, idempotent reporting, PostGIS
 sightings, deterministic automated screening, notifications, and a durable
 screening worker.
 
@@ -53,8 +53,12 @@ RUN_INVATRACE_INTEGRATION=1 backend/.venv/bin/pytest \
 It uses `http://localhost:8000` and the local Compose database by default. Set
 `INVATRACE_INTEGRATION_BASE_URL` to target a different isolated test deployment.
 
-With the Compose dependencies running, a host process can use
-`backend/.env.example`:
+To run the API as a host process, provide reachable PostgreSQL, Redis, and
+object-storage services, then update `backend/.env` with their addresses. The
+Compose database and Redis ports are intentionally private to its service
+network.
+
+macOS / Linux:
 
 ```bash
 cp backend/.env.example backend/.env
@@ -62,6 +66,16 @@ cd backend
 .venv/bin/alembic upgrade head
 .venv/bin/python -m app.cli seed
 .venv/bin/uvicorn app.main:app --reload --port 8000
+```
+
+Windows (PowerShell):
+
+```powershell
+Copy-Item backend\.env.example backend\.env
+cd backend
+.venv\Scripts\alembic.exe upgrade head
+.venv\Scripts\python.exe -m app.cli seed
+.venv\Scripts\uvicorn.exe app.main:app --reload --port 8000
 ```
 
 The container path is simpler and is the supported full-stack workflow.
@@ -107,8 +121,9 @@ is required for correctness.
 
 The cleanup worker runs immediately at startup and then at
 `UPLOAD_CLEANUP_INTERVAL_SECONDS`. It only deletes expired, unconsumed objects
-whose keys match the `uploads/<profile>/<uuid>.jpg` staging namespace. Submitted
-`evidence/` and `thumbnails/` objects are never cleanup targets.
+whose keys match the `uploads/<profile>/<uuid>.jpg` staging namespace, plus
+`evidence/` and `thumbnails/` keys explicitly queued when their report or
+sighting is removed. Storage failures are retained for a later retry.
 
 ## Safety properties
 

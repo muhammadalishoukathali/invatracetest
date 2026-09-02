@@ -10,7 +10,7 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.models import MonitoredPlace, Sighting, Species
+from app.db.models import MonitoredPlace, Report, Sighting, Species
 
 SPECIES = [
     {
@@ -146,21 +146,6 @@ SPECIES = [
         "action_guides": [],
     },
     {
-        "id": "clidemia-hirta",
-        "name": "Koster's curse",
-        "latin_name": "Clidemia hirta",
-        "common_names": [],
-        "is_invasive": True,
-        "risk": "watch",
-        "traits": [],
-        "native_twin": None,
-        "removal_steps": [],
-        "do_not_do": [],
-        "detail_available": False,
-        "reportable": False,
-        "action_guides": [],
-    },
-    {
         "id": "dicranopteris-linearis",
         "name": "Resam fern",
         "latin_name": "Dicranopteris linearis",
@@ -176,6 +161,43 @@ SPECIES = [
         "action_guides": [],
     },
 ]
+
+
+def _apply_model_catalog_to_species_seed() -> None:
+    catalog_path = Path(__file__).with_name("data") / "pulih_model1_species_31.json"
+    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+    detailed_by_id = {item["id"]: item for item in SPECIES}
+    model_species: list[dict[str, object]] = []
+
+    for model_class in catalog["classes"]:
+        species_id = model_class["machine_label"].replace("_", "-")
+        invasive = model_class["malaysia_status"] == "invasive"
+        detail = detailed_by_id.get(species_id, {
+            "common_names": [],
+            "traits": [],
+            "native_twin": None,
+            "removal_steps": [],
+            "do_not_do": [],
+            "detail_available": False,
+            "action_guides": [],
+        })
+        reportable = bool(detail.get("reportable", False)) and invasive
+        detail.update({
+            "id": species_id,
+            "name": model_class["display_name"],
+            "latin_name": model_class["scientific_name"],
+            "is_invasive": invasive,
+            "risk": "high" if invasive else None,
+            "reportable": reportable,
+        })
+        model_species.append(detail)
+
+    if len(model_species) != catalog["class_count"]:
+        raise ValueError("Development species seed does not match the PULIH model catalogue.")
+    SPECIES[:] = model_species
+
+
+_apply_model_catalog_to_species_seed()
 
 PLACES = [
     ("Bukit Kiara · West Trail", 3.1497, 101.6412),
@@ -198,37 +220,15 @@ SIGHTING_SEED = [
     ("chromolaena-odorata", "screened", "high", 0.0037, 4.7),
     ("eichhornia-crassipes", "screened", "high", 0.0028, 5.9),
     ("eichhornia-crassipes", "screened", "high", 0.0045, 0.9),
-    ("clidemia-hirta", "screened", "watch", 0.0022, 2.0),
-    ("clidemia-hirta", "screened", "watch", 0.0033, 3.1),
+    ("lantana-camara", "screened", "high", 0.0022, 2.0),
+    ("lantana-camara", "screened", "high", 0.0033, 3.1),
     ("mikania-micrantha", "removed", "high", 0.0016, 4.2),
 ]
 
+LEGACY_SEED_SPECIES_IDS = {"clidemia-hirta"}
+
 
 def seed_development_data(session: Session) -> None:
-    catalog_path = Path(__file__).with_name("data") / "pulih_model1_species_31.json"
-    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
-    detailed_ids = {item["id"] for item in SPECIES}
-    for model_class in catalog["classes"]:
-        species_id = model_class["machine_label"].replace("_", "-")
-        if species_id in detailed_ids:
-            continue
-        SPECIES.append(
-            {
-                "id": species_id,
-                "name": model_class["display_name"],
-                "latin_name": model_class["scientific_name"],
-                "common_names": [],
-                "is_invasive": model_class["malaysia_status"] == "invasive",
-                "risk": "watch" if model_class["malaysia_status"] == "invasive" else None,
-                "traits": [],
-                "native_twin": None,
-                "removal_steps": [],
-                "do_not_do": [],
-                "detail_available": False,
-                "reportable": False,
-                "action_guides": [],
-            }
-        )
     for values in SPECIES:
         existing = session.get(Species, values["id"])
         if existing:
@@ -246,25 +246,42 @@ def seed_development_data(session: Session) -> None:
                     longitude=Decimal(str(longitude)),
                 )
             )
-    if not session.scalar(select(Sighting.id).limit(1)):
-        centre_lat, centre_lng = 3.1497, 101.6412
-        actions = {
-            "screened": "Rule-screened report. Follow the reviewed guidance for this species.",
-            "removed": "Removal recorded. Recheck for regrowth in 2–3 weeks.",
+    centre_lat, centre_lng = 3.1497, 101.6412
+    actions = {
+        "screened": "Rule-screened report. Follow the reviewed guidance for this species.",
+        "removed": "Removal recorded. Recheck for regrowth in 2–3 weeks.",
+    }
+    for index, (species_id, status, risk, radius, angle) in enumerate(SIGHTING_SEED):
+        sighting_id = uuid.uuid5(uuid.NAMESPACE_URL, f"invatrace-seed-sighting-{index + 1}")
+        values = {
+            "species_id": species_id,
+            "status": status,
+            "risk": risk,
+            "latitude": Decimal(str(round(centre_lat + math.sin(angle) * radius, 5))),
+            "longitude": Decimal(str(round(centre_lng + math.cos(angle) * radius, 5))),
+            "reporter_trust": "Trusted",
+            "recommended_action": actions[status],
+            "place_label": PLACES[index][0],
         }
-        for index, (species_id, status, risk, radius, angle) in enumerate(SIGHTING_SEED):
-            session.add(
-                Sighting(
-                    id=uuid.uuid5(uuid.NAMESPACE_URL, f"invatrace-seed-sighting-{index + 1}"),
-                    species_id=species_id,
-                    status=status,
-                    risk=risk,
-                    latitude=Decimal(str(round(centre_lat + math.sin(angle) * radius, 5))),
-                    longitude=Decimal(str(round(centre_lng + math.cos(angle) * radius, 5))),
-                    reporter_trust="Trusted",
-                    recommended_action=actions[status],
-                    place_label=PLACES[index][0],
-                    created_at=datetime.now(UTC) - timedelta(hours=index + 1),
-                )
-            )
+        existing = session.get(Sighting, sighting_id)
+        if existing:
+            for key, value in values.items():
+                setattr(existing, key, value)
+        else:
+            session.add(Sighting(
+                id=sighting_id,
+                created_at=datetime.now(UTC) - timedelta(hours=index + 1),
+                **values,
+            ))
+    session.flush()
+    for species_id in LEGACY_SEED_SPECIES_IDS:
+        species = session.get(Species, species_id)
+        has_sighting = session.scalar(
+            select(Sighting.id).where(Sighting.species_id == species_id).limit(1)
+        )
+        has_report = session.scalar(
+            select(Report.id).where(Report.species_id == species_id).limit(1)
+        )
+        if species and not has_sighting and not has_report:
+            session.delete(species)
     session.commit()

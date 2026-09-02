@@ -7,6 +7,7 @@ existing layer and domain boundaries instead of creating parallel abstractions.
 
 | Path | Responsibility |
 |---|---|
+| `.github/` | Automated release checks for frontend, backend, dependencies, and secrets. |
 | `src/` | Application source code. |
 | `backend/` | FastAPI service, worker, database models, migrations, and backend tests. |
 | `e2e/` | Browser journeys that exercise complete user flows. |
@@ -84,6 +85,7 @@ excluded through `.gitignore` and are not source code.
 | `src/features/private-access/pages/AccessManagementPage.tsx` | Profile details, code rotation, installation list, and revocation. |
 | `src/features/private-access/components/` | Reusable visual structure and route guards for the four access screens. |
 | `src/features/private-access/private-access-store.ts` | Private profile lifecycle and in-memory application state. |
+| `src/features/private-access/display-name.ts` | Contact-detail detection and safe profile labels. |
 | `src/features/private-access/installation-storage.ts` | IndexedDB installation record storage and schema migration. |
 | `src/features/private-access/recovery-kit.ts` | Local UTF-8 recovery-kit formatting and download. |
 | `src/mocks/handlers.ts` | Development implementation of creation, bootstrap, restore, rotation, and revocation endpoints. |

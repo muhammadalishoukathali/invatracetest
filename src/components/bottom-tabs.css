@@ -104,10 +104,11 @@
 }
 .bottom-tabs.bottom-tabs--scan-only .bottom-tabs__scan { pointer-events: auto; }
 .bottom-tabs.bottom-tabs--scan-only .bottom-tabs__scan {
-  width: 68px;
-  height: 68px;
-  min-width: 68px;
-  min-height: 68px;
+  width: 72px;
+  height: 72px;
+  min-width: 72px;
+  min-height: 72px;
+  border: 4px solid rgba(255, 255, 255, .92);
   border-radius: 50%;
   padding: 0;
   gap: 1px;
@@ -116,6 +117,7 @@
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.35) inset,
     0 -1px 0 rgba(0, 0, 0, 0.15) inset,
+    0 0 0 1px rgba(18, 91, 57, .14),
     0 12px 26px rgba(20, 60, 40, 0.32),
     0 2px 6px rgba(20, 60, 40, 0.22);
 }
@@ -136,7 +138,7 @@
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.3),
     0 6px 18px rgba(0, 0, 0, 0.3);
-  color: #fff;
+  color: var(--on-accent);
   cursor: pointer;
   text-decoration: none;
   display: flex;
@@ -165,7 +167,7 @@
   }
 
   .bottom-tabs .bottom-tabs__scan:hover {
-    background: #21885a;
+    background: var(--green-hover);
     transform: translateY(-2px);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.34),

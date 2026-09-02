@@ -13,6 +13,28 @@
   min-width: 0;
 }
 
+.app-header__leading {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.app-header__back {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 11px;
+  background: var(--bg-alt);
+  cursor: pointer;
+}
+
+.app-header__back:active { transform: scale(.97); }
+.app-header__back:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+
 .app-header__title {
   font-size: 20px;
   font-weight: 700;
@@ -51,14 +73,42 @@
   place-items: center;
 }
 
-.app-header__action--active {
-  border-color: var(--green-border);
-  background: var(--green-light);
+.sidebar-scan-button {
+  width: 100%;
+  min-height: 58px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 14px;
+  background: var(--green);
+  color: #fff;
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  text-align: left;
+  box-shadow: 0 8px 20px rgba(18, 91, 57, .18);
 }
+.sidebar-scan-button__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .13);
+  display: grid;
+  place-items: center;
+}
+.sidebar-scan-button strong { display: block; font-size: 13.5px; line-height: 1.2; }
+.sidebar-scan-button small { display: block; margin-top: 3px; color: rgba(255,255,255,.72); font-size: 10.5px; line-height: 1.2; }
 
 @media (hover: hover) and (pointer: fine) {
-  .app-header__action:not(.app-header__action--active):hover {
+  .app-header__back:hover,
+  .app-header__action:hover {
     background: var(--hover);
+  }
+  .sidebar-scan-button:hover {
+    background: var(--green-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 11px 24px rgba(18, 91, 57, .24);
   }
 }
 

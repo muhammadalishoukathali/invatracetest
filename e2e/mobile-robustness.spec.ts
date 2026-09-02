@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test'
 async function startPrivateAccess(page: Page) {
   await page.goto('/')
   await page.getByRole('button', { name: 'Start privately' }).click()
-  await page.getByRole('checkbox', { name: 'I have saved my recovery information' }).check()
+  await page.getByRole('checkbox', { name: 'I have saved my recovery kit' }).check()
   await page.getByRole('button', { name: 'Continue to InvaTrace' }).click()
   await expect(page).toHaveURL(/\/map$/)
 }

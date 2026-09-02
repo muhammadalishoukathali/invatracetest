@@ -2,13 +2,12 @@ name: invatrace
 
 services:
   db:
-    image: postgis/postgis:16-3.5
+    build:
+      context: ./infrastructure/postgis
     environment:
       POSTGRES_DB: invatrace
       POSTGRES_USER: invatrace
       POSTGRES_PASSWORD: invatrace
-    ports:
-      - "127.0.0.1:5432:5432"
     volumes:
       - invatrace-postgres:/var/lib/postgresql/data
     healthcheck:
@@ -20,8 +19,6 @@ services:
   redis:
     image: redis:7.4.2-alpine
     command: ["redis-server", "--appendonly", "yes"]
-    ports:
-      - "127.0.0.1:6379:6379"
     volumes:
       - invatrace-redis:/data
     healthcheck:
@@ -36,6 +33,7 @@ services:
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_API_CORS_ALLOW_ORIGIN: http://localhost:5173
     ports:
       - "127.0.0.1:9000:9000"
       - "127.0.0.1:9001:9001"
@@ -46,16 +44,13 @@ services:
     depends_on:
       minio:
         condition: service_started
-    volumes:
-      - ./backend/minio-cors.json:/config/cors.json:ro
     entrypoint:
       - /bin/sh
       - -c
       - >-
         until mc alias set local http://minio:9000 minioadmin minioadmin; do sleep 1; done &&
         mc mb --ignore-existing local/invatrace-private &&
-        mc anonymous set none local/invatrace-private &&
-        mc cors set local/invatrace-private /config/cors.json
+        mc anonymous set none local/invatrace-private
     restart: "no"
 
   migrate:

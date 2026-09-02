@@ -2,10 +2,12 @@
 
 ## Browser E1 plant model
 
-The supplied `PULIH_Model1_v4_FP16_Web_Kit` is copied intact under `vendor/` and
-its published SHA-256 values are verified before every build. It is an
-EfficientNetV2-S 31-class classifier with FP16 internal weights, FP32
-`[1,3,384,384]` input/output, and calibrated open-set rejection.
+The supplied `PULIH_Model1_v4_FP16_Web_Kit` configuration remains under
+`vendor/`. Its ONNX bytes are stored losslessly under `assets/runtime-packed/`,
+restored before development and production builds, and checked against both the
+packed manifest and the kit's published SHA-256 value. It is an EfficientNetV2-S
+31-class classifier with FP16 internal weights, FP32 `[1,3,384,384]`
+input/output, and calibrated open-set rejection.
 
 The browser reproduces the kit's centre crop, normalization, temperature,
 MSP/margin/energy/entropy combiner, threshold, and class order. An Unknown result

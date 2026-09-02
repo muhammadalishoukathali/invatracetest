@@ -1,0 +1,29 @@
+# Force LF everywhere so shell fragments, mounted JSON, and Compose entrypoints
+# stay valid when the repo is cloned on Windows (git default is CRLF there).
+* text=auto eol=lf
+
+*.sh text eol=lf
+*.mjs text eol=lf
+*.py text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+Dockerfile text eol=lf
+
+# Binary — never touch line endings.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.onnx binary
+*.woff binary
+*.woff2 binary
+
+# Packed runtime sources are deterministic hexadecimal payloads. Treat them as
+# opaque so Git never rewrites or attempts to render their large contents.
+assets/runtime-packed/** binary
+
+# The vendored PULIH delivery kit is immutable and checksum-verified byte-for-byte.
+# Do not rewrite line endings in any of its packaged files on checkout.
+vendor/PULIH_Model1_v4_FP16_Web_Kit/** binary

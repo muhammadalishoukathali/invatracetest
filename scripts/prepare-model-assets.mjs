@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { restoreRuntimeAssets } from './restore-runtime-assets.mjs'
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const kitRoot = join(projectRoot, 'vendor', 'PULIH_Model1_v4_FP16_Web_Kit')
@@ -9,6 +10,8 @@ const modelRoot = join(kitRoot, 'model')
 const outputRoot = join(projectRoot, 'public', 'models', 'pulih-model1-v4')
 const modelName = 'efficientnet_v2_s_oe_v4_31class_web_fp16.onnx'
 const chunkBytes = 20 * 1024 * 1024
+
+await restoreRuntimeAssets()
 
 const checksumLines = (await readFile(join(kitRoot, 'checksums.sha256'), 'utf8'))
   .split(/\r?\n/)

@@ -37,8 +37,10 @@ so an expired upload URL cannot replace accepted evidence.
 Run a third private background process with `python -m app.cli cleanup-worker`.
 It cleans immediately at startup and then hourly by default; set
 `UPLOAD_CLEANUP_INTERVAL_SECONDS` to change the interval. The worker only
-deletes expired, unconsumed keys matching `uploads/<profile>/<uuid>.jpg`, so it
-is safe to restart or run more than once and cannot target accepted evidence.
+expires unconsumed keys matching `uploads/<profile>/<uuid>.jpg` and processes
+durable deletion jobs created when a report or sighting is removed. Failed
+evidence and thumbnail deletions remain queued with backoff until storage
+recovers. It is safe to restart or run more than once.
 The Compose stack includes this process as `upload-cleanup`.
 
 A bucket lifecycle rule may also delete objects under `uploads/` after one day.
@@ -92,6 +94,8 @@ Set only public build configuration:
 - `VITE_ENABLE_FAKE_MODEL=false`
 - `VITE_ENABLE_REAL_MODEL=true`
 - `VITE_MODEL_BASE_URL=/models/pulih-model1-v4`
+- `VITE_MAP_TILE_URL` to the production raster-tile template
+- `VITE_MAP_TILE_ATTRIBUTION` to the provider's required attribution
 - `VITE_RELEASE_ID` to the deployment revision
 
 No database, R2, HMAC, JWT, or Redis secret belongs in a `VITE_` variable.

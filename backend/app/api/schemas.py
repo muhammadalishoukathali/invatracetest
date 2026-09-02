@@ -231,7 +231,7 @@ class ReportSubmissionDetails(ApiModel):
     model_version: Annotated[str, StringConstraints(min_length=1, max_length=120)]
     observed_at: datetime
     capture_id: uuid.UUID
-    capture_source: Literal["camera"]
+    capture_source: Literal["camera", "gallery"]
     location: GeoPoint
     location_accuracy_m: int | None = Field(default=None, ge=0, le=100_000)
     extent: Extent

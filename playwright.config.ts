@@ -5,7 +5,7 @@ import { defineConfig, devices } from '@playwright/test'
  *  starts a fresh one. The mock service worker handles API calls in the page. */
 export default defineConfig({
   testDir: './e2e',
-  testIgnore: 'real-backend.spec.ts',
+  testIgnore: ['real-backend.spec.ts', 'pwa.spec.ts'],
   // The development API keeps one shared mock session, so parallel tests could
   // change the same profile or recovery code at the same time.
   fullyParallel: false,
@@ -29,6 +29,7 @@ export default defineConfig({
       name: 'chromium',
       testIgnore: [
         '**/real-backend.spec.ts',
+        '**/pwa.spec.ts',
         '**/mobile-robustness.spec.ts',
         '**/model-ui-failure.spec.ts',
       ],

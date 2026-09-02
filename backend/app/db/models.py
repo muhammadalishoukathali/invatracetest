@@ -201,6 +201,21 @@ class UploadGrant(Base):
     )
 
 
+class ObjectDeletionJob(Base):
+    __tablename__ = "object_deletion_jobs"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    object_key: Mapped[str] = mapped_column(String(500), unique=True, nullable=False)
+    attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    available_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True, nullable=False
+    )
+    last_error: Mapped[str | None] = mapped_column(String(500))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class Report(Base):
     __tablename__ = "reports"
     __table_args__ = (
@@ -217,7 +232,7 @@ class Report(Base):
         CheckConstraint("location_accuracy_m IS NULL OR location_accuracy_m >= 0", name="accuracy"),
         CheckConstraint("char_length(notes) <= 280", name="notes_length"),
         CheckConstraint("submitter_trust IN ('New','Trusted','Steward')", name="submitter_trust"),
-        CheckConstraint("capture_source = 'camera'", name="capture_source"),
+        CheckConstraint("capture_source IN ('camera','gallery')", name="capture_source"),
         UniqueConstraint("profile_id", "idempotency_key", name="uq_report_idempotency"),
     )
 

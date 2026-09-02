@@ -24,7 +24,7 @@ from app.db.models import (
     Sighting,
     VerificationJob,
 )
-from app.services.storage import storage
+from app.services.object_deletion import enqueue_object_deletions
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
@@ -185,12 +185,6 @@ def remove_sighting(
             },
         )
     )
+    enqueue_object_deletions(session, [thumbnail_key, *photo_keys])
     session.commit()
-    for key in [thumbnail_key, *photo_keys]:
-        if not key:
-            continue
-        try:
-            storage.delete(key)
-        except ApiProblem:
-            pass
     return OkResponse()

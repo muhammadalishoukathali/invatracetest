@@ -8,29 +8,34 @@ import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { usePrivateAccess } from '@/features/private-access/private-access-store'
 import { NAV } from '@/app/nav'
 import { Icon } from './Icon'
+import { profileReturnPath, profileStateFromPath } from '@/features/private-access/profile-navigation'
 import './app-shell.css'
 
 const TITLES: Record<string, [string, string]> = {
   '/map': ['Live threat map', 'Bukit Kiara · updated 2 hours ago'],
-  '/access': ['Private access', 'Recovery codes and devices'],
-  '/reports': ['My reports', 'Everything you have submitted from this profile'],
+  '/profile': ['My profile', 'Identity, recovery and device access'],
+  '/reports': ['My records', 'Your submitted field reports'],
 }
 
 export function AppShell() {
   const isDesktop = useIsDesktop()
   const profile = usePrivateAccess((state) => state.profile)
-  const { pathname } = useLocation()
+  const location = useLocation()
+  const { pathname } = location
   const navigate = useNavigate()
   const headingRef = useRef<HTMLHeadingElement>(null)
 
   useEffect(() => { headingRef.current?.focus() }, [pathname])
 
   if (!profile) return null
-  const [title, subtitle] = TITLES[pathname] ?? [
-    NAV.find((n) => n.path === pathname)?.full ?? 'InvaTrace', '',
-  ]
+  const [title, subtitle] = pathname.startsWith('/reports/')
+    ? ['Report details', 'Status and screening result']
+    : TITLES[pathname] ?? [NAV.find((n) => n.path === pathname)?.full ?? 'InvaTrace', '']
   const pageFillsAvailableSpace = pathname === '/map'
   const showBottomTabs = !isDesktop && pathname === '/map'
+  const showProfileBack = !isDesktop && pathname === '/profile'
+  const showProfileShortcut = !isDesktop && pathname !== '/profile' && pathname !== '/reports'
+  const profileReturnTo = profileReturnPath(location.state)
 
   return (
     <div style={{ display: 'flex', flexDirection: isDesktop ? 'row' : 'column',
@@ -42,33 +47,41 @@ export function AppShell() {
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <ReportQueueStatusBanner />
         <header className="app-header">
-          <div className="app-header__heading">
-            <h1 ref={headingRef} tabIndex={-1} className="app-header__title">{title}</h1>
-            {subtitle && <p className="app-header__subtitle">{subtitle}</p>}
+          <div className="app-header__leading">
+            {showProfileBack && (
+              <button
+                type="button"
+                className="app-header__back"
+                aria-label={profileReturnTo === '/reports' ? 'Back to my records' : 'Back to threat map'}
+                onClick={() => navigate(profileReturnTo, { replace: true })}
+              >
+                <Icon name="ChevronLeft" size={20} color="var(--body)" />
+              </button>
+            )}
+            <div className="app-header__heading">
+              <h1 ref={headingRef} tabIndex={-1} className="app-header__title">{title}</h1>
+              {subtitle && <p className="app-header__subtitle">{subtitle}</p>}
+            </div>
           </div>
           <div className="app-header__actions">
-            {!isDesktop && (
+            {showProfileShortcut && (
               <button
                 type="button"
                 aria-label="Manage private access"
                 title="Private access"
-                onClick={() => navigate('/access')}
-                className={`app-header__action${pathname === '/access' ? ' app-header__action--active' : ''}`}
+                onClick={() => navigate('/profile', { state: profileStateFromPath(pathname) })}
+                className="app-header__action"
               >
-                <Icon name="User" size={18} color={pathname === '/access' ? 'var(--green)' : 'var(--body)'} />
+                <Icon name="User" size={18} color="var(--body)" />
               </button>
             )}
-            {/* NotificationsPanel removed — coordinator-tier feature not in this iteration. */}
           </div>
         </header>
 
         <main id="main-content" tabIndex={-1} style={{
           flex: 1, minHeight: 0,
-          // The map handles its own scrolling and dimensions. Other pages use
-          // this main element as their padded scrolling container.
           overflow: pageFillsAvailableSpace ? 'hidden' : 'auto',
           padding: pageFillsAvailableSpace ? 0 : (isDesktop ? 26 : 16),
-          /* Scrollable mobile pages need room for the floating navigation island. */
           paddingBottom: pageFillsAvailableSpace
             ? 0
             : isDesktop
@@ -81,8 +94,7 @@ export function AppShell() {
         </main>
       </div>
 
-      {/* The scan FAB is a map-context action, so hide it on other pages. */}
-      {showBottomTabs && <BottomTabs role={profile.role} />}
+      {showBottomTabs && <BottomTabs />}
     </div>
   )
 }

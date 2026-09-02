@@ -6,7 +6,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /service
 
-RUN addgroup --system invatrace && adduser --system --ingroup invatrace invatrace
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libexpat1 \
+    && rm -rf /var/lib/apt/lists/* \
+    && addgroup --system invatrace \
+    && adduser --system --ingroup invatrace invatrace
 
 COPY requirements.lock ./
 RUN python -m pip install --no-cache-dir -r requirements.lock

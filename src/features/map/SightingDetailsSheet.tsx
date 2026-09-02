@@ -9,6 +9,7 @@ import { fetchNearestOsmFeature } from '@/services/osm-nearest'
 import { PIN_TIERS, pinTier } from '@/features/map/ThreatMapPage'
 import { PlantGuidancePanel } from '@/features/scan/PlantGuidancePanel'
 import { findPlantGuidance } from '@/data/plant-guidance'
+import { findModelSpecies, modelReferenceImageUrl } from '@/data/model-species-catalog'
 import type { SightingDetail } from '@/types'
 import './sighting-details.css'
 
@@ -76,7 +77,11 @@ export function SightingDetailsSheet() {
             </div>
           ) : isLoading || !data ? (
             <div role="status" tabIndex={-1} data-dialog-initial className="pin-sheet__state">
-              Loading sighting…
+              <span className="pin-sheet__skeleton-photo invatrace-skeleton" aria-hidden />
+              <span className="pin-sheet__skeleton-line pin-sheet__skeleton-line--title invatrace-skeleton" aria-hidden />
+              <span className="pin-sheet__skeleton-line pin-sheet__skeleton-line--short invatrace-skeleton" aria-hidden />
+              <span className="pin-sheet__skeleton-line invatrace-skeleton" aria-hidden />
+              <span className="sr-only">Loading sighting…</span>
             </div>
           ) : (
             <>
@@ -128,6 +133,7 @@ export function SightingDetailsSheet() {
                   speciesName={data.speciesName}
                   plantId={data.speciesId}
                   showReferenceImage={false}
+                  decisionContext={{ id: `sighting:${data.id}`, kind: 'sighting' }}
                 />
               </details>
             </>
@@ -156,14 +162,17 @@ function PlantReferenceMedia({ latinName, speciesName }: { latinName: string; sp
     modelLabel: speciesName,
     plantId: null,
   })
-  if (!guidance?.reference_image) return null
+  const modelSpecies = findModelSpecies({ scientificName: latinName })
+  const referenceImage = guidance?.reference_image
+    ?? (modelSpecies ? modelReferenceImageUrl(modelSpecies) : null)
+  if (!referenceImage) return null
   return (
     <figure className="pin-sheet__reference">
-      <img className="pin-sheet__photo" src={guidance.reference_image}
+      <img className="pin-sheet__photo" src={referenceImage}
         alt={`Typical appearance of ${latinName}`} />
       <figcaption>
         <span>Species reference</span>
-        <span>{guidance.reference_image_credit ?? 'Wikimedia'}</span>
+        <span>{guidance?.reference_image_credit ?? 'Species reference image'}</span>
       </figcaption>
     </figure>
   )

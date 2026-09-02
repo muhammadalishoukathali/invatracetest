@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Icon } from '@/components/Icon'
 import { captureScanLocation, useScan } from '@/features/scan/scan-store'
 import { resizeImage } from '@/features/scan/image-processing'
@@ -13,6 +13,7 @@ import './scan-capture.css'
  *  rear camera, while the other input opens the normal file picker. */
 export function ScanCapturePage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const cameraRef = useRef<HTMLInputElement>(null)
   const galleryRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -194,8 +195,10 @@ export function ScanCapturePage() {
       const result = await Promise.race<Awaited<ReturnType<typeof adapter.identify>>>([
         identifyPromise,
         new Promise((_, reject) => setTimeout(
-          () => reject(new Error('Plant analysis timed out after 15 seconds. Retake the photo and try again.')),
-          15_000,
+          // A first scan may need to download about 30 MiB of model data and
+          // initialize the WASM runtime. Keep a timeout so stalled work ends.
+          () => reject(new Error('Plant analysis timed out. Retake the photo and try again.')),
+          60_000,
         )),
       ])
       if (!mountedRef.current || requestId !== analysisRequestRef.current) return
@@ -211,7 +214,7 @@ export function ScanCapturePage() {
       }
 
       setResult({ ...result, reportable: Boolean(detail?.reportable ?? detail) }, detail)
-      navigate('/scan/result', { replace: true })
+      navigate('/scan/result', { replace: true, state: location.state })
     } catch {
       if (requestId === analysisRequestRef.current) {
         cancelProcessing()
@@ -281,8 +284,9 @@ export function ScanCapturePage() {
       ) : !imageUrl ? (
         <section className="scan-capture__start" aria-labelledby="capture-heading">
           <div className="scan-capture__intro">
+            <span className="scan-capture__eyebrow">Plant identification</span>
             <h2 id="capture-heading">Photograph a clear plant feature</h2>
-            <p>A close, well-lit view of one leaf or flower cluster gives the model useful evidence.</p>
+            <p>A close, well-lit view of one leaf or flower cluster gives the clearest result.</p>
           </div>
 
           <button
@@ -297,7 +301,7 @@ export function ScanCapturePage() {
             <span aria-hidden className="scan-capture__corner scan-capture__corner--bl" />
             <span aria-hidden className="scan-capture__corner scan-capture__corner--br" />
             <span className="scan-capture__camera-icon" aria-hidden>
-              {checking || cameraStarting ? <Spinner /> : <Icon name="Camera" size={30} color="#fff" />}
+              {checking || cameraStarting ? <Spinner /> : <Icon name="Camera" size={30} color="var(--ink)" />}
             </span>
             <strong>{checking ? 'Preparing photo…' : cameraStarting ? 'Starting camera…' : 'Open camera'}</strong>
             <span>{checking ? 'Checking image quality' : cameraStarting ? 'Waiting for camera access' : 'Uses your phone’s rear camera'}</span>
@@ -311,14 +315,21 @@ export function ScanCapturePage() {
             onClick={() => { captureScanLocation(); galleryRef.current?.click() }}
             disabled={checking}
             className="scan-capture__gallery"
+            aria-describedby="gallery-photo-note"
           >
-            <Icon name="ImagePlus" size={16} color="var(--body)" />
-            Choose a photo instead
+            <span className="scan-capture__gallery-icon" aria-hidden>
+              <Icon name="ImagePlus" size={19} color="var(--green)" />
+            </span>
+            <span>
+              <strong>Choose from library</strong>
+              <small>JPEG, PNG or WebP</small>
+            </span>
+            <Icon name="ChevronRight" size={18} color="var(--muted)" />
           </button>
-          <p className="scan-capture__gallery-note">
-            Use this when the camera isn't available — e.g. on a desktop
-            browser or if camera permission is blocked.
-          </p>
+          <div className="scan-capture__gallery-note" id="gallery-photo-note">
+            <Icon name="Info" size={16} color="var(--green-dark)" />
+            <p><strong>About library photos</strong> Cropped, compressed or older photos may return a lower-confidence result. Choosing from your library does not make a plant more likely to be marked high risk.</p>
+          </div>
         </section>
       ) : (
         <div className="scan-capture__preview">

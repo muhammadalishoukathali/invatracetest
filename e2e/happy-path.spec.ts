@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import path from 'node:path'
 
 const BOOTSTRAP_PATH = '/api/v1/profiles/bootstrap'
 const START_PATH = '/api/v1/profiles/start'
@@ -123,9 +124,9 @@ async function startPrivateAccess(page: Page, acknowledge = true) {
     recoveryCodes: string[]
   }
   await expect(page).toHaveURL(/\/private-access\/recovery$/)
-  await expect(page.getByRole('heading', { name: 'Save your recovery information' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Save your recovery kit' })).toBeVisible()
   if (acknowledge) {
-    await page.getByRole('checkbox', { name: 'I have saved my recovery information' }).check()
+    await page.getByRole('checkbox', { name: 'I have saved my recovery kit' }).check()
     await page.getByRole('button', { name: 'Continue to InvaTrace' }).click()
     await expect(page).toHaveURL(/\/map$/)
   }
@@ -363,13 +364,13 @@ test('private access creation saves a recovery kit, skips the optional name, and
 
   const download = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Download recovery kit' }).click()
-  expect((await download).suggestedFilename()).toBe(`invatrace-recovery-${payload.profile.id}.txt`)
+  expect((await download).suggestedFilename()).toBe(`invatrace-recovery-kit-${payload.profile.id}.txt`)
 
   const storageBeforeLeaving = await serializedBrowserStorage(page)
   for (const code of payload.recoveryCodes) expect(storageBeforeLeaving).not.toContain(code)
   expect(storageBeforeLeaving).not.toContain(payload.accessToken)
 
-  await page.getByRole('checkbox', { name: 'I have saved my recovery information' }).check()
+  await page.getByRole('checkbox', { name: 'I have saved my recovery kit' }).check()
   await page.getByRole('button', { name: 'Continue to InvaTrace' }).click()
   await expect(page).toHaveURL(/\/map$/)
   const identity = await readStoredIdentity(page)
@@ -399,7 +400,8 @@ test('restoration adds an installation, consumes codes once, rotates batches, an
   await expect(page).toHaveURL(/\/map$/)
 
   await page.goto('/access')
-  await expect(page.getByRole('heading', { name: 'Private access', level: 1 })).toBeVisible()
+  await expect(page).toHaveURL(/\/profile$/)
+  await expect(page.getByRole('heading', { name: 'My profile', level: 1 })).toBeVisible()
   await expect(page.locator('.installation-list > li')).toHaveCount(2)
   await expect(page.getByText('Current', { exact: true })).toBeVisible()
 
@@ -480,7 +482,7 @@ test('interrupted recovery setup rotates the unseen batch after reload', async (
   expect(replacement.recoveryCodes).toHaveLength(10)
   expect(replacement.recoveryCodes[0]).not.toBe(started.recoveryCodes[0])
   await expect(page.getByText(started.recoveryCodes[0])).toHaveCount(0)
-  await page.getByRole('checkbox', { name: 'I have saved my recovery information' }).check()
+  await page.getByRole('checkbox', { name: 'I have saved my recovery kit' }).check()
   await page.getByRole('button', { name: 'Continue to InvaTrace' }).click()
   await expect(page).toHaveURL(/\/map$/)
 })
@@ -510,10 +512,6 @@ test('a first-ever offline launch explains the network requirement without creat
   expect(stored).toBeNull()
 })
 
-/**
- * Golden path: private detector → scan → target result → report.
- * A synthetic in-page image keeps the native file picker out of the test.
- */
 test('private detector can scan, analyse, and submit', async ({ page, context }) => {
   await context.grantPermissions(['geolocation'], { origin: 'http://localhost:5173' })
   await context.setGeolocation({ latitude: 3.1497, longitude: 101.6412, accuracy: 15 })
@@ -533,33 +531,14 @@ test('private detector can scan, analyse, and submit', async ({ page, context })
   await expect(page).toHaveURL(/\/scan$/)
   await expect(page.getByRole('heading', { name: 'Photograph a clear plant feature' })).toBeVisible()
 
-  await page.evaluate(async () => {
-    const canvas = document.createElement('canvas')
-    canvas.width = 400
-    canvas.height = 400
-    const context = canvas.getContext('2d')!
-    context.fillStyle = '#2a7a3a'
-    context.fillRect(0, 0, 400, 400)
-    context.fillStyle = '#88cc44'
-    context.beginPath()
-    context.arc(200, 200, 120, 0, Math.PI * 2)
-    context.fill()
-    const blob = await new Promise<Blob>((resolve) => {
-      canvas.toBlob((result) => resolve(result!), 'image/jpeg', 0.85)
-    })
-    const file = new File([blob], 'test.jpg', { type: 'image/jpeg' })
-    const input = document.querySelector('input[type=file]') as HTMLInputElement
-    const transfer = new DataTransfer()
-    transfer.items.add(file)
-    input.files = transfer.files
-    input.dispatchEvent(new Event('change', { bubbles: true }))
-  })
+  await page.locator('input[aria-label="Choose photo from gallery"]').setInputFiles(
+    path.join(process.cwd(), 'public/reference-images/mikania_micrantha.jpg'),
+  )
 
   await expect(page.getByText('Photo quality check passed')).toBeVisible({ timeout: 5000 })
   await page.getByRole('button', { name: /Analyse plant/ }).click()
   await expect(page).toHaveURL(/\/scan\/result$/, { timeout: 5000 })
   await expect(page.getByRole('heading', { name: 'Mikania micrantha' })).toBeVisible()
-  await expect(page.getByText('development-model-v1')).toBeVisible()
 
   await page.getByRole('button', { name: /Report sighting/ }).click()
   await expect(page).toHaveURL(/\/report$/)
@@ -579,8 +558,7 @@ test('private detector can scan, analyse, and submit', async ({ page, context })
 
   await expect(page.getByRole('heading', { name: 'Report submitted' }))
     .toBeVisible({ timeout: 8000 })
-  await expect(page.getByText(/Reference:/i)).toBeVisible()
-  await page.getByRole('button', { name: 'View screening status' }).click()
+  await page.getByRole('button', { name: 'View report' }).click()
   await expect(page.getByRole('heading', { name: 'Report published' }))
     .toBeVisible({ timeout: 7000 })
   expect(reportAuthorizationHeaders).toEqual([

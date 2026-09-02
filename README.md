@@ -6,9 +6,6 @@ deterministic screening worker.
 InvaTrace uses intentional **Private access**: server-backed pseudonymous
 profiles without email/password registration.
 
-Build plan: `../InvaTrace_Frontend_Build_Plan.md`
-Architecture: `../InvaTrace_System_Architecture.docx`
-
 ## Run
 
 ```bash
@@ -18,6 +15,12 @@ npm run dev
 ```
 
 `npm run build` · `npm run typecheck` · `npm test`
+
+The model, app logos, and plant reference photos are stored losslessly under
+`assets/runtime-packed/`. Development and production builds restore the exact
+runtime files automatically and verify their SHA-256 values. Run
+`npm run prepare:model` before tooling that reads public assets without starting
+Vite; `npm run pack:assets` is only for an intentional source-asset update.
 
 To run the complete backend and real frontend contract locally:
 

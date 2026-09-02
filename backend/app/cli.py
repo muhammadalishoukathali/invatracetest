@@ -13,7 +13,7 @@ from app.db.base import SessionLocal
 from app.db.models import AuditEvent, Profile
 from app.osm_import import import_malaysia_pbf
 from app.seed import seed_development_data
-from app.services.upload_cleanup import remove_expired_uploads
+from app.services.upload_cleanup import remove_expired_uploads, remove_pending_objects
 from app.workers.verification import run_worker
 
 ROLES = ["Detector", "Volunteer", "Expert", "Admin"]
@@ -23,7 +23,9 @@ log = structlog.get_logger("invatrace.cli")
 
 def cleanup_uploads_once(limit: int) -> int:
     with SessionLocal() as session:
-        return remove_expired_uploads(session, limit=limit)
+        expired = remove_expired_uploads(session, limit=limit)
+        deleted = remove_pending_objects(session, limit=limit)
+        return expired + deleted
 
 
 def set_profile_access(profile_id: str, role: str, trust: str) -> None:

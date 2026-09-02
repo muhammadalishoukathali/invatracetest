@@ -3,9 +3,10 @@
  * basemap so the risk-coloured markers stay readable. Camera bounds keep users
  * inside Malaysia, and provider attribution remains visible on every screen.
  */
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useQuery } from '@tanstack/react-query'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import * as maplibregl from 'maplibre-gl'
 import type { Map, Marker } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -13,10 +14,13 @@ import mapLibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 
 import { api } from '@/services/api-client'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
+import { useDialogA11y } from '@/hooks/useDialogA11y'
 import { useMapView as useMapStore } from '@/features/map/map-view-store'
 import type { Sighting } from '@/types'
 import { SightingDetailsSheet } from './SightingDetailsSheet'
 import { MapLegend } from './MapLegend'
+import { Icon } from '@/components/Icon'
+import { parseMapLocationTarget, type MapLocationTarget } from './map-location-link'
 
 // Give MapLibre the worker file explicitly. Its automatic URL points beside
 // Vite's optimized dependency file during development, where the worker does
@@ -62,14 +66,40 @@ export function ThreatMapPage() {
   const container = useRef<HTMLDivElement>(null)
   const map = useRef<Map | null>(null)
   const markers = useRef<Marker[]>([])
+  const recordLocationMarker = useRef<Marker | null>(null)
+  const latestVisibleSightings = useRef<Sighting[]>([])
+  const reportsHaveLoaded = useRef(false)
+  const locationFailed = useRef(false)
+  const initialViewApplied = useRef(false)
   const targetSightingId = useRef<string | null>(null)
+  const fitReportsFallback = useRef<(() => void) | null>(null)
   const isDesktop = useIsDesktop()
+  const routeLocation = useLocation()
   const [searchParams] = useSearchParams()
   const requestedSightingId = searchParams.get('sighting')
+  const requestedLocation = useMemo(
+    () => parseMapLocationTarget(routeLocation.state),
+    [routeLocation.state],
+  )
   targetSightingId.current = requestedSightingId
   const { species, statuses, risks, search, select, clearFilters } = useMapStore()
+  const [locationNotice, setLocationNotice] = useState<{
+    tone: 'pending' | 'success' | 'error'
+    text: string
+  } | null>(null)
+  const [recordDetailsOpen, setRecordDetailsOpen] = useState(false)
 
-  const { data } = useQuery({
+  // A successful recenter is confirmation, not a permanent obstruction.
+  // Errors remain until dismissed because they explain the fallback map view.
+  useEffect(() => {
+    if (locationNotice?.tone !== 'success') return
+    const timer = window.setTimeout(() => {
+      setLocationNotice((current) => current?.tone === 'success' ? null : current)
+    }, 3_500)
+    return () => window.clearTimeout(timer)
+  }, [locationNotice])
+
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['sightings', species, statuses, risks, search],
     queryFn: () => {
       const params = new URLSearchParams()
@@ -113,21 +143,88 @@ export function ThreatMapPage() {
     // AttributionControl. The built-in control auto-opens on load and covers
     // the scan button on small screens; a plain link chip stays predictable.
     m.addControl(new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }), 'top-right')
-    m.addControl(new maplibregl.GeolocateControl({
-      positionOptions: { enableHighAccuracy: true },
+    const geolocate = new maplibregl.GeolocateControl({
+      positionOptions: { enableHighAccuracy: true, timeout: 8_000, maximumAge: 300_000 },
       showUserLocation: true, trackUserLocation: false,
-    }), 'top-right')
+    })
+    m.addControl(geolocate, 'top-right')
+    const showReportsFallback = (text: string) => {
+      locationFailed.current = true
+      fitReportsFallback.current?.()
+      setLocationNotice({ tone: 'error', text })
+    }
+    geolocate.on('geolocate', () => {
+      initialViewApplied.current = true
+      setLocationNotice({ tone: 'success', text: 'Map centred on your location' })
+    })
+    geolocate.on('error', () => {
+      showReportsFallback('Your location is unavailable, so the map is showing the visible community reports instead.')
+    })
+    geolocate.on('outofmaxbounds', () => {
+      showReportsFallback('Your location is outside the current Malaysia map area, so the visible community reports are shown instead.')
+    })
+    const locationButton = container.current.querySelector<HTMLButtonElement>('.maplibregl-ctrl-geolocate')
+    const onLocationRequest = () => {
+      setLocationNotice({ tone: 'pending', text: 'Finding your location…' })
+    }
+    locationButton?.addEventListener('click', onLocationRequest)
     map.current = m
     if (import.meta.env.DEV) (window as unknown as { __map?: Map }).__map = m
+
+    fitReportsFallback.current = () => {
+      if (initialViewApplied.current || !reportsHaveLoaded.current) return
+      const visible = latestVisibleSightings.current
+      if (visible.length === 0) {
+        m.jumpTo({ center: CENTRE, zoom: isDesktop ? INITIAL_ZOOM : INITIAL_ZOOM_MOBILE })
+        initialViewApplied.current = true
+        return
+      }
+
+      if (visible.length === 1) {
+        const only = visible[0]
+        m.easeTo({
+          center: [only.location.lng, only.location.lat],
+          zoom: isDesktop ? 14 : 14.5,
+          duration: 650,
+        })
+        initialViewApplied.current = true
+        return
+      }
+
+      const bounds = new maplibregl.LngLatBounds()
+      visible.forEach((sighting) => bounds.extend([sighting.location.lng, sighting.location.lat]))
+      m.fitBounds(bounds, {
+        padding: isDesktop ? 88 : 54,
+        maxZoom: isDesktop ? 14 : 14.5,
+        duration: 650,
+      })
+      initialViewApplied.current = true
+    }
 
     // Some MapLibre v6 sessions parse the style before the container has its
     // final size and then request no tiles. Resizing and resetting the camera
     // after `style.load` makes MapLibre calculate the visible tile area again.
+    let locationReadyTimer: number | undefined
     m.once('style.load', () => {
       m.resize()
-      if (!targetSightingId.current) {
-        m.jumpTo({ center: CENTRE, zoom: isDesktop ? INITIAL_ZOOM : INITIAL_ZOOM_MOBILE })
+      if (targetSightingId.current || requestedLocation) return
+      m.jumpTo({ center: CENTRE, zoom: isDesktop ? INITIAL_ZOOM : INITIAL_ZOOM_MOBILE })
+      setLocationNotice({ tone: 'pending', text: 'Finding your location…' })
+      let checks = 0
+      const triggerWhenReady = () => {
+        const button = container.current?.querySelector<HTMLButtonElement>('.maplibregl-ctrl-geolocate')
+        if (button && !button.disabled) {
+          geolocate.trigger()
+          return
+        }
+        checks += 1
+        if (checks < 20) {
+          locationReadyTimer = window.setTimeout(triggerWhenReady, 100)
+          return
+        }
+        showReportsFallback('Location access is not available in this browser, so the visible community reports are shown instead.')
       }
+      triggerWhenReady()
     })
 
     // The app shell may resize after the map mounts. ResizeObserver keeps the
@@ -136,12 +233,51 @@ export function ThreatMapPage() {
     ro.observe(container.current)
 
     return () => {
+      locationButton?.removeEventListener('click', onLocationRequest)
+      if (locationReadyTimer !== undefined) window.clearTimeout(locationReadyTimer)
       ro.disconnect()
+      fitReportsFallback.current = null
       m.remove()
       map.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // A My Reports link can target a private scan/report coordinate even when
+  // no public sighting exists yet. Keep this marker separate from API markers
+  // so refreshes and filters cannot remove it.
+  useEffect(() => {
+    if (!map.current) return
+    setRecordDetailsOpen(false)
+    recordLocationMarker.current?.remove()
+    recordLocationMarker.current = null
+    if (!requestedLocation) return
+
+    const el = document.createElement('button')
+    el.type = 'button'
+    el.className = 'map-record-location-marker'
+    el.setAttribute('aria-label', `Open details for ${requestedLocation.label}`)
+    el.title = requestedLocation.label
+    el.addEventListener('click', () => setRecordDetailsOpen(true))
+    const pin = document.createElement('div')
+    pin.className = 'map-record-location-pin'
+    el.append(pin)
+    recordLocationMarker.current = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+      .setLngLat([requestedLocation.point.lng, requestedLocation.point.lat])
+      .addTo(map.current)
+    initialViewApplied.current = true
+    map.current.easeTo({
+      center: [requestedLocation.point.lng, requestedLocation.point.lat],
+      zoom: isDesktop ? 16 : 16.5,
+      duration: 650,
+    })
+    setLocationNotice({ tone: 'success', text: `Showing ${requestedLocation.label}` })
+
+    return () => {
+      recordLocationMarker.current?.remove()
+      recordLocationMarker.current = null
+    }
+  }, [requestedLocation, isDesktop])
 
   // Remove the old markers and rebuild them whenever the data or filters change.
   useEffect(() => {
@@ -158,6 +294,8 @@ export function ThreatMapPage() {
       if (q && !s.speciesName.toLowerCase().includes(q) && !s.latinName.toLowerCase().includes(q)) return false
       return true
     })
+    latestVisibleSightings.current = filtered
+    reportsHaveLoaded.current = true
 
     for (const s of filtered) {
       const el = pinElement(s)
@@ -171,6 +309,7 @@ export function ThreatMapPage() {
     if (requestedSightingId) {
       const requested = filtered.find((sighting) => sighting.id === requestedSightingId)
       if (requested) {
+        initialViewApplied.current = true
         select(requested.id)
         map.current.easeTo({
           center: [requested.location.lng, requested.location.lat],
@@ -179,6 +318,8 @@ export function ThreatMapPage() {
         })
       }
     }
+
+    if (locationFailed.current) fitReportsFallback.current?.()
   }, [data, species, statuses, risks, search, select, requestedSightingId, isDesktop])
 
   const filtered = data
@@ -197,22 +338,143 @@ export function ThreatMapPage() {
       position: 'relative', height: '100%', minHeight: 0,
       display: 'flex', flexDirection: 'column',
     }}>
-      {/* MapFilters (search + species chips + status/risk filters) removed —
-          those controls belong to a coordinator role that doesn't exist yet.
-          The accessible sighting list still exposes every marker to screen
-          readers per AC 4.2.3. */}
+      {/* The accessible list mirrors every marker for keyboard and screen-reader users. */}
       <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
         <div ref={container} style={{
           position: 'absolute', inset: 0,
           touchAction: 'none',   // MapLibre handles pinch, drag, and tap gestures.
         }} />
+        {isLoading && (
+          <div className="map-state map-state--loading" role="status" aria-live="polite">
+            <span className="map-state__pulse" aria-hidden />
+            Loading community reports…
+          </div>
+        )}
+        {isError && (
+          <div className="map-state map-state--error" role="alert">
+            <Icon name="WifiOff" size={18} color="var(--red-text)" />
+            <span>Reports could not load.</span>
+            <button type="button" onClick={() => void refetch()}>Try again</button>
+          </div>
+        )}
+        {!isLoading && !isError && data?.items.length === 0 && (
+          <div className="map-state map-state--empty" role="status">
+            <Icon name="MapPin" size={18} color="var(--green-dark)" />
+            No community reports are visible yet.
+          </div>
+        )}
         <MapLegend />
         <MapAttribution />
+        {locationNotice && (
+          <div
+            className={`map-location-notice map-location-notice--${locationNotice.tone}`}
+            role={locationNotice.tone === 'error' ? 'alert' : 'status'}
+            aria-live="polite"
+          >
+            <Icon
+              name={locationNotice.tone === 'error' ? 'MapPin' : 'Crosshair'}
+              size={16}
+              color="currentColor"
+            />
+            <span>{locationNotice.text}</span>
+            <button type="button" onClick={() => setLocationNotice(null)} aria-label="Dismiss location message">
+              <Icon name="X" size={15} color="currentColor" />
+            </button>
+          </div>
+        )}
       </div>
       <AccessibleSightingList items={filtered} onSelect={select} />
       <SightingDetailsSheet />
+      <SavedRecordDetailsSheet
+        target={requestedLocation}
+        open={recordDetailsOpen}
+        onClose={() => setRecordDetailsOpen(false)}
+      />
     </div>
   )
+}
+
+function SavedRecordDetailsSheet({
+  target,
+  open,
+  onClose,
+}: {
+  target: MapLocationTarget | null
+  open: boolean
+  onClose: () => void
+}) {
+  const dialogRef = useRef<HTMLElement>(null)
+  useDialogA11y(dialogRef, onClose, {
+    active: open && !!target,
+    returnFocus: () => document.querySelector<HTMLElement>('.map-record-location-marker'),
+  })
+
+  if (!open || !target) return null
+  const details = target.details
+  const coordinate = `${target.point.lat.toFixed(5)}, ${target.point.lng.toFixed(5)}`
+
+  return createPortal(
+    <>
+      <div onClick={onClose} aria-hidden className="app-sheet-backdrop sighting-details-backdrop" />
+      <aside
+        ref={dialogRef}
+        tabIndex={-1}
+        className="pin-sheet pin-sheet--isolated saved-record-sheet"
+        role="dialog"
+        aria-label="Saved record details"
+        aria-modal="true"
+      >
+        <div className="pin-sheet__handle" aria-hidden />
+        <button type="button" onClick={onClose} aria-label="Close saved record details"
+          className="pin-sheet__close">
+          <Icon name="X" size={18} color="var(--body)" />
+        </button>
+        <div className="pin-sheet__content">
+          <header className="saved-record-sheet__heading" tabIndex={-1} data-dialog-initial>
+            <span>{details?.kind === 'scan' ? 'Saved scan' : 'Saved report'}</span>
+            <h2>{target.label}</h2>
+            <p>
+              This is the location saved with your private record. It is separate from public community sightings until the report is published.
+            </p>
+          </header>
+          <dl className="saved-record-sheet__facts">
+            {details && <SavedRecordFact label="Status" value={details.statusLabel} />}
+            {details && <SavedRecordFact label="Recorded" value={formatSavedRecordTime(details.observedAt)} />}
+            <SavedRecordFact label="Coordinates" value={coordinate} mono />
+            {details?.locationAccuracyM != null && (
+              <SavedRecordFact label="GPS accuracy" value={`±${Math.round(details.locationAccuracyM)} m`} />
+            )}
+          </dl>
+          {details?.kind === 'report' && details.recordId && (
+            <Link className="saved-record-sheet__link" to={`/reports/${encodeURIComponent(details.recordId)}`}>
+              View full report
+            </Link>
+          )}
+        </div>
+      </aside>
+    </>,
+    document.body,
+  )
+}
+
+function SavedRecordFact({ label, value, mono = false }: {
+  label: string
+  value: string
+  mono?: boolean
+}) {
+  return (
+    <div>
+      <dt>{label}</dt>
+      <dd className={mono ? 'mono' : undefined}>{value}</dd>
+    </div>
+  )
+}
+
+function formatSavedRecordTime(iso: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(iso))
 }
 
 /**
@@ -224,19 +486,19 @@ function MapAttribution() {
     <a
       href="https://openstreetmap.org/copyright"
       target="_blank"
-      rel="noopener"
+      rel="noopener noreferrer"
       className="map-attribution"
       aria-label="OpenStreetMap contributors — data license"
     >
-      © OpenStreetMap
+      © OpenStreetMap contributors
     </a>
   )
 }
 
 /**
  * Screen-reader-only, keyboard-operable mirror of the map pins.
- * Marker/list count parity per AC 4.2.3 — every marker has a matching
- * list item so report details remain reachable without the canvas.
+ * Every marker has a matching list item so report details remain reachable
+ * without the map canvas.
  */
 function AccessibleSightingList({
   items, onSelect,
@@ -267,17 +529,7 @@ function AccessibleSightingList({
   )
 }
 
-/**
- * Colour a marker by report density. All sightings in the map are already
- * screened invasive species, so the meaningful signal to visualise is how
- * many people have reported the same spot — a hotspot needs faster action
- * than a single isolated sighting.
- *
- *   5+ reports  → red     (hotspot — dense cluster of observations)
- *   2–4 reports → amber   (spreading — small cluster)
- *   1 report    → green   (isolated — single community sighting)
- *   removed     → grey    (record kept for audit, no longer active)
- */
+/** Colour active markers by report density and removed records in grey. */
 type PinTier = 'hotspot' | 'spreading' | 'isolated' | 'removed'
 
 export const PIN_TIERS: Record<PinTier, { fill: string; label: string }> = {

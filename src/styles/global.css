@@ -25,7 +25,34 @@ body {
   background: var(--bg);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  overflow-wrap: anywhere;
 }
+
+.brand-mark {
+  display: block;
+  flex-shrink: 0;
+  border-radius: 24%;
+  border: 1px solid var(--green-border);
+  background: var(--surface);
+  object-fit: cover;
+}
+
+.brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--ink);
+}
+
+.brand-wordmark {
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
+h1, h2, h3 { text-wrap: balance; }
+p, li { text-wrap: pretty; }
 
 ::selection { background: var(--green-border); color: var(--deep); }
 input, textarea { caret-color: var(--green); }
@@ -70,8 +97,31 @@ button[aria-label] { min-width: 44px; min-height: 44px; }
   min-height: 44px !important;
 }
 
-button:not(:disabled), a[href] { transition: filter 140ms ease-out, opacity 140ms ease-out; }
-button:not(:disabled):active, a[href]:active { filter: brightness(0.96); }
+button:not(:disabled), a[href] {
+  transition:
+    filter 140ms ease-out,
+    opacity 140ms ease-out,
+    transform 140ms cubic-bezier(.2,.8,.2,1),
+    background-color 180ms ease-out,
+    border-color 180ms ease-out,
+    color 180ms ease-out;
+}
+button:not(:disabled):active, a[href]:active { filter: brightness(0.96); transform: scale(0.985); }
+
+.invatrace-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--skeleton-base);
+}
+.invatrace-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 20%, var(--skeleton-highlight) 50%, transparent 80%);
+  transform: translateX(-100%);
+  animation: skeleton-sweep 1.45s ease-in-out infinite;
+}
+@keyframes skeleton-sweep { to { transform: translateX(100%); } }
 
 .field-shell { border-color: var(--control-border) !important; }
 .field-shell:focus-within {
@@ -140,14 +190,14 @@ a, button, [role='button'], [role='link'] {
 .maplibregl-ctrl-group {
   border-radius: 14px !important;
   border: 1px solid rgba(255, 255, 255, 0.72) !important;
-  background: rgba(255, 255, 255, 0.88) !important;
+  background: var(--surface-translucent) !important;
   box-shadow: 0 10px 28px rgba(20,40,30,0.16) !important;
   backdrop-filter: saturate(1.2) blur(14px);
   -webkit-backdrop-filter: saturate(1.2) blur(14px);
   overflow: hidden;
 }
 .maplibregl-ctrl-group button { background-color: transparent !important; }
-.maplibregl-ctrl-group button:hover { background-color: rgba(241, 244, 240, 0.9) !important; }
+.maplibregl-ctrl-group button:hover { background-color: var(--hover) !important; }
 .maplibregl-ctrl-group button + button { border-top: 1px solid var(--border) !important; }
 .maplibregl-ctrl-attrib.maplibregl-compact {
   min-height: 24px !important;
@@ -175,7 +225,7 @@ a, button, [role='button'], [role='link'] {
     max-width: min(44vw, 220px);
     padding: 3px 5px !important;
     border-radius: 6px;
-    background: rgba(255, 255, 255, 0.88) !important;
+    background: var(--surface-translucent) !important;
     box-shadow: 0 6px 18px rgba(20, 40, 30, 0.1);
     backdrop-filter: saturate(1.1) blur(10px);
     -webkit-backdrop-filter: saturate(1.1) blur(10px);

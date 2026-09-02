@@ -24,8 +24,8 @@ export function ReportQueueStatusBanner() {
   const [flushing, setFlushing] = useState(false)
 
   const refresh = useCallback(async () => {
-    setQueue(await listQueuedReports())
-  }, [])
+    setQueue(await listQueuedReports(activeProfileId))
+  }, [activeProfileId])
 
   useEffect(() => {
     void refresh()

@@ -68,7 +68,7 @@
 
 @media (hover: hover) and (pointer: fine) {
   .report-submission-result__actions button:not(.report-submission-result__secondary):hover {
-    background: var(--green-dark);
+    background: var(--green-hover);
   }
   .report-submission-result__secondary:hover { background: var(--hover); }
 }

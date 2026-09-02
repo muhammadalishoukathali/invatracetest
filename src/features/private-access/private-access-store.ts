@@ -10,11 +10,17 @@ import type {
 import { api, ApiError, setAccessToken, setSessionRecovery } from '@/services/api-client'
 import {
   clearInstallationIdentity,
+  clearInstallationIdentityIfToken,
   createInstallationIdentity,
   readInstallationIdentity,
   rememberProfileId,
   saveInstallationIdentity,
 } from './installation-storage'
+import { clearScanHistory } from '@/features/scan/scan-history-store'
+import { clearGuidanceDecisions } from '@/features/scan/guidance-decision-store'
+import { useScan } from '@/features/scan/scan-store'
+import { useReportDraft } from '@/features/report/report-draft-store'
+import { queryClient } from '@/services/query-client'
 
 // This store controls the full private-access lifecycle. It loads the browser's
 // installation record, opens or restores the server session, keeps an offline
@@ -57,6 +63,7 @@ interface PrivateAccessState {
 let initializePromise: Promise<void> | null = null
 let syncPromise: Promise<boolean> | null = null
 let pendingInstallation: InstallationIdentity | null = null
+let sessionGeneration = 0
 
 function localProfile(installation: InstallationIdentity): PseudonymousProfile {
   return {
@@ -89,6 +96,26 @@ async function safelyClearInstallation(): Promise<void> {
   }
 }
 
+async function safelyClearInstallationIfToken(expectedToken: string): Promise<void> {
+  try {
+    await clearInstallationIdentityIfToken(expectedToken)
+  } catch {
+    // The in-memory session is already invalid. A later startup can retry the
+    // token-scoped cleanup without risking a replacement installation.
+  }
+}
+
+function clearIdentityBoundState(): void {
+  sessionGeneration += 1
+  setAccessToken(null)
+  queryClient.clear()
+  useReportDraft.getState().reset()
+  useScan.getState().reset()
+  clearScanHistory()
+  clearGuidanceDecisions()
+  pendingInstallation = null
+}
+
 export const usePrivateAccess = create<PrivateAccessState>((set, get) => ({
   status: 'initializing',
   installation: null,
@@ -105,6 +132,7 @@ export const usePrivateAccess = create<PrivateAccessState>((set, get) => ({
       try {
         const installation = await readInstallationIdentity()
         if (!installation) {
+          clearIdentityBoundState()
           set({ status: 'needs-access', installation: null, profile: null, syncMessage: null })
           return
         }
@@ -143,6 +171,7 @@ export const usePrivateAccess = create<PrivateAccessState>((set, get) => ({
       return false
     }
     if (syncPromise) return syncPromise
+    const generation = sessionGeneration
     syncPromise = (async () => {
       if (!navigator.onLine) {
         setAccessToken(null)
@@ -160,6 +189,7 @@ export const usePrivateAccess = create<PrivateAccessState>((set, get) => ({
           method: 'POST',
           body: JSON.stringify({ installationToken: currentInstallation.installationToken }),
         })
+        if (generation !== sessionGeneration) return false
         setAccessToken(response.accessToken)
 
         let updatedInstallation: InstallationIdentity = {
@@ -173,7 +203,12 @@ export const usePrivateAccess = create<PrivateAccessState>((set, get) => ({
             response.profile.id,
             !response.recoverySetupRequired,
           )
+          if (generation !== sessionGeneration) {
+            await clearInstallationIdentityIfToken(currentInstallation.installationToken)
+            return false
+          }
         } catch {
+          if (generation !== sessionGeneration) return false
           pendingInstallation = updatedInstallation
           set({
             status: 'storage-error',
@@ -187,8 +222,16 @@ export const usePrivateAccess = create<PrivateAccessState>((set, get) => ({
         set({ installation: updatedInstallation, profile: response.profile, syncMessage: null })
         if (response.recoverySetupRequired) {
           try {
-            await get().reissueRecoveryCodes()
+            const batch = await api<RecoveryCodeBatchResponse>('/api/v1/profiles/me/recovery-codes/rotate', {
+              method: 'POST',
+            })
+            if (generation !== sessionGeneration) return false
+            set({
+              status: 'recovery', recoveryCodes: batch.recoveryCodes,
+              recoveryBatchCreatedAt: batch.createdAt, recoveryWasReissued: true, syncMessage: null,
+            })
           } catch {
+            if (generation !== sessionGeneration) return false
             set({
               status: 'recovery', recoveryCodes: null,
               syncMessage: 'The previous unseen codes are invalid, but a replacement batch could not be loaded. Try generating it again.',
@@ -199,9 +242,13 @@ export const usePrivateAccess = create<PrivateAccessState>((set, get) => ({
         set({ status: 'ready', recoveryCodes: null, recoveryBatchCreatedAt: null, recoveryWasReissued: false })
         return true
       } catch (error) {
+        if (generation !== sessionGeneration) return false
         setAccessToken(null)
         if (error instanceof ApiError && error.code === 'installation_not_found') {
-          await safelyClearInstallation()
+          clearIdentityBoundState()
+          const cleanupGeneration = sessionGeneration
+          await safelyClearInstallationIfToken(currentInstallation.installationToken)
+          if (cleanupGeneration !== sessionGeneration) return false
           set({
             status: 'needs-access', installation: null, profile: null,
             syncMessage: 'This browser is not connected to a private profile yet.',
@@ -209,7 +256,10 @@ export const usePrivateAccess = create<PrivateAccessState>((set, get) => ({
           return false
         }
         if (error instanceof ApiError && (error.code === 'installation_revoked' || error.status === 401)) {
-          await safelyClearInstallation()
+          clearIdentityBoundState()
+          const cleanupGeneration = sessionGeneration
+          await safelyClearInstallationIfToken(currentInstallation.installationToken)
+          if (cleanupGeneration !== sessionGeneration) return false
           set({
             status: 'revoked', installation: null, profile: null,
             syncMessage: 'Access for this installation was revoked. Restore existing access to reconnect this device.',
@@ -235,6 +285,7 @@ export const usePrivateAccess = create<PrivateAccessState>((set, get) => ({
 
   startPrivate: async () => {
     if (!navigator.onLine) throw new Error('Connect to the internet to start private access.')
+    clearIdentityBoundState()
     set({ status: 'starting', syncMessage: null })
     const newInstallation = createInstallationIdentity()
     try {
@@ -269,6 +320,7 @@ export const usePrivateAccess = create<PrivateAccessState>((set, get) => ({
 
   restorePrivate: async (profileId, recoveryCode) => {
     if (!navigator.onLine) throw new Error('Connect to the internet to restore existing access.')
+    clearIdentityBoundState()
     set({ status: 'restoring', syncMessage: null })
     const newInstallation = createInstallationIdentity()
     try {
@@ -381,9 +433,8 @@ export const usePrivateAccess = create<PrivateAccessState>((set, get) => ({
   clearRecoveryCodes: () => set({ recoveryCodes: null, recoveryBatchCreatedAt: null, recoveryWasReissued: false }),
 
   signOut: async () => {
-    setAccessToken(null)
+    clearIdentityBoundState()
     await safelyClearInstallation()
-    pendingInstallation = null
     set({
       status: 'needs-access',
       installation: null,

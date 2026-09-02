@@ -126,15 +126,15 @@ export interface SpeciesDetail {
   doNotDo: string[]
   reportable?: boolean
   actionGuide?: SeasonalActionGuide | null
-  // AC 1.2.3 — server-supplied action/report gates. When false, the UI hides
+  // Server-supplied action and report gates override client-side checks.
+  // When false, the UI hides
   // the corresponding controls regardless of client-side derivation.
   actionEligible?: boolean
   reportEligible?: boolean
-  // AC 1.2.2 — per-species reviewed date for the Malaysia-status record.
+  // Review metadata for the species' Malaysia-status record.
   statusReviewedAt?: string
   statusSourceId?: string
-  /** Curated reference photo of a healthy specimen. Used in the look-alike
-   *  comparison so the user can eyeball their scan against a known example. */
+  /** Curated specimen photo used for visual comparison. */
   referenceImageUrl?: string
   referenceImageCredit?: string
 }
@@ -173,7 +173,7 @@ export interface ReportDraft {
   modelVersion: string
   observedAt: string
   captureId: string
-  captureSource: 'camera'
+  captureSource: 'camera' | 'gallery'
   location: GeoPoint | null
   locationAccuracyM: number | null  // GPS accuracy in metres; null until a fix is available.
   extent: ExtentSize
@@ -185,7 +185,7 @@ export interface ReportDraft {
 /** The submission wire format. */
 export interface ReportSubmission {
   photoKey: string
-  /** AC 2.3.1 — SHA-256 of the raw capture bytes, computed client-side once
+  /** SHA-256 of the raw capture bytes, computed client-side once
    *  and sent with the submission so the server can reject exact duplicates
    *  from the same identity without ever inspecting the image bytes. */
   imageSha256?: string
@@ -195,7 +195,7 @@ export interface ReportSubmission {
   modelVersion: string
   observedAt: string
   captureId: string
-  captureSource: 'camera'
+  captureSource: 'camera' | 'gallery'
   location: GeoPoint
   locationAccuracyM: number | null
   extent: ExtentSize
@@ -216,7 +216,7 @@ export interface Report {
     screeningMethod: 'deterministic_rules' | null
   }
   sightingId: string | null
-  /** AC 2.3.1 / 2.3.2 — server-scoped owner used for same-identity dedup. */
+  /** Server-scoped owner used to detect duplicate reports from one profile. */
   ownerProfileId?: string
 }
 

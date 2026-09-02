@@ -139,7 +139,7 @@
 
 @media (hover: hover) and (pointer: fine) {
   .report-tracking__actions a:not(.report-tracking__secondary):hover,
-  .report-tracking__actions button:hover { background: var(--green-dark); }
+  .report-tracking__actions button:hover { background: var(--green-hover); }
   .report-tracking__secondary:hover { color: var(--ink); text-decoration: underline; }
 }
 

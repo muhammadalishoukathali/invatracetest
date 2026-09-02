@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '@/services/api-client'
 import type { Report, ReportStatus } from '@/types'
+import { usePrivateAccess } from '@/features/private-access/private-access-store'
 import './report-tracking.css'
 
 const COPY: Record<ReportStatus, { title: string; body: string }> = {
@@ -33,10 +34,11 @@ const COPY: Record<ReportStatus, { title: string; body: string }> = {
 
 export function ReportTrackingPage() {
   const { reportId } = useParams()
+  const profileId = usePrivateAccess((state) => state.profile?.id ?? null)
   const query = useQuery({
-    queryKey: ['report', reportId],
+    queryKey: ['report', profileId, reportId],
     queryFn: () => api<Report>(`/api/v1/reports/${reportId}`),
-    enabled: !!reportId,
+    enabled: !!profileId && !!reportId,
     refetchInterval: (state) => (
       state.state.data?.status === 'processing'
         || (state.state.data?.status === 'validation_unavailable'

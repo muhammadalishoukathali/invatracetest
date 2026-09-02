@@ -160,3 +160,25 @@ export async function clearInstallationIdentity(): Promise<void> {
     db.close()
   }
 }
+
+export async function clearInstallationIdentityIfToken(expectedToken: string): Promise<void> {
+  const db = await openInstallationDb()
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction(INSTALLATION_STORE_NAME, 'readwrite')
+      const store = transaction.objectStore(INSTALLATION_STORE_NAME)
+      const request = store.get(INSTALLATION_RECORD_KEY)
+      request.onsuccess = () => {
+        if (hasValidCore(request.result) && request.result.installationToken === expectedToken) {
+          store.delete(INSTALLATION_RECORD_KEY)
+        }
+      }
+      request.onerror = () => reject(request.error)
+      transaction.oncomplete = () => resolve()
+      transaction.onerror = () => reject(transaction.error)
+      transaction.onabort = () => reject(transaction.error)
+    })
+  } finally {
+    db.close()
+  }
+}

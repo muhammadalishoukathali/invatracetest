@@ -30,6 +30,7 @@ interface ReportState {
     imageUrl: string
     observedAt: string
     captureId: string
+    captureSource: 'camera' | 'gallery'
   }) => void
   goTo: (step: ReportStep) => void
   next: () => void
@@ -48,6 +49,7 @@ const createEmptyReportDraft = (
   scanResult: IdentifyResult,
   observedAt: string,
   captureId: string,
+  captureSource: 'camera' | 'gallery',
 ): ReportDraft => ({
   photoKey: null,
   speciesId: scanResult.speciesId ?? null,
@@ -56,7 +58,7 @@ const createEmptyReportDraft = (
   modelVersion: scanResult.modelVersion,
   observedAt,
   captureId,
-  captureSource: 'camera',
+  captureSource,
   location: null,
   locationAccuracyM: null,
   extent: 'small_patch',
@@ -73,9 +75,9 @@ export const useReportDraft = create<ReportState>((set, get) => ({
   submitting: false,
   outcome: null,
 
-  beginFromScan: ({ result, imageBlob, imageUrl, observedAt, captureId }) => set({
+  beginFromScan: ({ result, imageBlob, imageUrl, observedAt, captureId, captureSource }) => set({
     step: 'location',
-    draft: createEmptyReportDraft(result, observedAt, captureId),
+    draft: createEmptyReportDraft(result, observedAt, captureId, captureSource),
     imageBlob,
     imageUrl,
     submitting: false,

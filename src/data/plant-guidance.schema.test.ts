@@ -3,12 +3,22 @@ import Ajv2020 from 'ajv/dist/2020'
 import guidance from './plant-guidance.json'
 import schema from './plant-guidance.schema.json'
 
-// AC 3.1.4 — the bundled dataset must validate against the published guidance
-// JSON schema at build-time so drift (missing plant_id, content_version or
-// last_reviewed) fails CI before it reaches the client fallback path.
+// Validate the bundled dataset during the build so missing required fields
+// fail before the client needs its fallback path.
 describe('plant-guidance.json schema conformance', () => {
   it('validates against plant-guidance.schema.json', () => {
     const ajv = new Ajv2020({ allErrors: true, strict: false })
+    ajv.addFormat('date', /^\d{4}-\d{2}-\d{2}$/)
+    ajv.addFormat('uri', {
+      validate(value: string) {
+        try {
+          new URL(value)
+          return true
+        } catch {
+          return false
+        }
+      },
+    })
     const validate = ajv.compile(schema)
     const ok = validate(guidance)
     if (!ok) {

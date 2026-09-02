@@ -30,6 +30,7 @@ from app.db.models import (
     VerificationJob,
 )
 from app.domain.reporting import coordinate, report_response
+from app.services.object_deletion import enqueue_object_deletions
 from app.services.storage import storage
 
 router = APIRouter(prefix="/api/v1/reports", tags=["reports"])
@@ -260,6 +261,7 @@ def delete_report(
         VerificationJob.__table__.delete().where(VerificationJob.report_id == report.id)
     )
     session.delete(report)
+    enqueue_object_deletions(session, [photo_key])
     session.add(
         AuditEvent(
             event_type="report.deleted",
@@ -271,12 +273,6 @@ def delete_report(
         )
     )
     session.commit()
-    # Purge object storage after DB commit so a storage failure does not
-    # roll back the delete; storage.delete already handles missing keys.
-    try:
-        storage.delete(photo_key)
-    except ApiProblem:
-        pass
     return Response(status_code=204)
 
 

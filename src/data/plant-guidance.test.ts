@@ -52,7 +52,7 @@ describe('plant-guidance dataset', () => {
     expect(findPlantGuidance({})).toBeNull()
   })
 
-  it('every sourced item cites at least one valid source (AC 3.2.4)', () => {
+  it('every sourced item cites at least one valid source', () => {
     const knownSourceIds = new Set(plantGuidanceDataset.sources.map((s) => s.source_id))
     for (const plant of plantGuidanceDataset.plants) {
       expect(plant.general_information_source_ids.length).toBeGreaterThan(0)
@@ -70,7 +70,7 @@ describe('plant-guidance dataset', () => {
     }
   })
 
-  it('no active step recommends a universally prohibited technique (AC 3.2.3)', () => {
+  it('no active step recommends a universally prohibited technique', () => {
     const prohibitedPatterns = [
       /\bburn(?:s|ing|ed)?\b/i,
       /\bherbicide\b/i,

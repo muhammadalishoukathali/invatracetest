@@ -1,7 +1,12 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import basicSsl from '@vitejs/plugin-basic-ssl'
 import { VitePWA } from 'vite-plugin-pwa'
 import { fileURLToPath, URL } from 'node:url'
+
+// Camera access over a LAN address requires HTTPS. The development certificate
+// stays in memory and does not change the operating system trust store.
+const httpsEnabled = process.env.VITE_HTTPS === 'true'
 
 export default defineConfig({
   // Prebundle MapLibre into a self-contained worker. Without this, its worker
@@ -15,22 +20,23 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    ...(httpsEnabled ? [basicSsl()] : []),
     VitePWA({
-      registerType: 'prompt',
-      includeAssets: ['favicon.svg'],
+      // Replace the cached application shell as soon as a new release is ready.
+      registerType: 'autoUpdate',
+      includeAssets: ['invatrace-logo-192.png', 'invatrace-logo-512.png'],
       manifest: {
         name: 'InvaTrace',
         short_name: 'InvaTrace',
         description: 'Invasive plant monitoring and trail recovery',
-        theme_color: '#1B7A50',
+        theme_color: '#FFFFFF',
         background_color: '#F4F6F3',
         display: 'standalone',
         start_url: '/',
         icons: [
-          // Browsers can scale this SVG for the installed-app icon. PNG versions
-          // can be added later if a platform requires fixed raster sizes.
-          { src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
-          { src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
+          { src: 'invatrace-logo-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: 'invatrace-logo-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: 'invatrace-logo-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
       workbox: {
@@ -77,9 +83,8 @@ export default defineConfig({
             method: 'PATCH',
           },
           {
-            // Cache raster map tiles so the map keeps working offline once a
-            // reporter has panned an area. Bounded per-cache size prevents
-            // unbounded disk use as reporters roam.
+            // Keep recently viewed map areas available offline, with a fixed
+            // cache limit to control disk use.
             urlPattern: ({ url }) =>
               /\.(png|jpg|jpeg|webp|pbf)$/.test(url.pathname) &&
               (url.hostname.endsWith('tile.openstreetmap.org') ||

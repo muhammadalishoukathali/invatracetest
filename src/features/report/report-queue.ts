@@ -7,6 +7,7 @@
 import type { PresignedUpload, QueuedReport, Report, ReportSubmission } from '@/types'
 import { api, ApiError } from '@/services/api-client'
 import { usePrivateAccess } from '@/features/private-access/private-access-store'
+import { updateScanHistorySubmission } from '@/features/scan/scan-history-store'
 
 const REPORT_QUEUE_DB_NAME = 'invatrace'
 const REPORT_QUEUE_DB_VERSION = 1
@@ -131,7 +132,7 @@ export async function submitReport(
   const ownerProfileId = usePrivateAccess.getState().profile?.id
   if (!ownerProfileId) throw new Error('Private access must be ready before submitting a report.')
   const queuedId = crypto.randomUUID()
-  // AC 2.3.1 — compute SHA-256 of the raw capture once so the server can
+  // Hash the raw capture once so the server can
   // reject exact duplicates from this identity. Hash lives on the submission
   // only; the raw bytes never leave the device beyond the presigned upload.
   const imageSha256 = await sha256Hex(imageBlob)
@@ -139,6 +140,7 @@ export async function submitReport(
   try {
     photoKey = await uploadImage(imageBlob, queuedId)
     const report = await createReport({ ...submission, photoKey, imageSha256 }, queuedId, false)
+    updateScanHistorySubmission(submission.captureId, { status: 'submitted', reportId: report.id })
     return { status: 'submitted', report }
   } catch (error) {
     if (!shouldRetry(error)) throw error
@@ -152,6 +154,7 @@ export async function submitReport(
       submission: { ...submission, photoKey, imageSha256 },
       imageBlob,
     })
+    updateScanHistorySubmission(submission.captureId, { status: 'queued' })
     notifyQueueChanged()
     return { status: 'queued', queuedId, error: error instanceof Error ? error.message : String(error) }
   }
@@ -202,8 +205,9 @@ export async function flushQueue(): Promise<{ sent: number; failed: number; skip
       continue
     }
     try {
-      await sendQueuedReport(item)
+      const report = await sendQueuedReport(item)
       await deleteQueuedReport(item.id)
+      updateScanHistorySubmission(item.submission.captureId, { status: 'submitted', reportId: report.id })
       sent++
     } catch (error) {
       item.attempts++
@@ -217,9 +221,16 @@ export async function flushQueue(): Promise<{ sent: number; failed: number; skip
   return { sent, failed, skipped }
 }
 
-export const listQueuedReports = () => readQueuedReports()
+export async function listQueuedReports(
+  ownerProfileId: string | null | undefined = usePrivateAccess.getState().profile?.id,
+): Promise<QueuedReport[]> {
+  if (!ownerProfileId) return []
+  return (await readQueuedReports()).filter((item) => item.ownerProfileId === ownerProfileId)
+}
 export async function discardQueuedReport(id: string): Promise<void> {
+  const item = (await readQueuedReports()).find((candidate) => candidate.id === id)
   await deleteQueuedReport(id)
+  if (item) updateScanHistorySubmission(item.submission.captureId, undefined)
   notifyQueueChanged()
 }
 
