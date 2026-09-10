@@ -298,6 +298,16 @@ class MonitoredArea(Base):
         Geography("MULTIPOLYGON", srid=4326, spatial_index=False), nullable=False
     )
     metadata_json: Mapped[dict[str, Any]] = mapped_column(JSON_TYPE, default=dict, nullable=False)
+    # AC 5.1.3 - places advertise whether their polygon is authoritative
+    # enough to drive an "inside a park" bucket, or a sketch that limits
+    # discovery to distance-only reasoning.
+    place_type: Mapped[str] = mapped_column(String(32), nullable=False, default="park")
+    geometry_status: Mapped[str] = mapped_column(
+        String(24), nullable=False, default="authoritative"
+    )
+    geometry_version: Mapped[str] = mapped_column(
+        String(64), nullable=False, default="seed-2026-09"
+    )
 
 
 class ProtectedArea(Base):
@@ -813,6 +823,71 @@ class OsmImport(Base):
     )
 
 
+class Waterway(Base):
+    """Water body / stream line geometry used for the water-dispersal upstream
+    evidence bucket in place discovery (Epic 5.1). ``directed`` records
+    whether OSM knew the flow direction of the segment - the discovery
+    domain must skip undirected segments entirely rather than fall back to
+    Euclidean distance, per AC 5.1.4b.
+    """
+
+    __tablename__ = "waterways"
+    __table_args__ = (
+        UniqueConstraint("source", "source_id", name="uq_waterways_source_source_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name: Mapped[str | None] = mapped_column(String(180))
+    source: Mapped[str] = mapped_column(String(80), nullable=False)
+    source_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    directed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    line: Mapped[Any] = mapped_column(
+        Geography("LINESTRING", srid=4326, spatial_index=False), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class GbifOccurrence(Base):
+    """Cleaned GBIF occurrence rows for the catalogue's 32 species. Populated
+    by ``backend/scripts/import_gbif_occurrences.py`` (or a dev seed) from
+    country=MY + occurrenceStatus=PRESENT + valid coords + coordinate
+    uncertainty within the configured ceiling. The row is the unit that
+    place discovery ranks against; the check constraint keeps stray
+    non-MY / absent rows out even if the importer regresses.
+    """
+
+    __tablename__ = "gbif_occurrences"
+    __table_args__ = (
+        UniqueConstraint("source", "source_occurrence_id", name="uq_gbif_occurrences_source_source_id"),
+        CheckConstraint("country_code = 'MY'", name="ck_gbif_occurrences_country_my"),
+        CheckConstraint("occurrence_status = 'PRESENT'", name="ck_gbif_occurrences_present"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    species_id: Mapped[str] = mapped_column(
+        ForeignKey("species.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    source: Mapped[str] = mapped_column(String(40), nullable=False, default="gbif")
+    source_occurrence_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    country_code: Mapped[str] = mapped_column(String(2), nullable=False)
+    occurrence_status: Mapped[str] = mapped_column(String(16), nullable=False, default="PRESENT")
+    latitude: Mapped[Decimal] = mapped_column(Numeric(8, 5), nullable=False)
+    longitude: Mapped[Decimal] = mapped_column(Numeric(8, 5), nullable=False)
+    location: Mapped[Any] = mapped_column(
+        Geography("POINT", srid=4326, spatial_index=False),
+        Computed("ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)::geography", persisted=True),
+    )
+    coordinate_uncertainty_m: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))
+    event_year: Mapped[int | None] = mapped_column(Integer)
+    event_date: Mapped[Any | None] = mapped_column(Date)
+    catalogue_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    ingested_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 # GiST indexes for the geography/geometry columns - regular btree indexes
 # don't help with ST_DWithin/ST_Covers spatial queries, these do. Declared
 # here rather than inline on the columns since Index() needs the mapped
@@ -823,3 +898,5 @@ Index("ix_places_location_gist", MonitoredPlace.location, postgresql_using="gist
 Index("ix_areas_geometry_gist", MonitoredArea.geometry, postgresql_using="gist")
 Index("ix_trails_geometry_gist", Trail.geometry, postgresql_using="gist")
 Index("ix_protected_areas_geometry_gist", ProtectedArea.geometry, postgresql_using="gist")
+Index("ix_waterways_line_gist", Waterway.line, postgresql_using="gist")
+Index("ix_gbif_occurrences_location_gist", GbifOccurrence.location, postgresql_using="gist")

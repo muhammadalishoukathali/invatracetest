@@ -394,6 +394,93 @@ export const handlers = [
     })
   }),
 
+  http.get(url('/api/v1/places/:placeId'), ({ params }) => {
+    const placeId = String(params.placeId ?? '')
+    if (placeId === 'unsupported-place') {
+      return HttpResponse.json({
+        placeId,
+        displayName: 'Sketch-only place',
+        placeType: 'other',
+        geometryStatus: 'unsupported',
+        geometryVersion: 'seed-2026-09',
+      })
+    }
+    if (placeId === 'missing') {
+      return HttpResponse.json(
+        { code: 'place_not_found', detail: 'Place not found.' },
+        { status: 404 },
+      )
+    }
+    return HttpResponse.json({
+      placeId,
+      displayName: 'Bukit Kiara Discovery Park',
+      placeType: 'park',
+      geometryStatus: 'authoritative',
+      geometryVersion: 'seed-2026-09',
+    })
+  }),
+  http.get(url('/api/v1/places/:placeId/plant-associations'), ({ params }) => {
+    const placeId = String(params.placeId ?? '')
+    if (placeId === 'missing') {
+      return HttpResponse.json(
+        { code: 'place_not_found', detail: 'Place not found.' },
+        { status: 404 },
+      )
+    }
+    return HttpResponse.json({
+      place: {
+        placeId,
+        displayName: 'Bukit Kiara Discovery Park',
+        placeType: 'park',
+        geometryStatus: 'authoritative',
+        geometryVersion: 'seed-2026-09',
+      },
+      associations: [
+        {
+          speciesId: 'mikania-micrantha',
+          scientificName: 'Mikania micrantha',
+          commonNames: ['Mile-a-minute weed'],
+          catalogueLink: '/plants/mikania-micrantha',
+          evidence: [
+            { kind: 'inside', distanceM: 0.0, weight: 1.0, qualifyingRecords: 2, mostRecentYear: 2025 },
+          ],
+          totalScore: 1.5,
+          qualifyingRecords: 2,
+          mostRecentYear: 2025,
+          closestDistanceM: 0.0,
+          insideArea: true,
+          directionAwareEvidence: false,
+        },
+        {
+          speciesId: 'eichhornia-crassipes',
+          scientificName: 'Eichhornia crassipes',
+          commonNames: ['Water hyacinth'],
+          catalogueLink: '/plants/eichhornia-crassipes',
+          evidence: [
+            { kind: 'nearby', distanceM: 120.0, weight: 0.62, qualifyingRecords: 1, mostRecentYear: 2024 },
+            {
+              kind: 'upstream_waterway',
+              distanceM: 300.0,
+              weight: 0.6,
+              qualifyingRecords: 1,
+              mostRecentYear: 2024,
+            },
+          ],
+          totalScore: 0.86,
+          qualifyingRecords: 1,
+          mostRecentYear: 2024,
+          closestDistanceM: 120.0,
+          insideArea: false,
+          directionAwareEvidence: true,
+        },
+      ],
+      catalogueVersion: 'v2026-09-08',
+      occurrenceDataUpdatedAt: '2026-09-10T12:00:00Z',
+      disclaimer:
+        'Occurrence-based inference from public records - not a live census. Absence of a plant from this list does not mean it is absent from the site.',
+    })
+  }),
+
   http.post(url('/api/v1/reports/:reportId/removal'), async ({ params, request }) => {
     // Phase 4 mock: mirrors the server-side accuracy + proximity rules used
     // by ``backend/app/api/routers/removals.py``. The seeded "eligible"

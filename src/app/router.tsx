@@ -24,6 +24,8 @@ const ReportWizardPage = lazy(() => import('@/features/report/ReportWizardPage')
   .then((module) => ({ default: module.ReportWizardPage })))
 const ReportTrackingPage = lazy(() => import('@/features/report/ReportTrackingPage')
   .then((module) => ({ default: module.ReportTrackingPage })))
+const PlaceAssociationsPage = lazy(() => import('@/features/discovery/PlaceAssociationsPage')
+  .then((module) => ({ default: module.PlaceAssociationsPage })))
 const MyReportsPage = lazy(() => import('@/features/report/MyReportsPage')
   .then((module) => ({ default: module.MyReportsPage })))
 
@@ -75,6 +77,7 @@ export const router = createBrowserRouter([
       { path: 'access', element: <Navigate to="/profile" replace /> },
       { path: 'reports', element: loadRoute(<MyReportsPage />) },
       { path: 'reports/:reportId', element: loadRoute(<ReportTrackingPage />) },
+      { path: 'places/:placeId/plants', element: loadRoute(<PlaceAssociationsPage />) },
       { path: '*', element: <Navigate to="/map" replace /> },
     ],
   },

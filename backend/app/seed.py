@@ -19,11 +19,14 @@ from sqlalchemy.orm import Session
 
 from app.db.models import (
     CatalogueVersion,
+    GbifOccurrence,
+    MonitoredArea,
     MonitoredPlace,
     ProtectedArea,
     Report,
     Sighting,
     Species,
+    Waterway,
 )
 from app.domain.catalogue import load_manifest, load_status_records
 from app.domain.evidence_catalogue import load_evidence_catalogue
@@ -466,6 +469,8 @@ def load_reference_data(session: Session) -> None:
     session.flush()
     _load_protected_areas_seed(session)
     session.flush()
+    _load_discovery_seed(session)
+    session.flush()
     for name, latitude, longitude in PLACES:
         if not session.scalar(select(MonitoredPlace.id).where(MonitoredPlace.name == name)):
             session.add(
@@ -656,6 +661,139 @@ def _load_evidence_catalogue_v2026_09(session: Session) -> None:
         species.habitat = record.habitat
         species.accepted_name_usage = record.accepted_name_usage
         species.last_reviewed_at = reviewed_dt
+
+
+# --- Iteration 2 Phase 5 - discovery dev seed --------------------------------
+
+# A single named park polygon covering ~1 km around Bukit Kiara so /places
+# has a place_id to hit end-to-end. Bounded by the same rough envelope the
+# protected-area seed uses so an occurrence generator hitting the inside/
+# outside branches is trivial to compose.
+_DISCOVERY_PLACE_NAME = "Bukit Kiara Discovery Park"
+_DISCOVERY_PLACE_WKT = (
+    "MULTIPOLYGON((("
+    "101.6355 3.1450,"
+    "101.6470 3.1450,"
+    "101.6470 3.1548,"
+    "101.6355 3.1548,"
+    "101.6355 3.1450"
+    ")))"
+)
+
+# One directed waterway skirting the eastern boundary of the park so a
+# freshwater species with an occurrence a few hundred metres upstream can
+# be picked up by the upstream_waterway bucket (AC 5.1.4). Directed=True
+# is required for the discovery domain to accept the line.
+_DISCOVERY_WATERWAY = {
+    "name": "Sungai Kiara (seed)",
+    "source": "dev-seed",
+    "source_id": "sungai-kiara-1",
+    "directed": True,
+    "wkt": "LINESTRING(101.6485 3.1500, 101.6488 3.1520, 101.6492 3.1552)",
+}
+
+# GBIF-shaped rows. Each tuple: (species_id, source_occurrence_id, lat, lon,
+# coord_uncertainty_m, event_year). Points inside the park polygon feed the
+# inside bucket; points just outside (within 1 km) feed the nearby bucket;
+# a freshwater point along the waterway feeds the upstream bucket.
+_DISCOVERY_OCCURRENCES: tuple[tuple[str, str, float, float, float, int], ...] = (
+    # Inside Bukit Kiara Discovery Park.
+    ("mikania-micrantha", "gbif-seed-mm-1", 3.1490, 101.6410, 25.0, 2024),
+    ("mikania-micrantha", "gbif-seed-mm-2", 3.1502, 101.6435, 50.0, 2025),
+    ("chromolaena-odorata", "gbif-seed-co-1", 3.1480, 101.6420, 100.0, 2023),
+    ("lantana-camara", "gbif-seed-lc-1", 3.1515, 101.6455, 15.0, 2024),
+    # Nearby (within the 1 km park buffer, outside the polygon).
+    ("lantana-camara", "gbif-seed-lc-2", 3.1400, 101.6500, 80.0, 2022),
+    ("bidens-pilosa", "gbif-seed-bp-1", 3.1600, 101.6300, 200.0, 2025),
+    # Upstream aquatic - Eichhornia crassipes along Sungai Kiara.
+    ("eichhornia-crassipes", "gbif-seed-ec-1", 3.1555, 101.6493, 30.0, 2024),
+)
+
+
+def _load_discovery_seed(session: Session) -> None:
+    """Idempotent upsert of the dev discovery fixtures: one MonitoredArea,
+    one directed waterway, a handful of GBIF-shaped occurrences. Matched by
+    name / source_occurrence_id so re-running never duplicates rows.
+    Skipped if any of the target species have not been catalogued (e.g.
+    running against an older schema).
+    """
+    place_geom = func.ST_Multi(func.ST_GeomFromText(_DISCOVERY_PLACE_WKT, 4326))
+    place = session.scalar(
+        select(MonitoredArea).where(MonitoredArea.name == _DISCOVERY_PLACE_NAME)
+    )
+    if place is None:
+        session.add(
+            MonitoredArea(
+                name=_DISCOVERY_PLACE_NAME,
+                geometry=place_geom,
+                metadata_json={"tags": {"leisure": "park"}},
+                place_type="park",
+                geometry_status="authoritative",
+                geometry_version="seed-2026-09",
+            )
+        )
+    else:
+        place.geometry = place_geom
+        place.place_type = "park"
+        place.geometry_status = "authoritative"
+        place.geometry_version = "seed-2026-09"
+
+    waterway = session.scalar(
+        select(Waterway).where(
+            Waterway.source == _DISCOVERY_WATERWAY["source"],
+            Waterway.source_id == _DISCOVERY_WATERWAY["source_id"],
+        )
+    )
+    line_geom = func.ST_GeomFromText(_DISCOVERY_WATERWAY["wkt"], 4326)
+    if waterway is None:
+        session.add(
+            Waterway(
+                name=_DISCOVERY_WATERWAY["name"],
+                source=_DISCOVERY_WATERWAY["source"],
+                source_id=_DISCOVERY_WATERWAY["source_id"],
+                directed=bool(_DISCOVERY_WATERWAY["directed"]),
+                line=line_geom,
+            )
+        )
+    else:
+        waterway.line = line_geom
+        waterway.directed = bool(_DISCOVERY_WATERWAY["directed"])
+
+    catalogue = load_evidence_catalogue()
+    catalogue_version = catalogue.catalogue_version
+    for species_id, occ_id, lat, lon, uncertainty_m, year in _DISCOVERY_OCCURRENCES:
+        if session.get(Species, species_id) is None:
+            # Occurrence table has a FK to species; skip if catalogue swap
+            # has not yet inserted the species row.
+            continue
+        row = session.scalar(
+            select(GbifOccurrence).where(
+                GbifOccurrence.source == "gbif",
+                GbifOccurrence.source_occurrence_id == occ_id,
+            )
+        )
+        if row is None:
+            session.add(
+                GbifOccurrence(
+                    species_id=species_id,
+                    source="gbif",
+                    source_occurrence_id=occ_id,
+                    country_code="MY",
+                    occurrence_status="PRESENT",
+                    latitude=Decimal(str(lat)),
+                    longitude=Decimal(str(lon)),
+                    coordinate_uncertainty_m=Decimal(str(uncertainty_m)),
+                    event_year=year,
+                    catalogue_version=catalogue_version,
+                )
+            )
+        else:
+            row.species_id = species_id
+            row.latitude = Decimal(str(lat))
+            row.longitude = Decimal(str(lon))
+            row.coordinate_uncertainty_m = Decimal(str(uncertainty_m))
+            row.event_year = year
+            row.catalogue_version = catalogue_version
 
 
 def seed_development_data(session: Session) -> None:

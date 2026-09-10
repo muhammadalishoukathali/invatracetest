@@ -27,6 +27,7 @@ from app.api.routers import (
     location,
     location_context,
     notifications,
+    places,
     removals,
     reports,
     scans,
@@ -190,6 +191,7 @@ def create_app() -> FastAPI:
         sightings.router,
         location.router,
         location_context.router,
+        places.router,
         admin.router,
     ):
         app.include_router(router)
