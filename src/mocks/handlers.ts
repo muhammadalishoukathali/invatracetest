@@ -115,6 +115,27 @@ function buildMockOfflineManifest(): Promise<[MockManifest, Map<string, MockPack
   return mockOfflinePackPromise
 }
 
+interface MockAdoption {
+  adoptionId: string
+  placeId: string
+  placeName: string
+  placeType: string
+  adoptedAt: string
+  indicators: {
+    activeSightingCount: number
+    distinctSpeciesCount: number
+    reportsNew30d: number
+    removalReported30d: number
+    daysSinceMostRecent: number | null
+    reportsPrevious30d: number
+    changeDirection: 'increase' | 'decrease' | 'unchanged' | 'insufficient_history'
+    changePct: number | null
+    tolerancePct: number
+    windowDays: number
+  }
+}
+const mockAdoptions = new Map<string, MockAdoption>()
+
 const mockReports: Report[] = []
 const mockReportIdempotency = new Map<string, { request: string; response: Report }>()
 
@@ -620,6 +641,109 @@ export const handlers = [
         'Content-Type': 'application/json',
         'X-InvaTrace-File-SHA256': file.sha256,
       },
+    })
+  }),
+
+  // Phase 7 mock - Epic 6 adopted areas. Keeps a per-worker in-memory
+  // store keyed on the profile derived from the bearer, so that a fresh
+  // reload resets the list (same lifetime as the report queue mock).
+  http.get(url('/api/v1/adopted-areas'), () => {
+    const items = Array.from(mockAdoptions.values())
+    return HttpResponse.json({
+      items,
+      total: items.length,
+      maxPerIdentity: 50,
+    })
+  }),
+  http.post(url('/api/v1/adopted-areas'), async ({ request }) => {
+    const body = (await request.json().catch(() => null)) as { placeId?: string } | null
+    if (!body?.placeId) {
+      return HttpResponse.json(
+        { code: 'invalid_request', detail: 'placeId required' },
+        { status: 400 },
+      )
+    }
+    const existing = Array.from(mockAdoptions.values())
+      .find((a) => a.placeId === body.placeId)
+    if (existing) {
+      return HttpResponse.json({
+        adoptionId: existing.adoptionId,
+        placeId: existing.placeId,
+        placeName: existing.placeName,
+        adoptedAt: existing.adoptedAt,
+      })
+    }
+    if (mockAdoptions.size >= 50) {
+      return HttpResponse.json(
+        {
+          code: 'ADOPTION_LIMIT_REACHED',
+          detail: 'You already have 50 adopted areas - remove one before adopting another.',
+        },
+        { status: 409 },
+      )
+    }
+    const id = crypto.randomUUID()
+    const record = {
+      adoptionId: id,
+      placeId: body.placeId,
+      placeName: `Mock place ${body.placeId.slice(0, 8)}`,
+      placeType: 'park',
+      adoptedAt: new Date().toISOString(),
+      indicators: {
+        activeSightingCount: 0,
+        distinctSpeciesCount: 0,
+        reportsNew30d: 0,
+        removalReported30d: 0,
+        daysSinceMostRecent: null,
+        reportsPrevious30d: 0,
+        changeDirection: 'unchanged' as const,
+        changePct: 0,
+        tolerancePct: 10,
+        windowDays: 30,
+      },
+    }
+    mockAdoptions.set(id, record)
+    return HttpResponse.json(
+      {
+        adoptionId: id,
+        placeId: record.placeId,
+        placeName: record.placeName,
+        adoptedAt: record.adoptedAt,
+      },
+      { status: 201 },
+    )
+  }),
+  http.delete(url('/api/v1/adopted-areas/:adoptionId'), ({ params }) => {
+    const id = String(params.adoptionId ?? '')
+    if (!mockAdoptions.has(id)) {
+      return HttpResponse.json(
+        { code: 'adoption_not_found', detail: 'Adoption not found.' },
+        { status: 404 },
+      )
+    }
+    mockAdoptions.delete(id)
+    return new HttpResponse(null, { status: 204 })
+  }),
+  http.get(url('/api/v1/adopted-areas/:adoptionId/activity'), ({ params }) => {
+    const id = String(params.adoptionId ?? '')
+    const record = mockAdoptions.get(id)
+    if (!record) {
+      return HttpResponse.json(
+        { code: 'adoption_not_found', detail: 'Adoption not found.' },
+        { status: 404 },
+      )
+    }
+    const now = new Date()
+    return HttpResponse.json({
+      adoptionId: id,
+      placeId: record.placeId,
+      placeName: record.placeName,
+      placeType: record.placeType,
+      windowStartUtc: new Date(now.getTime() - 30 * 86_400_000).toISOString(),
+      windowEndUtc: now.toISOString(),
+      indicators: record.indicators,
+      clusters: [],
+      markers: [],
     })
   }),
 

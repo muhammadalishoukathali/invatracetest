@@ -888,6 +888,30 @@ class GbifOccurrence(Base):
     )
 
 
+class AreaAdoption(Base):
+    """Per-profile bookmark of a MonitoredArea. AC 6.1.3 - one adoption
+    per (profile, place) enforced by the unique constraint; delete is a
+    hard remove (no soft-delete flag) since the plan file specifies
+    ``DELETE /adopted-areas/{id}`` as an ownership-checked hard removal.
+    """
+
+    __tablename__ = "area_adoptions"
+    __table_args__ = (
+        UniqueConstraint("profile_id", "place_id", name="uq_area_adoptions_profile_place"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    profile_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("profiles.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    place_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("monitored_areas.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    adopted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 # GiST indexes for the geography/geometry columns - regular btree indexes
 # don't help with ST_DWithin/ST_Covers spatial queries, these do. Declared
 # here rather than inline on the columns since Index() needs the mapped

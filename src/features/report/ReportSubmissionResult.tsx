@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useReportDraft } from '@/features/report/report-draft-store'
 import { useScan } from '@/features/scan/scan-store'
+import { AdoptAreaPrompt } from '@/features/areas/AdoptAreaPrompt'
 import { api } from '@/services/api-client'
-import type { Report } from '@/types'
+import type { Report, SightingDetail } from '@/types'
 import './report-submission-result.css'
 
 /**
@@ -41,6 +42,7 @@ export function ReportSubmissionResult() {
   const initialReport = outcome?.kind === 'submitted' ? outcome.report : null
   const [status, setStatus] = useState<Report['status'] | null>(initialReport?.status ?? null)
   const [sightingId, setSightingId] = useState<string | null>(initialReport?.sightingId ?? null)
+  const [adoptable, setAdoptable] = useState<{ areaId: string; areaName: string | null } | null>(null)
   const [retainedReportId, setRetainedReportId] = useState<string | null>(
     initialReport?.retainedReportId ?? null,
   )
@@ -56,6 +58,23 @@ export function ReportSubmissionResult() {
         setStatus(latest.status)
         setSightingId(latest.sightingId ?? null)
         setRetainedReportId(latest.retainedReportId ?? null)
+        // AC 6.1.2 - once we know the published sighting id, look up its
+        // area so the "Adopt this area" prompt can surface without a
+        // second poll cycle. Failure is silent: the prompt just doesn't
+        // render, which is preferable to blocking the result screen.
+        if (latest.sightingId && !adoptable) {
+          try {
+            const detail = await api<SightingDetail>(`/api/v1/sightings/${latest.sightingId}`)
+            if (!cancelled && detail.place.areaId) {
+              setAdoptable({
+                areaId: detail.place.areaId,
+                areaName: detail.place.areaName,
+              })
+            }
+          } catch {
+            /* prompt stays hidden - never claim a place we can't confirm */
+          }
+        }
       } catch {
         // If this one poll fails we just leave the "still checking" wording
         // up rather than showing an error - the next interval tick retries.
@@ -64,7 +83,7 @@ export function ReportSubmissionResult() {
     void poll()
     const handle = window.setInterval(poll, 2000)
     return () => { cancelled = true; window.clearInterval(handle) }
-  }, [reportId, status])
+  }, [reportId, status, adoptable])
 
   if (!outcome) return null
 
@@ -81,6 +100,9 @@ export function ReportSubmissionResult() {
         <section className="report-submission-result__body" aria-live="polite">
           <h1>Report published</h1>
           <p>Community report - not expert validated</p>
+          {adoptable && (
+            <AdoptAreaPrompt areaId={adoptable.areaId} areaName={adoptable.areaName} />
+          )}
           <div className="report-submission-result__actions">
             <button type="button" onClick={() => done(sightingId ? `/map?sighting=${sightingId}` : '/map')}>
               View on map

@@ -87,6 +87,14 @@ def _build_limits() -> dict[str, Limit]:
             algorithm="sliding",
         ),
         "sightings_read": Limit(120, 60),
+        # AC 6.1 - per-identity adoption rate cap. Sliding so a burst at
+        # the hour boundary can't push a bot past ADOPTION_MAX_PER_IDENTITY
+        # before the fixed-window resets.
+        "area_adopt_hour": Limit(
+            settings.adoption_rate_limit_per_hour,
+            60 * 60,
+            algorithm="sliding",
+        ),
     }
 
 

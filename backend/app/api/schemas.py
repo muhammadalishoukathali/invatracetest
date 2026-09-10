@@ -386,6 +386,11 @@ class PlaceAssociation(ApiModel):
     area_name: str | None
     trail_name: str | None
     source: Literal["osm", "seed", "fallback"]
+    # AC 6.1.2 - post-report adopt prompt needs the place UUID so the
+    # client can call POST /api/v1/adopted-areas straight from the
+    # result screen. Nullable when the sighting did not land inside any
+    # MonitoredArea polygon (the "fallback" source case).
+    area_id: str | None = None
 
 
 class SightingResponse(ApiModel):

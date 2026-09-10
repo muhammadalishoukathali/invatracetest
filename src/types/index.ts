@@ -308,6 +308,11 @@ export interface PlaceAssociation {
   areaName: string | null
   trailName: string | null
   source: 'osm' | 'seed' | 'fallback'
+  /** AC 6.1.2 - MonitoredArea id when the sighting fell inside an area
+   *  polygon. Null for the fallback place-source case. Powers the
+   *  post-report "Adopt this area" prompt so the client can call
+   *  POST /api/v1/adopted-areas without a second round-trip. */
+  areaId?: string | null
 }
 
 // Notification data.

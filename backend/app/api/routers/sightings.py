@@ -78,6 +78,7 @@ def serialize_sighting(
             area_name=area_name,
             trail_name=trail_name,
             source=place_source,
+            area_id=str(sighting.area_id) if sighting.area_id is not None else None,
         ),
         thumbnail_url=storage.presign_get(sighting.thumbnail_key)
         if sighting.thumbnail_key
