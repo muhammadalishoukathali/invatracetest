@@ -689,11 +689,21 @@ function pinElement(s: Sighting): HTMLElement {
   el.dataset.tier = tier
   el.className = 'map-pin'
   const isRemoved = tier === 'removed'
+  // AC 7.3 - marker states must be distinguishable without colour, so
+  // the "removed" tier gets a dashed outer ring and a slash mark on top
+  // of the greyed fill. Colour-blind users and anyone in high-contrast
+  // mode still get the shape cue.
+  const pinId = `pin-${s.id.replace(/[^a-z0-9]/gi, '')}`
+  const removedOverlay = isRemoved
+    ? `<circle cx="13" cy="11" r="10" fill="none" stroke="#fff" stroke-width="1.5" stroke-dasharray="2 2" />
+       <line x1="6" y1="17" x2="20" y2="5" stroke="#fff" stroke-width="2" stroke-linecap="round" />`
+    : ''
   el.innerHTML = `
-    <svg width="26" height="34" viewBox="0 0 26 34" xmlns="http://www.w3.org/2000/svg" style="display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.3));">
+    <svg width="26" height="34" viewBox="0 0 26 34" xmlns="http://www.w3.org/2000/svg" style="display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.3));" aria-hidden="true" data-pin-id="${pinId}">
       <path d="M13 33 C 13 33 24 20 24 11 A 11 11 0 1 0 2 11 C 2 20 13 33 13 33 Z"
             fill="${tierInfo.fill}" stroke="#fff" stroke-width="2" />
       <circle cx="13" cy="11" r="4.5" fill="#fff" opacity="${isRemoved ? 0.6 : 0.9}" />
+      ${removedOverlay}
     </svg>`
   el.style.cssText = `
     width: 26px; height: 34px; padding: 0; background: transparent;

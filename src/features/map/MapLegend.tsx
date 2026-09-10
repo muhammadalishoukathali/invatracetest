@@ -81,10 +81,12 @@ export function MapLegend() {
       <Row colour="#C2412D" label="Hotspot (5+ reports)" />
       <Row colour="#D9880F" label="Spreading (2-4 reports)" />
       <Row colour="#2E7D3F" label="Isolated (1 report)" />
-      <Row colour="#8B978F" label="Removed" muted />
+      <Row colour="#8B978F" label="Removed" muted removedPattern />
       <p className="map-legend-card__note">
         Colour reflects how many community reports share the same spot.
-        Reports appear once they pass automated checks.
+        Removed sightings also carry a dashed ring and slash mark so the
+        state is readable without colour. Reports appear once they pass
+        automated checks.
       </p>
     </div>
   )
@@ -109,11 +111,33 @@ export function MapLegend() {
   return card
 }
 
-/** One colour-swatch + label row in the legend card. */
-function Row({ colour, label, muted }: { colour: string; label: string; muted?: boolean }) {
+/** One colour-swatch + label row in the legend card. The removedPattern
+ *  variant reproduces the marker's shape cue (dashed ring + slash) so
+ *  the legend is a truthful preview of what the map draws. */
+function Row({
+  colour,
+  label,
+  muted,
+  removedPattern,
+}: { colour: string; label: string; muted?: boolean; removedPattern?: boolean }) {
   return (
     <div className="map-legend-card__row">
-      <span aria-hidden className="map-legend-card__dot" style={{ background: colour, opacity: muted ? 0.65 : 1 }} />
+      {removedPattern ? (
+        <svg
+          aria-hidden
+          width="14"
+          height="14"
+          viewBox="0 0 14 14"
+          className="map-legend-card__dot"
+          style={{ background: 'transparent' }}
+        >
+          <circle cx="7" cy="7" r="6" fill={colour} opacity={muted ? 0.65 : 1} />
+          <circle cx="7" cy="7" r="5" fill="none" stroke="#fff" strokeWidth="1" strokeDasharray="1.5 1.5" />
+          <line x1="3" y1="11" x2="11" y2="3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      ) : (
+        <span aria-hidden className="map-legend-card__dot" style={{ background: colour, opacity: muted ? 0.65 : 1 }} />
+      )}
       <span>{label}</span>
     </div>
   )

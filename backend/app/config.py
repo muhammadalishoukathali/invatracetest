@@ -106,6 +106,11 @@ class Settings(BaseSettings):
     # Catalogue version served by /api/v1/catalogue and echoed on /config/limits
     # so clients can invalidate offline packs when the evidence set changes.
     catalogue_version: str = Field(default="v2026-09-08", min_length=1, max_length=32)
+    # AC 7.1 - Prometheus histogram exporter for per-endpoint latency SLOs.
+    # Off by default in tests so the /metrics scrape endpoint (and the
+    # global process-wide registry the instrumentator installs into) does
+    # not leak state across app factories in the unit suite.
+    metrics_enabled: bool = True
 
     @field_validator("cors_origins", "e1_model_versions", mode="before")
     @classmethod

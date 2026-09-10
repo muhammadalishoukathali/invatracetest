@@ -14,6 +14,7 @@ dependencies = [
   "geoalchemy2>=0.16,<1",
   "osmium>=4,<5",
   "pillow>=11,<13",
+  "prometheus-fastapi-instrumentator>=7,<9",
   "psycopg[binary]>=3.2,<4",
   "pydantic-settings>=2.7,<3",
   "pyjwt>=2.10,<3",

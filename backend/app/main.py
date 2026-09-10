@@ -176,6 +176,28 @@ def create_app() -> FastAPI:
             request_id_var.reset(token)
 
     install_error_handlers(app)
+    # AC 7.1 - per-endpoint latency histograms exposed at /metrics. The
+    # instrumentator adds a middleware that records a HistogramVec keyed
+    # by (method, handler, status) so we can compute p95/p99 SLOs in the
+    # CI latency-budget check and in production Grafana. Import is local
+    # so unit tests can still boot the app when the optional dep is not
+    # installed (they never call create_app with metrics_enabled=True).
+    if settings.metrics_enabled:
+        try:
+            from prometheus_fastapi_instrumentator import Instrumentator
+
+            Instrumentator(
+                should_group_status_codes=False,
+                should_ignore_untemplated=True,
+                excluded_handlers=["/metrics", "/health"],
+            ).instrument(app).expose(
+                app,
+                endpoint="/metrics",
+                include_in_schema=False,
+                should_gzip=False,
+            )
+        except ImportError:
+            log.warning("metrics_dependency_missing")
     # Order doesn't matter for routing (paths are distinct) but keeping health
     # first is nice for readability when scanning the OpenAPI docs.
     for router in (

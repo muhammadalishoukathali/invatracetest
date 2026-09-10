@@ -67,7 +67,7 @@ export function PlaceAssociationsPage() {
 
   const { associations, catalogueVersion, occurrenceDataUpdatedAt, disclaimer } = assoc.data
   return (
-    <section style={{ padding: 20, maxWidth: 720 }}>
+    <section style={{ padding: 20, maxWidth: 720 }} aria-live="polite">
       <header>
         <h1 style={{ marginTop: 0 }}>Plants recorded at {place.data.displayName}</h1>
         <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 4 }}>
