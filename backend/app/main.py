@@ -20,6 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routers import (
     admin,
+    config,
     health,
     identity,
     location,
@@ -173,6 +174,7 @@ def create_app() -> FastAPI:
     # first is nice for readability when scanning the OpenAPI docs.
     for router in (
         health.router,
+        config.router,
         identity.router,
         species.router,
         species.model_config_router,

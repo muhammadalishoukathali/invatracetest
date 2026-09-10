@@ -256,6 +256,24 @@ export const handlers = [
   http.get(url('/health'), () =>
     HttpResponse.json({ status: 'ok', database: 'ok' })),
 
+  http.get(url('/api/v1/config/limits'), () =>
+    HttpResponse.json({
+      locationAccuracyMaxM: 250,
+      removalProximityMaxM: 250,
+      discoveryParkBufferM: 1000,
+      discoveryTrailBufferM: 750,
+      discoveryDecayScaleM: 250,
+      waterwayUpstreamMaxKm: 5,
+      occurrenceCoordUncertaintyMaxM: 1000,
+      adoptionMaxPerIdentity: 50,
+      adoptionRateLimitPerHour: 30,
+      activityChangeTolerancePct: 10,
+      removalRateLimitPerHour: 20,
+      removalRateLimitPerDay: 100,
+      removalIdempotencyWindowSeconds: 60,
+      catalogueVersion: 'v2026-09-08',
+    })),
+
   http.post(url('/api/v1/profiles/start'), async ({ request }) => {
     const body = (await request.json()) as { installationToken?: unknown; displayName?: unknown }
     if (!validInstallationToken(body.installationToken) || !validDisplayName(body.displayName)) {

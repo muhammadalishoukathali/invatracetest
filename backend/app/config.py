@@ -87,6 +87,26 @@ class Settings(BaseSettings):
     # `invatrace worker` CLI don't double-run.
     run_workers_in_api: bool = False
 
+    # Iteration 2 - single source of truth for all thresholds surfaced through
+    # GET /api/v1/config/limits. Any hardcoded copy of these values in FE or BE
+    # code is a bug; render error text and gate submission using this endpoint.
+    location_accuracy_max_m: int = Field(default=250, ge=10, le=10_000)
+    removal_proximity_max_m: int = Field(default=250, ge=10, le=10_000)
+    discovery_park_buffer_m: int = Field(default=1000, ge=50, le=20_000)
+    discovery_trail_buffer_m: int = Field(default=750, ge=50, le=20_000)
+    discovery_decay_scale_m: int = Field(default=250, ge=10, le=20_000)
+    waterway_upstream_max_km: int = Field(default=5, ge=1, le=100)
+    occurrence_coord_uncertainty_max_m: int = Field(default=1000, ge=10, le=100_000)
+    adoption_max_per_identity: int = Field(default=50, ge=1, le=10_000)
+    adoption_rate_limit_per_hour: int = Field(default=30, ge=1, le=10_000)
+    activity_change_tolerance_pct: int = Field(default=10, ge=0, le=100)
+    removal_rate_limit_per_hour: int = Field(default=20, ge=1, le=10_000)
+    removal_rate_limit_per_day: int = Field(default=100, ge=1, le=100_000)
+    removal_idempotency_window_seconds: int = Field(default=60, ge=1, le=86_400)
+    # Catalogue version served by /api/v1/catalogue and echoed on /config/limits
+    # so clients can invalidate offline packs when the evidence set changes.
+    catalogue_version: str = Field(default="v2026-09-08", min_length=1, max_length=32)
+
     @field_validator("cors_origins", "e1_model_versions", mode="before")
     @classmethod
     def split_origins(cls, value: object) -> object:
@@ -120,6 +140,16 @@ class Settings(BaseSettings):
             raise ValueError("production CORS origins must be explicit")
         if not self.e1_model_versions:
             raise ValueError("at least one supported E1 model version is required")
+        return self
+
+    @model_validator(mode="after")
+    def iteration_2_accuracy_alignment(self) -> Settings:
+        # AC 3.3.4: every 250 m accuracy threshold must read from the same
+        # source. Guard against a deploy that sets one but not the other.
+        if self.location_accuracy_max_m != self.screening_location_accuracy_max_m:
+            raise ValueError(
+                "location_accuracy_max_m must equal screening_location_accuracy_max_m"
+            )
         return self
 
 
