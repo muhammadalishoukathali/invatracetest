@@ -26,6 +26,8 @@ const ReportTrackingPage = lazy(() => import('@/features/report/ReportTrackingPa
   .then((module) => ({ default: module.ReportTrackingPage })))
 const PlaceAssociationsPage = lazy(() => import('@/features/discovery/PlaceAssociationsPage')
   .then((module) => ({ default: module.PlaceAssociationsPage })))
+const OfflineSettingsPage = lazy(() => import('@/features/bestiary/offline/OfflineSettingsPage')
+  .then((module) => ({ default: module.OfflineSettingsPage })))
 const MyReportsPage = lazy(() => import('@/features/report/MyReportsPage')
   .then((module) => ({ default: module.MyReportsPage })))
 
@@ -78,6 +80,7 @@ export const router = createBrowserRouter([
       { path: 'reports', element: loadRoute(<MyReportsPage />) },
       { path: 'reports/:reportId', element: loadRoute(<ReportTrackingPage />) },
       { path: 'places/:placeId/plants', element: loadRoute(<PlaceAssociationsPage />) },
+      { path: 'settings/offline', element: loadRoute(<OfflineSettingsPage />) },
       { path: '*', element: <Navigate to="/map" replace /> },
     ],
   },

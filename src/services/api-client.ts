@@ -10,6 +10,19 @@ const BASE = MOCKS_ON
   ? ''
   : (import.meta.env.VITE_API_BASE_URL ?? '')
 
+/** Absolute URL for an API path. Some non-JSON code paths (streaming
+ *  offline-pack files, e.g.) call fetch() directly rather than through
+ *  the api() wrapper below; they use this helper so they see the same
+ *  BASE resolution and don't hand undici a bare relative URL in
+ *  environments that reject those. */
+export function apiUrl(path: string): string {
+  if (BASE) return `${BASE}${path}`
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return new URL(path, window.location.origin).toString()
+  }
+  return new URL(path, 'http://localhost').toString()
+}
+
 // keeping the token in memory only (not localStorage) so it gets wiped when
 // the tab closes - a bit less convenient but felt like the safer default
 let accessToken: string | null = null

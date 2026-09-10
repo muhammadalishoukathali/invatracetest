@@ -9,6 +9,112 @@ import {
 
 const url = (p: string) => `*${p}`
 
+// Phase 6 - build a stable mock offline pack keyed on the canonical
+// JSON encoding, matching the backend service's determinism guarantee.
+type MockPackFile = { path: string; bytes: Uint8Array; sha256: string; byteSize: number }
+type MockManifest = {
+  catalogueVersion: string
+  reviewedAt: string
+  totalSpeciesCount: number
+  generatedAt: string
+  manifestSha256: string
+  totalByteSize: number
+  files: Array<{ path: string; sha256: string; byteSize: number; downloadUrl: string }>
+}
+let mockOfflinePackPromise: Promise<[MockManifest, Map<string, MockPackFile>]> | null = null
+function canonicalJsonBytes(payload: unknown): Uint8Array {
+  const sortKeys = (v: unknown): unknown => {
+    if (Array.isArray(v)) return v.map(sortKeys)
+    if (v && typeof v === 'object') {
+      const out: Record<string, unknown> = {}
+      for (const k of Object.keys(v as Record<string, unknown>).sort()) {
+        out[k] = sortKeys((v as Record<string, unknown>)[k])
+      }
+      return out
+    }
+    return v
+  }
+  return new TextEncoder().encode(JSON.stringify(sortKeys(payload)))
+}
+async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', bytes as BufferSource)
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+function buildMockOfflineManifest(): Promise<[MockManifest, Map<string, MockPackFile>]> {
+  if (mockOfflinePackPromise) return mockOfflinePackPromise
+  mockOfflinePackPromise = (async () => {
+    const catalogueBody = {
+      catalogue_version: 'v2026-09-08',
+      reviewed_at: '2026-09-08',
+      total_species_count: 1,
+      items: [
+        {
+          species_id: 'mikania-micrantha',
+          scientific_name: 'Mikania micrantha',
+          accepted_name_usage: null,
+          common_names: ['mile-a-minute weed'],
+          evidence_codes: ['G'],
+          evidence_sources: ['GRIIS'],
+          malaysian_states: ['Selangor'],
+          habitat: 'terrestrial',
+          reference_image_url: null,
+        },
+      ],
+    }
+    const speciesBody = {
+      ...catalogueBody.items[0],
+      identifying_characteristics: null,
+      typical_habitat: null,
+      documented_impacts: null,
+      image_attribution: null,
+      formal_severity_assessment_available: false,
+      beginner_safe_action_available: false,
+      last_reviewed_at: null,
+    }
+    const catalogueBytes = canonicalJsonBytes(catalogueBody)
+    const speciesBytes = canonicalJsonBytes(speciesBody)
+    const files: MockPackFile[] = [
+      {
+        path: 'catalogue.json',
+        bytes: catalogueBytes,
+        sha256: await sha256Hex(catalogueBytes),
+        byteSize: catalogueBytes.byteLength,
+      },
+      {
+        path: 'species/mikania-micrantha.json',
+        bytes: speciesBytes,
+        sha256: await sha256Hex(speciesBytes),
+        byteSize: speciesBytes.byteLength,
+      },
+    ]
+    const fingerprint = new TextEncoder().encode(
+      [...files]
+        .sort((a, b) => a.path.localeCompare(b.path))
+        .map((f) => `${f.path}\t${f.sha256}`)
+        .join('\n'),
+    )
+    const manifestSha = await sha256Hex(fingerprint)
+    const manifest: MockManifest = {
+      catalogueVersion: 'v2026-09-08',
+      reviewedAt: '2026-09-08',
+      totalSpeciesCount: 1,
+      generatedAt: '2026-09-11T00:00:00Z',
+      manifestSha256: manifestSha,
+      totalByteSize: files.reduce((n, f) => n + f.byteSize, 0),
+      files: files.map((f) => ({
+        path: f.path,
+        sha256: f.sha256,
+        byteSize: f.byteSize,
+        downloadUrl: `/api/v1/offline-pack/v2026-09-08/${f.path}`,
+      })),
+    }
+    return [manifest, new Map(files.map((f) => [f.path, f]))]
+  })()
+  return mockOfflinePackPromise
+}
+
 const mockReports: Report[] = []
 const mockReportIdempotency = new Map<string, { request: string; response: Report }>()
 
@@ -478,6 +584,42 @@ export const handlers = [
       occurrenceDataUpdatedAt: '2026-09-10T12:00:00Z',
       disclaimer:
         'Occurrence-based inference from public records - not a live census. Absence of a plant from this list does not mean it is absent from the site.',
+    })
+  }),
+
+  http.get(url('/api/v1/offline-pack/latest'), async () => {
+    // Phase 6 mock. The bytes served under downloadUrl below are the
+    // canonical JSON of these two payloads; the SHA-256 in each files
+    // entry MUST match what the real backend would compute from the
+    // same content, otherwise the client's verify pass rejects them.
+    const [manifest] = await buildMockOfflineManifest()
+    return HttpResponse.json(manifest)
+  }),
+  http.get(url('/api/v1/offline-pack/:version/:filePath*'), async ({ params }) => {
+    const [, files] = await buildMockOfflineManifest()
+    const version = String(params.version ?? '')
+    const filePath = Array.isArray(params.filePath)
+      ? params.filePath.join('/')
+      : String(params.filePath ?? '')
+    if (version !== 'v2026-09-08') {
+      return HttpResponse.json(
+        { code: 'pack_version_mismatch', detail: 'Offline pack version not found' },
+        { status: 404 },
+      )
+    }
+    const file = files.get(filePath)
+    if (!file) {
+      return HttpResponse.json(
+        { code: 'pack_file_not_found', detail: 'Offline pack file not found' },
+        { status: 404 },
+      )
+    }
+    return new HttpResponse(file.bytes, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-InvaTrace-File-SHA256': file.sha256,
+      },
     })
   }),
 
