@@ -274,6 +274,80 @@ export const handlers = [
       catalogueVersion: 'v2026-09-08',
     })),
 
+  http.get(url('/api/v1/catalogue'), () =>
+    HttpResponse.json({
+      catalogueVersion: 'v2026-09-08',
+      reviewedAt: '2026-09-08',
+      totalSpeciesCount: 32,
+      items: [
+        {
+          speciesId: 'mikania-micrantha',
+          scientificName: 'Mikania micrantha',
+          acceptedNameUsage: null,
+          commonNames: ['Mile-a-minute weed'],
+          evidenceCodes: ['G', 'A'],
+          evidenceSources: ['griis-malaysia-v1_3#91702', 'doa-ias-factsheet-2025#p39'],
+          malaysianStates: ['Peninsular Malaysia', 'Sabah', 'Sarawak'],
+          habitat: 'terrestrial',
+          referenceImageUrl: null,
+        },
+      ],
+    })),
+
+  http.get(url('/api/v1/catalogue/search'), ({ request }) => {
+    const q = new URL(request.url).searchParams.get('q')?.toLowerCase().trim() ?? ''
+    const all = [
+      { speciesId: 'mikania-micrantha', scientificName: 'Mikania micrantha' },
+      { speciesId: 'psidium-guajava', scientificName: 'Psidium guajava' },
+    ]
+    const items = q
+      ? all.filter((s) => s.scientificName.toLowerCase().includes(q) || s.speciesId.includes(q))
+      : all
+    return HttpResponse.json({
+      catalogueVersion: 'v2026-09-08',
+      reviewedAt: '2026-09-08',
+      totalSpeciesCount: 32,
+      items: items.map((s) => ({
+        ...s,
+        acceptedNameUsage: null,
+        commonNames: [],
+        evidenceCodes: ['G'] as const,
+        evidenceSources: ['griis-malaysia-v1_3'],
+        malaysianStates: [],
+        habitat: 'terrestrial',
+        referenceImageUrl: null,
+      })),
+    })
+  }),
+
+  http.get(url('/api/v1/catalogue/:speciesId'), ({ params }) => {
+    const speciesId = String(params.speciesId)
+    if (speciesId !== 'mikania-micrantha') {
+      return HttpResponse.json(
+        { code: 'species_not_found', detail: 'Not found', requestId: 'mock' },
+        { status: 404 },
+      )
+    }
+    return HttpResponse.json({
+      speciesId,
+      scientificName: 'Mikania micrantha',
+      acceptedNameUsage: null,
+      commonNames: ['Mile-a-minute weed'],
+      evidenceCodes: ['G', 'A'],
+      evidenceSources: ['griis-malaysia-v1_3#91702', 'doa-ias-factsheet-2025#p39'],
+      malaysianStates: ['Peninsular Malaysia', 'Sabah', 'Sarawak'],
+      habitat: 'terrestrial',
+      referenceImageUrl: null,
+      identifyingCharacteristics: null,
+      typicalHabitat: null,
+      documentedImpacts: null,
+      imageAttribution: null,
+      formalSeverityAssessmentAvailable: false,
+      beginnerSafeActionAvailable: false,
+      lastReviewedAt: '2026-09-08',
+    })
+  }),
+
   http.post(url('/api/v1/profiles/start'), async ({ request }) => {
     const body = (await request.json()) as { installationToken?: unknown; displayName?: unknown }
     if (!validInstallationToken(body.installationToken) || !validDisplayName(body.displayName)) {

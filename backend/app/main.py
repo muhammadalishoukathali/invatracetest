@@ -20,6 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routers import (
     admin,
+    catalogue,
     config,
     health,
     identity,
@@ -176,6 +177,7 @@ def create_app() -> FastAPI:
         health.router,
         config.router,
         identity.router,
+        catalogue.router,
         species.router,
         species.model_config_router,
         notifications.router,

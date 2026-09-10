@@ -17,8 +17,9 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.models import MonitoredPlace, Report, Sighting, Species
+from app.db.models import CatalogueVersion, MonitoredPlace, Report, Sighting, Species
 from app.domain.catalogue import load_manifest, load_status_records
+from app.domain.evidence_catalogue import load_evidence_catalogue
 
 # Citation metadata attached to each species' guidance_metadata.sources - shown
 # to the user so the "this plant is invasive" claim isn't just asserted, it's
@@ -454,6 +455,8 @@ def load_reference_data(session: Session) -> None:
         else:
             session.add(Species(**values))
     session.flush()
+    _load_evidence_catalogue_v2026_09(session)
+    session.flush()
     for name, latitude, longitude in PLACES:
         if not session.scalar(select(MonitoredPlace.id).where(MonitoredPlace.name == name)):
             session.add(
@@ -515,6 +518,75 @@ def seed_demo_data(session: Session) -> None:
                 **values,
             ))
     session.commit()
+
+
+def _load_evidence_catalogue_v2026_09(session: Session) -> None:
+    """Iteration 2 Phase 2 - upsert the 32 evidence-confirmed species and
+    stamp their ``catalogue_version`` so the /api/v1/catalogue endpoint can
+    filter to just this snapshot. Rows for species not previously seeded get
+    created with minimal Iteration-1-shaped defaults (``is_invasive=True``,
+    empty guidance/removal steps) so the existing ``Species`` NOT NULL
+    columns are satisfied without pretending we have reviewed removal steps.
+    """
+    catalogue = load_evidence_catalogue()
+    version_row = session.get(CatalogueVersion, catalogue.catalogue_version)
+    reviewed_date = catalogue.reviewed_at
+    reviewed_dt = datetime(
+        reviewed_date.year, reviewed_date.month, reviewed_date.day, tzinfo=UTC
+    )
+    if version_row is None:
+        session.add(
+            CatalogueVersion(
+                version=catalogue.catalogue_version,
+                reviewed_at=reviewed_date,
+                total_species_count=catalogue.total_species_count,
+                notes=catalogue.notes or None,
+            )
+        )
+    else:
+        version_row.reviewed_at = reviewed_date
+        version_row.total_species_count = catalogue.total_species_count
+        version_row.notes = catalogue.notes or None
+
+    for record in catalogue.records:
+        species = session.get(Species, record.species_id)
+        common = list(record.common_names)
+        display_name = common[0] if common else record.scientific_name
+        if species is None:
+            species = Species(
+                id=record.species_id,
+                name=display_name,
+                latin_name=record.scientific_name,
+                common_names=common,
+                is_invasive=True,
+                risk="watch",
+                traits=[],
+                native_twin=None,
+                removal_steps=[],
+                do_not_do=[],
+                detail_available=False,
+                reportable=False,
+                action_guides=[],
+                malaysia_status="invasive",
+                action_eligible=False,
+                guidance_metadata={},
+            )
+            session.add(species)
+        else:
+            # Preserve any hand-authored copy on species already seeded by the
+            # Iteration 1 SPECIES table; only overwrite name+common_names when
+            # they are still at defaults.
+            if not species.common_names:
+                species.common_names = common
+            if not species.name:
+                species.name = display_name
+        species.catalogue_version = catalogue.catalogue_version
+        species.evidence_codes = list(record.evidence_codes)
+        species.evidence_sources = list(record.evidence_sources)
+        species.malaysian_states = list(record.malaysian_states)
+        species.habitat = record.habitat
+        species.accepted_name_usage = record.accepted_name_usage
+        species.last_reviewed_at = reviewed_dt
 
 
 def seed_development_data(session: Session) -> None:

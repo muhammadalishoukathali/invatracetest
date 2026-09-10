@@ -26,6 +26,7 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     Computed,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -211,6 +212,50 @@ class Species(TimestampMixin, Base):
     guidance_metadata: Mapped[dict[str, Any]] = mapped_column(
         JSON_TYPE, default=dict, nullable=False
     )
+    # Iteration 2 Phase 2 - evidence catalogue (32-species v2026-09-08). Every
+    # row that belongs to the new catalogue carries the version string; rows
+    # left over from the Iteration 1 model-derived seed keep it null so the
+    # /api/v1/catalogue endpoint can filter to just the evidence set.
+    catalogue_version: Mapped[str | None] = mapped_column(String(32), index=True)
+    evidence_codes: Mapped[list[str]] = mapped_column(
+        JSON_TYPE, default=list, nullable=False
+    )
+    evidence_sources: Mapped[list[str]] = mapped_column(
+        JSON_TYPE, default=list, nullable=False
+    )
+    malaysian_states: Mapped[list[str]] = mapped_column(
+        JSON_TYPE, default=list, nullable=False
+    )
+    habitat: Mapped[str | None] = mapped_column(String(60))
+    accepted_name_usage: Mapped[str | None] = mapped_column(String(160))
+    reference_image_url: Mapped[str | None] = mapped_column(String(500))
+    image_attribution: Mapped[dict[str, Any] | None] = mapped_column(JSON_TYPE)
+    identifying_characteristics: Mapped[str | None] = mapped_column(Text)
+    typical_habitat: Mapped[str | None] = mapped_column(Text)
+    documented_impacts: Mapped[str | None] = mapped_column(Text)
+    severity_assessment_available: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
+    beginner_safe_action_available: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
+    last_reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class CatalogueVersion(Base):
+    """One row per published Iteration 2 catalogue snapshot. AC 5.2.1 needs
+    the app to render the version + last-reviewed date so users can trust
+    the source of truth is dated."""
+
+    __tablename__ = "catalogue_versions"
+
+    version: Mapped[str] = mapped_column(String(32), primary_key=True)
+    published_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    reviewed_at: Mapped[Any] = mapped_column(Date, nullable=False)
+    total_species_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    notes: Mapped[str | None] = mapped_column(Text)
 
 
 # location/geometry columns below are GENERATED (Computed) from lat/lng or an
