@@ -1,6 +1,8 @@
 import { useInfiniteQuery } from '@tanstack/react-query'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Icon } from '@/components/Icon'
+import { RemovalConfirmStep } from './RemovalConfirmStep'
 import { api } from '@/services/api-client'
 import { useOnline } from '@/hooks/useOnline'
 import { scanStateFromPath } from '@/features/scan/scan-navigation'
@@ -250,6 +252,15 @@ function ScanHistoryRow({ scan }: { scan: ScanHistoryRecord }) {
 function ReportRow({ report }: { report: Report }) {
   const status = STATUS_COPY[report.status]
   const name = speciesName(report.submission.speciesId)
+  const [removalOpen, setRemovalOpen] = useState(false)
+  const [removalDone, setRemovalDone] = useState(false)
+  // AC 4.2.1 - the removal action is only offered while the sighting can
+  // still receive one. Published/merged reports back a live sighting; other
+  // statuses (rejected, needs_rescan, processing) have nothing to remove yet.
+  const canReportRemoval =
+    !removalDone
+    && report.sightingId != null
+    && (report.status === 'screened' || report.status === 'merged')
   const mapHref = report.sightingId ? `/map?sighting=${encodeURIComponent(report.sightingId)}` : '/map'
   const mapState = report.sightingId
     ? undefined
@@ -289,6 +300,29 @@ function ReportRow({ report }: { report: Report }) {
         <Icon name="MapPin" size={15} />
         <span>{report.sightingId ? 'View report on map' : 'View report location'}</span>
       </Link>
+      {canReportRemoval && !removalOpen && (
+        <button
+          type="button"
+          className="my-reports__map-link"
+          onClick={() => setRemovalOpen(true)}
+          aria-label={`Mark ${name} report as removed`}
+        >
+          <Icon name="Check" size={15} />
+          <span>Mark as removed</span>
+        </button>
+      )}
+      {removalOpen && (
+        <div style={{ marginTop: 12 }}>
+          <RemovalConfirmStep
+            reportId={report.id}
+            onCancel={() => setRemovalOpen(false)}
+            onDone={() => {
+              setRemovalOpen(false)
+              setRemovalDone(true)
+            }}
+          />
+        </div>
+      )}
     </li>
   )
 }

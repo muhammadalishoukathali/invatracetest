@@ -69,6 +69,23 @@ def _build_limits() -> dict[str, Limit]:
             algorithm="sliding",
         ),
         "report_create_daily": Limit(50, 24 * 60 * 60),
+        # AC 4.2.4 - community removal-report caps (Epic 4). Sliding window so
+        # a burst at the hour boundary can't slip 2x through a fixed reset.
+        "removal_report_hour": Limit(
+            settings.removal_rate_limit_per_hour,
+            60 * 60,
+            algorithm="sliding",
+        ),
+        "removal_report_day": Limit(
+            settings.removal_rate_limit_per_day,
+            24 * 60 * 60,
+            algorithm="sliding",
+        ),
+        "removal_report_ip_hour": Limit(
+            settings.removal_rate_limit_per_hour,
+            60 * 60,
+            algorithm="sliding",
+        ),
         "sightings_read": Limit(120, 60),
     }
 

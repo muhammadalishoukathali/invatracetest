@@ -530,7 +530,8 @@ class Sighting(Base):
     __tablename__ = "sightings"
     __table_args__ = (
         CheckConstraint(
-            "status IN ('candidate','screened','rejected','removed','merged')", name="status"
+            "status IN ('candidate','screened','rejected','removed','merged','removal_reported')",
+            name="status",
         ),
         CheckConstraint("reporter_trust IN ('New','Trusted','Steward')", name="reporter_trust"),
         CheckConstraint("latitude BETWEEN 0.8 AND 7.5", name="malaysia_latitude"),
@@ -611,6 +612,36 @@ Index(
     unique=True,
     postgresql_where=ReportSightingLink.active.is_(True),
 )
+
+
+class SightingStatusHistory(Base):
+    """Append-only audit trail of every Sighting status transition driven by a
+    community removal-report (Epic 4) or admin action. Captures the coords
+    the actor submitted and the distance we computed to the sighting so the
+    vicinity check is defensible after the fact. Kept intentionally
+    separate from AuditEvent so the removal flow can be queried without
+    scanning a JSON blob.
+    """
+
+    __tablename__ = "sighting_status_history"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    sighting_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("sightings.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    from_status: Mapped[str] = mapped_column(String(20), nullable=False)
+    to_status: Mapped[str] = mapped_column(String(20), nullable=False)
+    actor_profile_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("profiles.id", ondelete="SET NULL"), index=True
+    )
+    submitted_lat: Mapped[Decimal | None] = mapped_column(Numeric(8, 5))
+    submitted_lon: Mapped[Decimal | None] = mapped_column(Numeric(8, 5))
+    submitted_accuracy_m: Mapped[int | None] = mapped_column(Integer)
+    calculated_distance_m: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    idempotency_key: Mapped[str | None] = mapped_column(String(128))
+    event_time_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
 
 class VerificationJob(Base):

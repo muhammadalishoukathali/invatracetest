@@ -394,6 +394,80 @@ export const handlers = [
     })
   }),
 
+  http.post(url('/api/v1/reports/:reportId/removal'), async ({ params, request }) => {
+    // Phase 4 mock: mirrors the server-side accuracy + proximity rules used
+    // by ``backend/app/api/routers/removals.py``. The seeded "eligible"
+    // sighting sits at (3.1500, 101.6900); "already removed" report id ends
+    // in "-removed" so tests can drive the SIGHTING_NOT_ELIGIBLE branch
+    // without walking the whole publish pipeline.
+    const reportId = String(params.reportId ?? '')
+    const key = request.headers.get('idempotency-key') ?? ''
+    if (!/^[A-Za-z0-9._:-]{8,128}$/.test(key)) {
+      return HttpResponse.json(
+        { code: 'invalid_idempotency_key', detail: 'A valid Idempotency-Key is required.' },
+        { status: 400 },
+      )
+    }
+    const body = (await request.json()) as {
+      latitude?: number
+      longitude?: number
+      accuracyM?: number
+    }
+    const lat = Number(body.latitude ?? 0)
+    const lon = Number(body.longitude ?? 0)
+    const accuracyM = Number(body.accuracyM ?? 0)
+    const ceiling = 250
+    const proximity = 250
+    if (reportId.endsWith('-removed')) {
+      return HttpResponse.json(
+        {
+          code: 'SIGHTING_NOT_ELIGIBLE',
+          detail: "Sighting is in status 'removal_reported' and cannot accept a removal report.",
+        },
+        { status: 422 },
+      )
+    }
+    if (accuracyM > ceiling) {
+      return HttpResponse.json(
+        {
+          code: 'LOCATION_INACCURATE',
+          detail: `Location accuracy (${Math.round(accuracyM)} m) is worse than the ${ceiling} m ceiling.`,
+        },
+        { status: 422 },
+      )
+    }
+    // Rough great-circle distance in metres from the seeded sighting.
+    const sightingLat = 3.1500
+    const sightingLon = 101.6900
+    const toRad = (v: number) => (v * Math.PI) / 180
+    const R = 6371008.8
+    const dLat = toRad(lat - sightingLat)
+    const dLon = toRad(lon - sightingLon)
+    const a =
+      Math.sin(dLat / 2) ** 2
+      + Math.cos(toRad(sightingLat)) * Math.cos(toRad(lat)) * Math.sin(dLon / 2) ** 2
+    const distance = 2 * R * Math.asin(Math.sqrt(a))
+    if (distance > proximity) {
+      return HttpResponse.json(
+        {
+          code: 'LOCATION_OUT_OF_RANGE',
+          detail: `You are ${Math.round(distance)} m from the sighting; within ${proximity} m is required.`,
+        },
+        { status: 422 },
+      )
+    }
+    return HttpResponse.json({
+      sightingId: '00000000-0000-4000-8000-000000000042',
+      reportId,
+      fromStatus: 'screened',
+      toStatus: 'removal_reported',
+      calculatedDistanceM: distance,
+      proximityMaxM: proximity,
+      accuracyCeilingM: ceiling,
+      eventTimeUtc: new Date().toISOString(),
+    })
+  }),
+
   http.post(url('/api/v1/profiles/start'), async ({ request }) => {
     const body = (await request.json()) as { installationToken?: unknown; displayName?: unknown }
     if (!validInstallationToken(body.installationToken) || !validDisplayName(body.displayName)) {
