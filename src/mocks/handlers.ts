@@ -348,6 +348,52 @@ export const handlers = [
     })
   }),
 
+  http.post(url('/api/v1/location-context'), async ({ request }) => {
+    const body = (await request.json()) as {
+      latitude?: number
+      longitude?: number
+      accuracyM?: number
+    }
+    const accuracyM = Number(body.accuracyM ?? 0)
+    const lat = Number(body.latitude ?? 0)
+    const lon = Number(body.longitude ?? 0)
+    const now = new Date().toISOString()
+    const ceiling = 250
+    if (accuracyM > ceiling) {
+      return HttpResponse.json({
+        contextState: 'boundary_uncertain',
+        actionEligible: false,
+        boundarySource: null,
+        boundaryVersion: null,
+        boundaryName: null,
+        checkedAt: now,
+        accuracyCeilingM: ceiling,
+      })
+    }
+    const insideBukitKiara =
+      lat >= 3.1452 && lat <= 3.1542 && lon >= 101.6362 && lon <= 101.6462
+    if (insideBukitKiara) {
+      return HttpResponse.json({
+        contextState: 'inside_protected_area',
+        actionEligible: false,
+        boundarySource: 'Federal Dept of Forestry Peninsular Malaysia',
+        boundaryVersion: 'dev-seed-2026-09-11',
+        boundaryName: 'Bukit Kiara Federal Park',
+        checkedAt: now,
+        accuracyCeilingM: ceiling,
+      })
+    }
+    return HttpResponse.json({
+      contextState: 'no_intersection',
+      actionEligible: false,
+      boundarySource: null,
+      boundaryVersion: null,
+      boundaryName: null,
+      checkedAt: now,
+      accuracyCeilingM: ceiling,
+    })
+  }),
+
   http.post(url('/api/v1/profiles/start'), async ({ request }) => {
     const body = (await request.json()) as { installationToken?: unknown; displayName?: unknown }
     if (!validInstallationToken(body.installationToken) || !validDisplayName(body.displayName)) {

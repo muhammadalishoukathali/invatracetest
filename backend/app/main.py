@@ -25,6 +25,7 @@ from app.api.routers import (
     health,
     identity,
     location,
+    location_context,
     notifications,
     reports,
     scans,
@@ -186,6 +187,7 @@ def create_app() -> FastAPI:
         reports.router,
         sightings.router,
         location.router,
+        location_context.router,
         admin.router,
     ):
         app.include_router(router)

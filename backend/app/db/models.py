@@ -300,6 +300,27 @@ class MonitoredArea(Base):
     metadata_json: Mapped[dict[str, Any]] = mapped_column(JSON_TYPE, default=dict, nullable=False)
 
 
+class ProtectedArea(Base):
+    """Gazetted protected areas (national parks, forest reserves, wildlife
+    sanctuaries). Separate from MonitoredArea so we can distinguish
+    "protected" from generic OSM green patches and version the boundary
+    dataset. Backs POST /api/v1/location-context (AC 3.3.1 / 3.3.2).
+    """
+
+    __tablename__ = "protected_areas"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    source: Mapped[str] = mapped_column(String(120), nullable=False)
+    dataset_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    geometry: Mapped[Any] = mapped_column(
+        Geography("MULTIPOLYGON", srid=4326, spatial_index=False), nullable=False
+    )
+    updated_at: Mapped[Any] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class Trail(Base):
     """Line geometry (hiking trails etc) from the same OSM import as
     MonitoredArea, used the same way for place labelling.
@@ -770,3 +791,4 @@ Index("ix_sightings_location_gist", Sighting.location, postgresql_using="gist")
 Index("ix_places_location_gist", MonitoredPlace.location, postgresql_using="gist")
 Index("ix_areas_geometry_gist", MonitoredArea.geometry, postgresql_using="gist")
 Index("ix_trails_geometry_gist", Trail.geometry, postgresql_using="gist")
+Index("ix_protected_areas_geometry_gist", ProtectedArea.geometry, postgresql_using="gist")

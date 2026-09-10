@@ -14,10 +14,17 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.db.models import CatalogueVersion, MonitoredPlace, Report, Sighting, Species
+from app.db.models import (
+    CatalogueVersion,
+    MonitoredPlace,
+    ProtectedArea,
+    Report,
+    Sighting,
+    Species,
+)
 from app.domain.catalogue import load_manifest, load_status_records
 from app.domain.evidence_catalogue import load_evidence_catalogue
 
@@ -457,6 +464,8 @@ def load_reference_data(session: Session) -> None:
     session.flush()
     _load_evidence_catalogue_v2026_09(session)
     session.flush()
+    _load_protected_areas_seed(session)
+    session.flush()
     for name, latitude, longitude in PLACES:
         if not session.scalar(select(MonitoredPlace.id).where(MonitoredPlace.name == name)):
             session.add(
@@ -518,6 +527,66 @@ def seed_demo_data(session: Session) -> None:
                 **values,
             ))
     session.commit()
+
+
+# Iteration 2 Phase 3 - Small hand-authored set of KL-area protected
+# boundaries used by tests and the local dev stack. In prod this table is
+# populated from a real dataset import (Federal Dept of Forestry / DWNP
+# gazettes); the seed only exists so the location-context endpoint has
+# something to intersect against on a fresh DB.
+_PROTECTED_AREAS_SEED_VERSION = "dev-seed-2026-09-11"
+_PROTECTED_AREAS_SEED: tuple[tuple[str, str, str], ...] = (
+    (
+        "Bukit Kiara Federal Park",
+        "Federal Dept of Forestry Peninsular Malaysia",
+        # Rectangle roughly around 3.1497,101.6412 (~500m half-side) covering
+        # the demo-sighting cluster centre.
+        "MULTIPOLYGON((("
+        "101.6362 3.1452,"
+        "101.6462 3.1452,"
+        "101.6462 3.1542,"
+        "101.6362 3.1542,"
+        "101.6362 3.1452"
+        ")))",
+    ),
+    (
+        "Taman Tugu Forest Reserve",
+        "Federal Dept of Forestry Peninsular Malaysia",
+        # Small rectangle around 3.1462,101.6820 (Taman Tugu urban forest).
+        "MULTIPOLYGON((("
+        "101.6790 3.1442,"
+        "101.6850 3.1442,"
+        "101.6850 3.1482,"
+        "101.6790 3.1482,"
+        "101.6790 3.1442"
+        ")))",
+    ),
+)
+
+
+def _load_protected_areas_seed(session: Session) -> None:
+    """Idempotent upsert of dev protected-area polygons. Matched by name so
+    re-running the seed just refreshes the geometry / dataset_version
+    without duplicating rows.
+    """
+    for name, source, wkt in _PROTECTED_AREAS_SEED:
+        existing = session.scalar(
+            select(ProtectedArea).where(ProtectedArea.name == name)
+        )
+        geometry_expr = func.ST_Multi(func.ST_GeomFromText(wkt, 4326))
+        if existing is None:
+            session.add(
+                ProtectedArea(
+                    name=name,
+                    source=source,
+                    dataset_version=_PROTECTED_AREAS_SEED_VERSION,
+                    geometry=geometry_expr,
+                )
+            )
+        else:
+            existing.source = source
+            existing.dataset_version = _PROTECTED_AREAS_SEED_VERSION
+            existing.geometry = geometry_expr
 
 
 def _load_evidence_catalogue_v2026_09(session: Session) -> None:

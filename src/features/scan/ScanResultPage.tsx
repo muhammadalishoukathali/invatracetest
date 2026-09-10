@@ -4,6 +4,7 @@ import { Icon } from '@/components/Icon'
 import { useScan } from '@/features/scan/scan-store'
 import { useReportDraft } from '@/features/report/report-draft-store'
 import { PlantGuidancePanel } from '@/features/scan/PlantGuidancePanel'
+import { LocationContextCard } from '@/features/scan/LocationContextCard'
 import { resolveResultPathway, type ResultPathway } from '@/features/scan/malaysia-status'
 import { findPlantGuidance } from '@/data/plant-guidance'
 import { findModelSpecies, modelReferenceImageUrl } from '@/data/model-species-catalog'
@@ -25,6 +26,11 @@ export function ScanResultPage() {
   const location = useLocation()
   const { imageUrl, result, speciesDetail, captureSource, captureId, scanPersistStatus } = useScan()
   const [reportBlocked, setReportBlocked] = useState<string | null>(null)
+  // AC 3.3.1 - the location-context check on this render surfaces its own
+  // action_eligible flag. We combine it with the pathway check below so a
+  // protected-area or uncertain fix hides removal steps in the guidance
+  // panel even before the user answers the permission radio.
+  const [locationActionEligible, setLocationActionEligible] = useState<boolean | null>(null)
 
   if (!result) {
     return <Navigate to="/scan" replace state={location.state} />
@@ -84,9 +90,17 @@ export function ScanResultPage() {
   // I don't want an information-only or status-uncertain record ever reaching
   // the in-panel removal/containment flow, even if a stale server flag claims
   // actionEligible is true - the pathway check here overrides that.
-  const guidanceActionEligible = pathway.canAction
-    ? speciesDetail?.actionEligible
-    : false
+  // Merge server-side and location-context signals. If the location check
+  // has come back and said the site is protected or uncertain, that veto
+  // wins - the guidance panel must not offer removal steps regardless of
+  // what the species detail claims. If the location check hasn't run
+  // (offline, permission denied) or the pathway itself rules removal out,
+  // we still fall through to the existing false.
+  const guidanceActionEligible = !pathway.canAction
+    ? false
+    : locationActionEligible === false
+      ? false
+      : speciesDetail?.actionEligible
 
   return (
     <div className="scan-result">
@@ -144,6 +158,10 @@ export function ScanResultPage() {
             Leave it where it is, and do not report it from this result.
           </p>
         </div>
+      )}
+
+      {result.outcome !== 'uncertain' && !statusUncertain && pathway.canAction && (
+        <LocationContextCard onEligibilityChange={setLocationActionEligible} />
       )}
 
       {result.outcome !== 'uncertain' && !statusUncertain && (
