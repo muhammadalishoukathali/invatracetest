@@ -96,11 +96,16 @@ export function ScanResultPage() {
   // what the species detail claims. If the location check hasn't run
   // (offline, permission denied) or the pathway itself rules removal out,
   // we still fall through to the existing false.
+  // AC 3.3.4 fail-closed: while the location check hasn't returned yet
+  // (``locationActionEligible === null``), or explicitly said the site is
+  // not eligible, guidance must NOT default to the active-removal path.
+  // Only a positive ``true`` from the location check lets us fall through
+  // to whatever the species detail says.
   const guidanceActionEligible = !pathway.canAction
     ? false
-    : locationActionEligible === false
-      ? false
-      : speciesDetail?.actionEligible
+    : locationActionEligible === true
+      ? speciesDetail?.actionEligible
+      : false
 
   return (
     <div className="scan-result">

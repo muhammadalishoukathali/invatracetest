@@ -28,8 +28,13 @@ export type LocationContextResult = {
   boundarySource: string | null
   boundaryVersion: string | null
   boundaryName: string | null
+  // ISO datetime; ``null`` on fail-closed paths where no boundary row was
+  // consulted. Server-owned - AC 3.3.5 forbids the UI inventing this.
+  boundaryUpdatedAt: string | null
   checkedAt: string
   accuracyCeilingM: number
+  // Server echoes the accuracy_m the client sent so the UI can't drift.
+  gpsAccuracyM: number
 }
 
 export async function fetchLocationContext(

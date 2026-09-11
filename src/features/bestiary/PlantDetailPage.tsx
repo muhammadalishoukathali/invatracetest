@@ -7,11 +7,12 @@
  *  ``PlantDetailStatusSections`` component so they can be unit-tested
  *  without a DOM by rendering the sub-component in isolation.
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 
 import { Icon } from '@/components/Icon'
 import { useCatalogueDetail, type CatalogueDetail, type EvidenceCode } from '@/services/catalogue'
+import { readOfflineImageUrl } from '@/services/offline-pack'
 
 const EVIDENCE_LABEL: Record<EvidenceCode, string> = {
   G: 'GRIIS listed',
@@ -95,6 +96,30 @@ function PlantDetailView({ detail }: { detail: CatalogueDetail }) {
     Boolean(attribution?.creator) &&
     Boolean(attribution?.licence)
 
+  // AC 5.3.2 - prefer the cached image bytes from the installed offline
+  // pack over the network URL; falls back to the reference URL when no
+  // pack is installed or the pack has no image for this species (which
+  // is the default today with 0/32 populated reference_image_url).
+  const [offlineImageUrl, setOfflineImageUrl] = useState<string | null>(null)
+  useEffect(() => {
+    if (!detail.speciesId) return
+    let url: string | null = null
+    let cancelled = false
+    void readOfflineImageUrl(detail.speciesId).then((cached) => {
+      if (cancelled) {
+        if (cached) URL.revokeObjectURL(cached)
+        return
+      }
+      url = cached
+      setOfflineImageUrl(cached)
+    })
+    return () => {
+      cancelled = true
+      if (url) URL.revokeObjectURL(url)
+    }
+  }, [detail.speciesId])
+  const displayImageSrc = offlineImageUrl ?? detail.referenceImageUrl ?? undefined
+
   return (
     <main style={{ padding: 20, maxWidth: 760, margin: '0 auto' }}>
       <header>
@@ -164,7 +189,7 @@ function PlantDetailView({ detail }: { detail: CatalogueDetail }) {
       {canShowImage && (
         <figure style={{ marginTop: 20 }}>
           <img
-            src={detail.referenceImageUrl ?? undefined}
+            src={displayImageSrc}
             alt=""
             style={{
               width: '100%',
@@ -255,7 +280,61 @@ function SourcesAndCredits({ detail }: { detail: CatalogueDetail }) {
       </button>
       {open && (
         <div style={{ marginTop: 10 }}>
-          {detail.evidenceSources.length === 0 ? (
+          {/* AC 5.2.5 - render each source with its title, url/id link,
+              optional image creator + licence, and per-source review
+              date. Falls back to the opaque evidence_sources id list
+              only when the structured ``sources`` payload is empty
+              (older catalogue snapshots). */}
+          {detail.sources && detail.sources.length > 0 ? (
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 10 }}>
+              {detail.sources.map((source, index) => {
+                const isUrl = /^https?:\/\//i.test(source.urlOrId)
+                return (
+                  <li
+                    key={`${source.urlOrId}-${index}`}
+                    style={{ fontSize: 13, lineHeight: 1.4 }}
+                  >
+                    <div style={{ fontWeight: 600 }}>
+                      {isUrl ? (
+                        <a
+                          href={source.urlOrId}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                        >
+                          {source.title}
+                        </a>
+                      ) : (
+                        <>
+                          {source.title}
+                          {source.urlOrId && source.urlOrId !== source.title && (
+                            <>
+                              {' '}
+                              <code style={{ fontWeight: 400, fontSize: 12 }}>
+                                {source.urlOrId}
+                              </code>
+                            </>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    {(source.imageCreator || source.licence) && (
+                      <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+                        {source.imageCreator && <>Image: {source.imageCreator}</>}
+                        {source.imageCreator && source.licence && ' · '}
+                        {source.licence}
+                      </div>
+                    )}
+                    {source.reviewDate && (
+                      <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+                        Information reviewed{' '}
+                        {new Date(source.reviewDate).toISOString().slice(0, 10)}
+                      </div>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+          ) : detail.evidenceSources.length === 0 ? (
             <p style={{ margin: 0, color: 'var(--muted)' }}>
               No external references recorded for this species yet.
             </p>
@@ -264,6 +343,33 @@ function SourcesAndCredits({ detail }: { detail: CatalogueDetail }) {
               {detail.evidenceSources.map((sourceId) => (
                 <li key={sourceId} style={{ fontSize: 13 }}>
                   <code>{sourceId}</code> — External reference
+                </li>
+              ))}
+            </ul>
+          )}
+          {detail.evidenceCodes.length > 0 && (
+            <ul
+              aria-label="Evidence codes"
+              style={{
+                listStyle: 'none',
+                padding: 0,
+                margin: '10px 0 0',
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 6,
+              }}
+            >
+              {detail.evidenceCodes.map((code) => (
+                <li
+                  key={code}
+                  style={{
+                    fontSize: 11.5,
+                    padding: '2px 8px',
+                    borderRadius: 999,
+                    border: '1px solid var(--border)',
+                  }}
+                >
+                  {EVIDENCE_LABEL[code]}
                 </li>
               ))}
             </ul>

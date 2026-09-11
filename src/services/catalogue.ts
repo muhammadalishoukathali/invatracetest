@@ -20,6 +20,15 @@ export type CatalogueSpecies = {
   referenceImageUrl?: string | null
 }
 
+/** AC 5.2.5 - one structured source rendered by the bestiary drawer. */
+export type SourceEntry = {
+  title: string
+  urlOrId: string
+  imageCreator?: string | null
+  licence?: string | null
+  reviewDate?: string | null
+}
+
 export type CatalogueDetail = CatalogueSpecies & {
   identifyingCharacteristics?: string | null
   typicalHabitat?: string | null
@@ -28,6 +37,7 @@ export type CatalogueDetail = CatalogueSpecies & {
   formalSeverityAssessmentAvailable: boolean
   beginnerSafeActionAvailable: boolean
   lastReviewedAt?: string | null
+  sources?: SourceEntry[]
 }
 
 export type CatalogueListResponse = {

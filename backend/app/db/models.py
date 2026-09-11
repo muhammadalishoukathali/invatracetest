@@ -230,6 +230,12 @@ class Species(TimestampMixin, Base):
     accepted_name_usage: Mapped[str | None] = mapped_column(String(160))
     reference_image_url: Mapped[str | None] = mapped_column(String(500))
     image_attribution: Mapped[dict[str, Any] | None] = mapped_column(JSON_TYPE)
+    # Iteration 2 Phase 5 - Epic 5.2.5 structured sources & credits. Each entry
+    # carries {title, url_or_id, image_creator?, licence?, review_date?} so the
+    # bestiary detail drawer can render titled links, image credits and per-
+    # source review dates instead of the opaque evidence_sources id list. Kept
+    # nullable so pre-Iteration-2 rows without curated sources round-trip.
+    sources: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON_TYPE)
     identifying_characteristics: Mapped[str | None] = mapped_column(Text)
     typical_habitat: Mapped[str | None] = mapped_column(Text)
     documented_impacts: Mapped[str | None] = mapped_column(Text)

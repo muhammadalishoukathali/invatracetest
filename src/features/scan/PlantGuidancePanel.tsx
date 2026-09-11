@@ -162,8 +162,10 @@ export function PlantGuidancePanel({
 
   const modeInfo = MODE_COPY[plant.guidance_mode]
 
+  // AC 3.3.4 fail-closed: undefined / null must NOT unlock the active
+  // path. Require an explicit ``true`` from the caller.
   const activePathAllowed =
-    actionEligible !== false
+    actionEligible === true
     && permission === 'explicit_permission'
     && plant.guidance_mode !== 'report_only'
     && plant.guidance_mode !== 'general_information'

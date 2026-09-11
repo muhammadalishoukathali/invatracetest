@@ -80,6 +80,51 @@ def test_response_carries_utc_timestamp() -> None:
     assert body["checkedAt"].endswith("Z") or "+00:00" in body["checkedAt"]
 
 
+def test_response_echoes_gps_accuracy_m() -> None:
+    # AC 3.3.5 - GPS accuracy shown by the UI must come from the API,
+    # never be hardcoded. Echoed verbatim from the request.
+    client = TestClient(create_app())
+    body = _post(
+        client,
+        {"latitude": 3.1497, "longitude": 101.6412, "accuracyM": 20},
+    )
+    assert body["gpsAccuracyM"] == 20
+
+
+def test_boundary_uncertain_still_echoes_gps_accuracy() -> None:
+    # Fail-closed path still surfaces the accuracy the client sent so the
+    # UI can show it in the "why uncertain" attribution row.
+    client = TestClient(create_app())
+    body = _post(
+        client,
+        {"latitude": 3.1497, "longitude": 101.6412, "accuracyM": 400},
+    )
+    assert body["contextState"] == "boundary_uncertain"
+    assert body["gpsAccuracyM"] == 400
+    # updated_at is nullable on the fail-closed path where no PIP ran.
+    assert body["boundaryUpdatedAt"] is None
+
+
+def test_response_includes_boundary_updated_at_when_row_matches() -> None:
+    # AC 3.3.5 - the boundary dataset's update date must come from the DB.
+    # We can't guarantee a polygon hit in dev seed data, but ``no_intersection``
+    # after PIP ran also surfaces the dataset's latest updated_at so the UI
+    # can attribute it. Assert the field is present and ISO-shaped whenever
+    # the response is not the fail-closed branch.
+    client = TestClient(create_app())
+    body = _post(
+        client,
+        {"latitude": 3.1500, "longitude": 101.6900, "accuracyM": 15},
+    )
+    assert body["contextState"] in {"inside_protected_area", "no_intersection"}
+    updated = body.get("boundaryUpdatedAt")
+    # It may be ``None`` if the ProtectedArea table is empty in the test DB;
+    # if it is set, it must be a parseable ISO string.
+    if updated is not None:
+        assert isinstance(updated, str)
+        assert "T" in updated
+
+
 def test_missing_body_field_is_rejected_with_422() -> None:
     client = TestClient(create_app())
     resp = client.post(

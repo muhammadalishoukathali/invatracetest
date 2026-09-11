@@ -94,7 +94,7 @@ def download_file(
         if entry.path == file_path:
             return Response(
                 content=entry.content,
-                media_type="application/json",
+                media_type=entry.content_type,
                 headers={
                     # Per-file SHA-256 lets the client verify the response
                     # without re-parsing the manifest to look this file up.

@@ -67,6 +67,11 @@ class PlantAssociationPayload(ApiModel):
     scientific_name: str
     common_names: list[str] = Field(default_factory=list)
     catalogue_link: str
+    # AC 5.1.6 - the card renders these directly so it never has to fan
+    # out to /catalogue/{id} per row.
+    reference_image_url: str | None = None
+    evidence_codes: list[str] = Field(default_factory=list)
+    malaysian_states: list[str] = Field(default_factory=list)
     evidence: list[EvidenceComponentPayload] = Field(default_factory=list)
     total_score: float
     qualifying_records: int
@@ -102,6 +107,9 @@ def _association_payload(item: PlantAssociation) -> PlantAssociationPayload:
         scientific_name=item.scientific_name,
         common_names=item.common_names,
         catalogue_link=item.catalogue_link,
+        reference_image_url=item.reference_image_url,
+        evidence_codes=item.evidence_codes,
+        malaysian_states=item.malaysian_states,
         evidence=[
             EvidenceComponentPayload(
                 kind=c.kind,

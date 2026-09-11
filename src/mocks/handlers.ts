@@ -486,6 +486,7 @@ export const handlers = [
     const lon = Number(body.longitude ?? 0)
     const now = new Date().toISOString()
     const ceiling = 250
+    const boundaryUpdatedAt = '2026-09-11T00:00:00Z'
     if (accuracyM > ceiling) {
       return HttpResponse.json({
         contextState: 'boundary_uncertain',
@@ -493,8 +494,10 @@ export const handlers = [
         boundarySource: null,
         boundaryVersion: null,
         boundaryName: null,
+        boundaryUpdatedAt: null,
         checkedAt: now,
         accuracyCeilingM: ceiling,
+        gpsAccuracyM: accuracyM,
       })
     }
     const insideBukitKiara =
@@ -506,8 +509,10 @@ export const handlers = [
         boundarySource: 'Federal Dept of Forestry Peninsular Malaysia',
         boundaryVersion: 'dev-seed-2026-09-11',
         boundaryName: 'Bukit Kiara Federal Park',
+        boundaryUpdatedAt,
         checkedAt: now,
         accuracyCeilingM: ceiling,
+        gpsAccuracyM: accuracyM,
       })
     }
     return HttpResponse.json({
@@ -516,8 +521,10 @@ export const handlers = [
       boundarySource: null,
       boundaryVersion: null,
       boundaryName: null,
+      boundaryUpdatedAt,
       checkedAt: now,
       accuracyCeilingM: ceiling,
+      gpsAccuracyM: accuracyM,
     })
   }),
 

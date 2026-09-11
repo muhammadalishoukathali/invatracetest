@@ -105,7 +105,62 @@ def test_pack_build_deterministic_and_hashes_match() -> None:
     # entering the manifest without a matching client contract.
     paths = {f.path for f in pack_a.files}
     assert "catalogue.json" in paths
-    assert all(p == "catalogue.json" or p.startswith("species/") for p in paths)
+    # AC 5.3.2 - image files live under images/. The default catalogue
+    # ships 0/32 populated reference_image_url, so this pack contains
+    # zero image entries today (the images test below asserts the
+    # pipeline itself with a fixture species).
+    assert all(
+        p == "catalogue.json" or p.startswith("species/") or p.startswith("images/")
+        for p in paths
+    )
+
+
+def test_pack_walks_reference_images_pipeline(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    """AC 5.3.2 - the builder must walk every species with a populated
+    ``reference_image_url`` and, when the resolver returns bytes, emit
+    an ``images/{species_id}.{ext}`` manifest entry with its own
+    SHA-256 and the right image content-type. Uses a fixture species
+    (the DB seed carries 0/32 populated URLs today) so we assert the
+    PIPELINE regardless of asset availability - once real bytes land,
+    no code change is needed for the pack to include them.
+    """
+    from app.services import offline_pack as pkg
+    from app.db.models import Species
+
+    # Pretend one existing catalogue species has a reference_image_url.
+    # We swap the resolver too so the test never touches the network
+    # and gets bytes deterministic enough to hash.
+    fake_bytes = b"\x89PNG\r\n\x1a\nfixture-image-body"
+    calls: dict[str, str] = {}
+
+    def fake_resolver(species_id: str, url: str) -> bytes | None:
+        calls[species_id] = url
+        return fake_bytes
+
+    monkeypatch.setattr(pkg, "_resolve_image_bytes", fake_resolver)
+
+    with SessionLocal() as session:
+        # Pick any seeded species and give it a URL for the duration of
+        # this test - rolled back automatically when the session exits.
+        target = session.query(Species).filter(
+            Species.catalogue_version.is_not(None)
+        ).first()
+        assert target is not None
+        target.reference_image_url = "https://example.invalid/plants/target.png"
+        session.flush()
+        try:
+            pack = pkg.build_offline_pack(session)
+        finally:
+            session.rollback()
+
+    image_files = [f for f in pack.files if f.path.startswith("images/")]
+    assert image_files, "pipeline did not emit an images/ entry"
+    (image_file,) = [f for f in image_files if f.path.endswith(".png")]
+    assert image_file.content == fake_bytes
+    assert image_file.sha256 == hashlib.sha256(fake_bytes).hexdigest()
+    assert image_file.byte_size == len(fake_bytes)
+    assert image_file.content_type == "image/png"
+    assert calls, "resolver was never called"
 
 
 def test_pack_catalogue_file_matches_manifest_metadata() -> None:

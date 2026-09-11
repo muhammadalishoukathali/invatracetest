@@ -661,6 +661,17 @@ def _load_evidence_catalogue_v2026_09(session: Session) -> None:
         species.habitat = record.habitat
         species.accepted_name_usage = record.accepted_name_usage
         species.last_reviewed_at = reviewed_dt
+        # AC 5.2.5 - structured sources rendered by the bestiary drawer.
+        species.sources = [
+            {
+                "title": s.title,
+                "url_or_id": s.url_or_id,
+                "image_creator": s.image_creator,
+                "licence": s.licence,
+                "review_date": s.review_date,
+            }
+            for s in record.sources
+        ]
 
 
 # --- Iteration 2 Phase 5 - discovery dev seed --------------------------------

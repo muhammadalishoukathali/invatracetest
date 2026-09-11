@@ -39,6 +39,16 @@ class CatalogueSpecies(ApiModel):
     reference_image_url: str | None = None
 
 
+class SourceEntry(ApiModel):
+    """AC 5.2.5 - structured source rendered by the bestiary drawer."""
+
+    title: str
+    url_or_id: str
+    image_creator: str | None = None
+    licence: str | None = None
+    review_date: str | None = None
+
+
 class CatalogueDetail(CatalogueSpecies):
     identifying_characteristics: str | None = None
     typical_habitat: str | None = None
@@ -49,6 +59,9 @@ class CatalogueDetail(CatalogueSpecies):
     formal_severity_assessment_available: bool = Field(default=False)
     beginner_safe_action_available: bool = Field(default=False)
     last_reviewed_at: date | None = None
+    # AC 5.2.5 - structured sources with title, url_or_id, optional image
+    # creator/licence and per-source review date.
+    sources: list[SourceEntry] = Field(default_factory=list)
 
 
 class CatalogueListResponse(ApiModel):
@@ -145,4 +158,7 @@ def catalogue_detail(species_id: str, session: Session = Depends(get_session)) -
         last_reviewed_at=(
             item.last_reviewed_at.date() if item.last_reviewed_at else None
         ),
+        sources=[
+            SourceEntry(**s) for s in (item.sources or []) if isinstance(s, dict)
+        ],
     )

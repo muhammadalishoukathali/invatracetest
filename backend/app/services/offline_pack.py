@@ -26,11 +26,14 @@ The pack currently ships two kinds of files:
   ``/api/v1/catalogue/{species_id}`` shape so plant-detail deep-links
   still resolve while offline.
 
-Reference images are intentionally out of scope for now: the seed data
-does not carry image bytes, and the AC treats optional image bundling
-as a follow-up once the catalogue's ``reference_image_url`` field is
-populated. When that changes, add an ``images/`` prefix here with the
-same per-file SHA + manifest-of-manifests pattern.
+Reference images (AC 5.3.2): the pipeline walks every species with a
+populated ``reference_image_url`` and, when ``_resolve_image_bytes``
+returns bytes for the URL, packs them under ``images/{species_id}.{ext}``
+with the same per-file SHA-256 + manifest fingerprint pattern the JSON
+files use. Today the seed carries 0/32 populated URLs and no shipped
+asset store, so ``_resolve_image_bytes`` returns ``None`` and the pack
+still ships without images; once real assets land the resolver becomes
+a real fetch and no manifest shape change is needed on either side.
 """
 
 from __future__ import annotations
@@ -53,6 +56,11 @@ class OfflinePackFile:
     sha256: str
     byte_size: int
     content: bytes
+    # Content-Type for the download endpoint. Defaults to application/json
+    # because the catalogue + per-species files are JSON; the image
+    # pipeline (AC 5.3.2) sets this per-extension so the client hands
+    # correct bytes back to <img>.
+    content_type: str = "application/json"
 
 
 @dataclass(frozen=True)
@@ -77,6 +85,46 @@ def _canonical_json(payload: object) -> bytes:
 
 def _sha256_hex(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
+
+
+_IMAGE_CONTENT_TYPES: dict[str, str] = {
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "png": "image/png",
+    "webp": "image/webp",
+    "gif": "image/gif",
+    "avif": "image/avif",
+}
+
+
+def _image_extension(url: str) -> str:
+    """Best-effort extension from a reference_image_url. Falls back to
+    ``jpg`` when the URL carries no extension so the packed file always
+    ends up with SOME extension the client can content-type."""
+    tail = url.rsplit("/", 1)[-1]
+    if "." in tail:
+        ext = tail.rsplit(".", 1)[-1].split("?", 1)[0].split("#", 1)[0].lower()
+        if ext in _IMAGE_CONTENT_TYPES:
+            return ext
+    return "jpg"
+
+
+def _resolve_image_bytes(species_id: str, url: str) -> bytes | None:
+    """AC 5.3.2 placeholder resolver.
+
+    The seed currently populates 0/32 ``reference_image_url`` values and
+    the repo has no shipped asset store, so this returns ``None`` for
+    every URL today. The pack builder walks the same code path either
+    way, which keeps the manifest pipeline honest: once real assets ship
+    (local ``assets/`` bundle or R2/MinIO), this function grows a real
+    resolver (path/S3 fetch, error-swallow to None) and no caller needs
+    to change.
+    """
+    # NOTE: intentionally minimal. Do not add unbounded network fetches
+    # here without an allowlist - the pack build endpoint is hit on
+    # every client install.
+    _ = (species_id, url)
+    return None
 
 
 def _species_summary(item: Species) -> dict:
@@ -159,6 +207,31 @@ def build_offline_pack(session: Session) -> OfflinePack:
                 sha256=_sha256_hex(detail_bytes),
                 byte_size=len(detail_bytes),
                 content=detail_bytes,
+            )
+        )
+
+    # AC 5.3.2 - pack reference images alongside the JSON so the bestiary
+    # detail card still renders offline. The resolver is a placeholder
+    # today (returns None for every URL), which means today's pack ships
+    # 0 image files even though the pipeline is wired end-to-end. Any
+    # species with a populated ``reference_image_url`` whose bytes we can
+    # resolve becomes an ``images/{species_id}.{ext}`` entry with its own
+    # SHA-256; the client verifies + caches it the same way as JSON.
+    for item in species_rows:
+        url = item.reference_image_url
+        if not url:
+            continue
+        image_bytes = _resolve_image_bytes(item.id, url)
+        if image_bytes is None:
+            continue
+        ext = _image_extension(url)
+        files.append(
+            OfflinePackFile(
+                path=f"images/{item.id}.{ext}",
+                sha256=_sha256_hex(image_bytes),
+                byte_size=len(image_bytes),
+                content=image_bytes,
+                content_type=_IMAGE_CONTENT_TYPES.get(ext, "application/octet-stream"),
             )
         )
 

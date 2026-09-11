@@ -35,11 +35,19 @@ export type EvidenceComponent = {
   mostRecentYear: number | null
 }
 
+export type EvidenceCodeShort = 'G' | 'A' | 'B'
+
 export type PlantAssociation = {
   speciesId: string
   scientificName: string
   commonNames: string[]
   catalogueLink: string
+  /** AC 5.1.6 - reference image URL or null when the species has none yet. */
+  referenceImageUrl?: string | null
+  /** AC 5.1.6 - Malaysian invasive-status evidence codes (G/A/B). */
+  evidenceCodes: EvidenceCodeShort[]
+  /** AC 5.1.6 - Malaysian states where the species is documented. */
+  malaysianStates: string[]
   evidence: EvidenceComponent[]
   totalScore: number
   qualifyingRecords: number

@@ -254,13 +254,19 @@ function ReportRow({ report }: { report: Report }) {
   const name = speciesName(report.submission.speciesId)
   const [removalOpen, setRemovalOpen] = useState(false)
   const [removalDone, setRemovalDone] = useState(false)
-  // AC 4.2.1 - the removal action is only offered while the sighting can
-  // still receive one. Published/merged reports back a live sighting; other
-  // statuses (rejected, needs_rescan, processing) have nothing to remove yet.
+  // AC 4.5.1 - the control must not be displayed for a deleted, rejected or
+  // already removal_reported sighting. We enforce a strict allow-list on the
+  // report side: only a 'screened' report backs a live sighting that is still
+  // eligible for a removal report. 'merged' is deliberately excluded because
+  // the backend (removals.py:_BLOCKED_STATUSES) rejects it with 422, and every
+  // other ReportStatus ('processing', 'needs_rescan', 'rejected',
+  // 'validation_unavailable') either has no sighting yet or is not eligible.
+  // Any future ReportStatus is hidden by default until it is explicitly opted
+  // in to the allow-list here.
   const canReportRemoval =
     !removalDone
     && report.sightingId != null
-    && (report.status === 'screened' || report.status === 'merged')
+    && report.status === 'screened'
   const mapHref = report.sightingId ? `/map?sighting=${encodeURIComponent(report.sightingId)}` : '/map'
   const mapState = report.sightingId
     ? undefined

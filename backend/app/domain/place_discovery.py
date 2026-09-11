@@ -90,6 +90,13 @@ class PlantAssociation:
     scientific_name: str
     common_names: list[str]
     catalogue_link: str
+    # AC 5.1.6 - card must show reference image, Malaysian invasive status
+    # (evidence_codes) and the states pill list. Pulled from Species at
+    # ranking time so the frontend never has to fan out to /catalogue for
+    # each row.
+    reference_image_url: str | None = None
+    evidence_codes: list[str] = field(default_factory=list)
+    malaysian_states: list[str] = field(default_factory=list)
     evidence: list[EvidenceComponent] = field(default_factory=list)
     total_score: float = 0.0
     qualifying_records: int = 0
@@ -199,6 +206,9 @@ def compute_associations(
             GbifOccurrence.species_id,
             Species.name,
             Species.common_names,
+            Species.reference_image_url,
+            Species.evidence_codes,
+            Species.malaysian_states,
             GbifOccurrence.event_year,
             distance_expr.label("distance_m"),
             inside_expr.label("is_inside"),
@@ -217,11 +227,16 @@ def compute_associations(
         record = per_species.get(species_id)
         if record is None:
             common_names = row.common_names if isinstance(row.common_names, list) else []
+            ev_codes = row.evidence_codes if isinstance(row.evidence_codes, list) else []
+            states = row.malaysian_states if isinstance(row.malaysian_states, list) else []
             record = PlantAssociation(
                 species_id=species_id,
                 scientific_name=row.name,
                 common_names=[c for c in common_names if isinstance(c, str)][:6],
                 catalogue_link=f"/plants/{species_id}",
+                reference_image_url=row.reference_image_url,
+                evidence_codes=[c for c in ev_codes if isinstance(c, str)],
+                malaysian_states=[s for s in states if isinstance(s, str)],
             )
             per_species[species_id] = record
         distance_m = float(row.distance_m) if row.distance_m is not None else buffer_m
@@ -464,9 +479,14 @@ def _bootstrap_association(session: Session, species_id: str) -> PlantAssociatio
             catalogue_link=f"/plants/{species_id}",
         )
     common_names = species.common_names if isinstance(species.common_names, list) else []
+    ev_codes = species.evidence_codes if isinstance(species.evidence_codes, list) else []
+    states = species.malaysian_states if isinstance(species.malaysian_states, list) else []
     return PlantAssociation(
         species_id=species_id,
         scientific_name=species.name,
         common_names=[c for c in common_names if isinstance(c, str)][:6],
         catalogue_link=f"/plants/{species_id}",
+        reference_image_url=species.reference_image_url,
+        evidence_codes=[c for c in ev_codes if isinstance(c, str)],
+        malaysian_states=[s for s in states if isinstance(s, str)],
     )

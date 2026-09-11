@@ -26,6 +26,14 @@ const EVIDENCE_LABEL: Record<EvidenceComponent['kind'], string> = {
   upstream_waterway: 'Upstream along a waterway',
 }
 
+// AC 5.1.6 - Malaysian invasive-status badge copy for the three
+// evidence-code buckets. Kept short so the card stays scannable.
+const STATUS_LABEL: Record<'G' | 'A' | 'B', string> = {
+  G: 'GRIIS-listed',
+  A: 'Agriculture-flagged',
+  B: 'Biosecurity-listed',
+}
+
 export function PlaceAssociationsPage() {
   const { placeId } = useParams<{ placeId: string }>()
   const place = usePlace(placeId)
@@ -122,14 +130,96 @@ function PlantAssociationCard({ item }: { item: PlantAssociation }) {
         background: 'var(--surface)',
       }}
     >
-      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-        <Icon name="Leaf" size={18} color="var(--accent)" />
-        <div style={{ flex: 1 }}>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+        {/* AC 5.1.6 - reference image, or a Leaf-icon placeholder square
+            when the species has no image yet. The placeholder keeps the
+            grid alignment stable so a mixed image/no-image list still
+            reads as one column of cards. */}
+        {item.referenceImageUrl ? (
+          <img
+            src={item.referenceImageUrl}
+            alt={item.scientificName}
+            width={56}
+            height={56}
+            style={{
+              width: 56,
+              height: 56,
+              objectFit: 'cover',
+              borderRadius: 8,
+              border: '1px solid var(--border)',
+              flex: '0 0 auto',
+            }}
+          />
+        ) : (
+          <div
+            aria-hidden="true"
+            style={{
+              width: 56,
+              height: 56,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: 8,
+              border: '1px solid var(--border)',
+              background: 'var(--surface-alt, transparent)',
+              flex: '0 0 auto',
+            }}
+          >
+            <Icon name="Leaf" size={22} color="var(--accent)" />
+          </div>
+        )}
+        <div style={{ flex: 1, minWidth: 0 }}>
           <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>{item.scientificName}</h2>
           {item.commonNames.length > 0 && (
             <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--muted)' }}>
               {item.commonNames.join(', ')}
             </p>
+          )}
+          {/* AC 5.1.6 - Malaysian invasive status. Show the evidence-code
+              badges even when the states list is empty so the user knows
+              the plant is on the catalogue at all. */}
+          {(item.evidenceCodes.length > 0 || item.malaysianStates.length > 0) && (
+            <ul
+              aria-label="Malaysian invasive status"
+              style={{
+                listStyle: 'none',
+                padding: 0,
+                margin: '8px 0 0',
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 6,
+              }}
+            >
+              {item.evidenceCodes.map((code) => (
+                <li
+                  key={`code-${code}`}
+                  style={{
+                    fontSize: 11,
+                    padding: '2px 8px',
+                    borderRadius: 999,
+                    border: '1px solid var(--border)',
+                    background: 'var(--surface-alt, transparent)',
+                    fontWeight: 600,
+                  }}
+                >
+                  {STATUS_LABEL[code as 'G' | 'A' | 'B'] ?? code}
+                </li>
+              ))}
+              {item.malaysianStates.map((state) => (
+                <li
+                  key={`state-${state}`}
+                  style={{
+                    fontSize: 11,
+                    padding: '2px 8px',
+                    borderRadius: 999,
+                    border: '1px dashed var(--border)',
+                    color: 'var(--muted)',
+                  }}
+                >
+                  {state}
+                </li>
+              ))}
+            </ul>
           )}
           <ul
             style={{
@@ -153,8 +243,14 @@ function PlantAssociationCard({ item }: { item: PlantAssociation }) {
                 }}
               >
                 {EVIDENCE_LABEL[component.kind]}
-                {component.distanceM !== null && component.kind !== 'inside' && (
-                  <> · {Math.round(component.distanceM)} m</>
+                {/* AC 5.1.6 - inside-area evidence renders the explicit
+                    "Inside this area" copy, never a "· 0 m" distance. */}
+                {component.kind === 'inside' ? (
+                  <> · Inside this area</>
+                ) : (
+                  component.distanceM !== null && (
+                    <> · {Math.round(component.distanceM)} m</>
+                  )
                 )}
                 {component.qualifyingRecords > 1 && (
                   <> · {component.qualifyingRecords} records</>

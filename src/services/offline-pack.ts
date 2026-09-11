@@ -159,12 +159,18 @@ export async function installOfflinePack(
   for (let i = 0; i < manifest.files.length; i++) {
     const entry = manifest.files[i]!
     try {
-      const { bytes } = await fetchAndVerify(entry)
+      const { bytes, response } = await fetchAndVerify(entry)
+      // AC 5.3.2 - the pack now carries reference images as well as JSON,
+      // so we preserve the server's Content-Type instead of hardcoding
+      // application/json; otherwise <img src> off the cache would refuse
+      // to decode packed image bytes.
+      const contentType =
+        response.headers.get('Content-Type') || 'application/octet-stream'
       await staging.put(
         fileUrlForPath(entry),
         new Response(bytes, {
           headers: {
-            'Content-Type': 'application/json',
+            'Content-Type': contentType,
             'X-InvaTrace-File-SHA256': entry.sha256,
           },
         }),
@@ -253,6 +259,34 @@ export async function readOfflineFile<T>(relativePath: string): Promise<T | null
     const res = await cache.match(url)
     if (!res) return null
     return (await res.json()) as T
+  } catch {
+    return null
+  }
+}
+
+/** AC 5.3.2 - resolve a packed reference image to a blob URL usable by
+ *  <img src>. Walks the installed pack for an ``images/{speciesId}.*``
+ *  entry regardless of extension; returns null when no image is packed
+ *  (today's default with 0/32 populated reference_image_url), leaving
+ *  the caller to fall back to the network URL. Blob URLs are per-page,
+ *  so callers must not persist the returned value across renders
+ *  without ``URL.revokeObjectURL``. */
+export async function readOfflineImageUrl(
+  speciesId: string,
+): Promise<string | null> {
+  if (!cacheStorageAvailable()) return null
+  const pointer = await readInstalledPack()
+  if (!pointer) return null
+  try {
+    const cache = await caches.open(pointer.cacheName)
+    const base = `https://invatrace.local/offline-pack/api/v1/offline-pack/${pointer.catalogueVersion}/images/${speciesId}`
+    for (const ext of ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif']) {
+      const res = await cache.match(`${base}.${ext}`)
+      if (!res) continue
+      const blob = await res.blob()
+      return URL.createObjectURL(blob)
+    }
+    return null
   } catch {
     return null
   }

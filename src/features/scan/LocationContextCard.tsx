@@ -258,7 +258,11 @@ export function LocationContextCard({ onEligibilityChange }: Props) {
   )
 }
 
-function BoundaryAttribution({ result }: { result: LocationContextResult }) {
+export function BoundaryAttribution({ result }: { result: LocationContextResult }) {
+  // AC 3.3.5 - every attribution value here comes from the API response;
+  // nothing about a specific boundary source, dataset version, GPS accuracy
+  // or update date is ever hardcoded on this page. The disclaimer copy
+  // itself is fixed policy text and is safe to keep in the client.
   const attribution: string[] = []
   if (result.boundarySource) attribution.push(result.boundarySource)
   if (result.boundaryVersion) attribution.push(`v${result.boundaryVersion}`)
@@ -266,18 +270,42 @@ function BoundaryAttribution({ result }: { result: LocationContextResult }) {
   const checkedLabel = Number.isNaN(checked.getTime())
     ? null
     : checked.toLocaleString()
-  if (attribution.length === 0 && !checkedLabel) return null
+  const boundaryUpdated = result.boundaryUpdatedAt
+    ? new Date(result.boundaryUpdatedAt)
+    : null
+  const boundaryUpdatedLabel =
+    boundaryUpdated && !Number.isNaN(boundaryUpdated.getTime())
+      ? boundaryUpdated.toISOString().slice(0, 10)
+      : null
+  const rowStyle = {
+    marginTop: 4, marginBottom: 0,
+    fontSize: 11, color: 'var(--muted)', lineHeight: 1.5,
+  } as const
   return (
-    <p style={{
-      marginTop: 10, marginBottom: 0,
-      fontSize: 11, color: 'var(--muted)', lineHeight: 1.5,
-    }}>
-      {attribution.length > 0 && `Boundary source: ${attribution.join(' · ')}`}
-      {attribution.length > 0 && checkedLabel && ' · '}
-      {checkedLabel && `Checked ${checkedLabel}`}
-      {' · '}
-      {`Accuracy ceiling ${result.accuracyCeilingM} m`}
-    </p>
+    <div style={{ marginTop: 10 }}>
+      {attribution.length > 0 && (
+        <p style={rowStyle} data-testid="boundary-source-row">
+          {`Boundary source: ${attribution.join(' · ')}`}
+        </p>
+      )}
+      {boundaryUpdatedLabel && (
+        <p style={rowStyle} data-testid="boundary-updated-row">
+          {`Boundary updated: ${boundaryUpdatedLabel}`}
+        </p>
+      )}
+      {typeof result.gpsAccuracyM === 'number' && (
+        <p style={rowStyle} data-testid="gps-accuracy-row">
+          {`GPS accuracy: ${Math.round(result.gpsAccuracyM)} m`}
+        </p>
+      )}
+      {checkedLabel && (
+        <p style={rowStyle}>{`Checked ${checkedLabel}`}</p>
+      )}
+      <p style={rowStyle}>{`Accuracy ceiling ${result.accuracyCeilingM} m`}</p>
+      <p style={{ ...rowStyle, marginTop: 6, fontStyle: 'italic' }}>
+        Mapped status is not removal permission.
+      </p>
+    </div>
   )
 }
 

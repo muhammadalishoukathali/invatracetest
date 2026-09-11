@@ -58,10 +58,19 @@ class LocationContextResult(ApiModel):
     boundary_source: str | None = None
     boundary_version: str | None = None
     boundary_name: str | None = None
+    # ISO datetime of the matched boundary row's ``updated_at``. Only set
+    # when a boundary row was actually consulted (inside_protected_area, or
+    # no_intersection after PIP ran); ``None`` on fail-closed paths where
+    # no row was matched. Sourced from the DB - never hardcoded (AC 3.3.5).
+    boundary_updated_at: datetime | None = None
     checked_at: datetime
     # Echo the server-side accuracy ceiling so the UI's disclaimer text
     # stays in sync with the ``config/limits`` value (AC 7.3.1).
     accuracy_ceiling_m: int
+    # Echo the request's reported accuracy verbatim so the UI can attribute
+    # the exact GPS accuracy the check used (AC 3.3.5). Server-owned so a
+    # client can't lie to itself about what it sent.
+    gps_accuracy_m: float
 
 
 # Roughly Malaysia's bounding box - queries whose lat/lon fall outside
@@ -91,6 +100,7 @@ def location_context(
             action_eligible=False,
             checked_at=checked_at,
             accuracy_ceiling_m=ceiling,
+            gps_accuracy_m=payload.accuracy_m,
         )
 
     if not _within_coverage(payload.latitude, payload.longitude):
@@ -99,6 +109,7 @@ def location_context(
             action_eligible=False,
             checked_at=checked_at,
             accuracy_ceiling_m=ceiling,
+            gps_accuracy_m=payload.accuracy_m,
         )
 
     try:
@@ -126,6 +137,7 @@ def location_context(
             action_eligible=False,
             checked_at=checked_at,
             accuracy_ceiling_m=ceiling,
+            gps_accuracy_m=payload.accuracy_m,
         )
 
     if row is not None:
@@ -135,16 +147,26 @@ def location_context(
             boundary_source=row.source,
             boundary_version=row.dataset_version,
             boundary_name=row.name,
+            boundary_updated_at=row.updated_at,
             checked_at=checked_at,
             accuracy_ceiling_m=ceiling,
+            gps_accuracy_m=payload.accuracy_m,
         )
 
     # AC 3.3.1b - outside every known boundary. Active removal still needs
     # the caller's explicit-permission consent step downstream, so
-    # ``action_eligible`` stays False until that gate flips it.
+    # ``action_eligible`` stays False until that gate flips it. We surface
+    # the most recent boundary-dataset update timestamp so the UI can show
+    # "boundary dataset updated" attribution even when no polygon matched
+    # (the check still consulted the dataset - AC 3.3.5).
+    latest_boundary_updated_at = session.execute(
+        select(func.max(ProtectedArea.updated_at))
+    ).scalar_one_or_none()
     return LocationContextResult(
         context_state="no_intersection",
         action_eligible=False,
+        boundary_updated_at=latest_boundary_updated_at,
         checked_at=checked_at,
         accuracy_ceiling_m=ceiling,
+        gps_accuracy_m=payload.accuracy_m,
     )
