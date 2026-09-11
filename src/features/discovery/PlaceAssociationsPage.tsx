@@ -103,9 +103,23 @@ export function PlaceAssociationsPage() {
         {disclaimer}
       </p>
       {associations.length === 0 ? (
-        <p style={{ marginTop: 24 }}>
-          No catalogue-listed invasive plants have been recorded here yet.
-        </p>
+        <div style={{ marginTop: 24 }}>
+          <p style={{ margin: 0 }}>No qualifying historical records found.</p>
+          <p style={{ marginTop: 10, fontSize: 13 }}>
+            <Link
+              to="/plants"
+              style={{
+                display: 'inline-flex',
+                gap: 6,
+                alignItems: 'center',
+                color: 'var(--accent)',
+              }}
+            >
+              Browse the full plant catalogue
+              <Icon name="ChevronRight" size={14} color="currentColor" />
+            </Link>
+          </p>
+        </div>
       ) : (
         <ul
           aria-label="Recorded invasive plants at this place"

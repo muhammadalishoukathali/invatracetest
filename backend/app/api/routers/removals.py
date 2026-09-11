@@ -171,6 +171,51 @@ def submit_removal_report(
     if sighting is None:
         raise _problem(404, "SIGHTING_NOT_FOUND", "Sighting not found.")
 
+    # AC 4.5.7 - Repeated submission handling: when the sighting is already
+    # in removal_reported the endpoint must return the existing current
+    # status without creating another status event. We synthesise the
+    # response from the most recent SightingStatusHistory row so callers
+    # who lost the original response (offline queue, different device,
+    # different Idempotency-Key) still see the same terminal state.
+    if sighting.status == "removal_reported":
+        last_event = session.scalar(
+            select(SightingStatusHistory)
+            .where(
+                SightingStatusHistory.sighting_id == sighting.id,
+                SightingStatusHistory.to_status == "removal_reported",
+            )
+            .order_by(SightingStatusHistory.event_time_utc.desc())
+            .limit(1)
+        )
+        if last_event is not None:
+            response.status_code = 200
+            return RemovalReportResponse(
+                sighting_id=sighting.id,
+                report_id=report_id,
+                from_status=last_event.from_status,
+                to_status="removal_reported",
+                calculated_distance_m=float(last_event.calculated_distance_m or 0.0),
+                proximity_max_m=settings.removal_proximity_max_m,
+                accuracy_ceiling_m=settings.location_accuracy_max_m,
+                event_time_utc=last_event.event_time_utc.isoformat().replace("+00:00", "Z"),
+            )
+        # No history row (shouldn't happen with normal flow) - still
+        # respond with the current terminal state rather than fabricating
+        # a new event, satisfying AC 4.5.7's "no new identical status event".
+        response.status_code = 200
+        return RemovalReportResponse(
+            sighting_id=sighting.id,
+            report_id=report_id,
+            from_status="removal_reported",
+            to_status="removal_reported",
+            calculated_distance_m=0.0,
+            proximity_max_m=settings.removal_proximity_max_m,
+            accuracy_ceiling_m=settings.location_accuracy_max_m,
+            event_time_utc=sighting.updated_at.isoformat().replace("+00:00", "Z")
+            if sighting.updated_at
+            else utcnow().isoformat().replace("+00:00", "Z"),
+        )
+
     if sighting.status in _BLOCKED_STATUSES:
         raise ApiProblem(
             422,
