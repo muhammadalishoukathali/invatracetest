@@ -37,6 +37,9 @@ import { SightingDetailsSheet } from './SightingDetailsSheet'
 import { MapLegend } from './MapLegend'
 import { Icon } from '@/components/Icon'
 import { parseMapLocationTarget, type MapLocationTarget } from './map-location-link'
+import { PlaceLayer } from '@/features/place-discovery/PlaceLayer'
+import { PlaceDiscoverySheet } from '@/features/place-discovery/PlaceDiscoverySheet'
+import { usePlaces, type PlaceListItem } from '@/services/place-discovery'
 
 // Point MapLibre at its worker file ourselves. If we don't, it tries to
 // guess a URL that sits next to Vite's optimized dep file in dev, and the
@@ -178,6 +181,11 @@ export function ThreatMapPage() {
     text: string
   } | null>(null)
   const [recordDetailsOpen, setRecordDetailsOpen] = useState(false)
+  // Wave 2c — place overlay state. `selectedPlaceId` opens the discovery
+  // sheet; `viewportBbox` is a debounced snapshot of the current map
+  // bounds so the places query can key its cache on it.
+  const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null)
+  const [viewportBbox, setViewportBbox] = useState<[number, number, number, number] | null>(null)
 
   // When we successfully recenter the user, the toast is really just a
   // quick "yep, done" - no reason to leave it stuck on screen. Errors
@@ -353,6 +361,39 @@ export function ThreatMapPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Wave 2c — track the current viewport bbox so PlaceLayer can key its
+  // fetch on it. Debounced 300 ms so rapid panning does not thrash the
+  // network. The initial snapshot fires once the style has loaded.
+  useEffect(() => {
+    const m = map.current
+    if (!m) return
+    let timer: number | undefined
+    const capture = () => {
+      const bounds = m.getBounds()
+      const bbox: [number, number, number, number] = [
+        bounds.getWest(),
+        bounds.getSouth(),
+        bounds.getEast(),
+        bounds.getNorth(),
+      ]
+      setViewportBbox(bbox)
+    }
+    const onMoveEnd = () => {
+      if (timer !== undefined) window.clearTimeout(timer)
+      timer = window.setTimeout(capture, 300)
+    }
+    if (m.isStyleLoaded()) capture()
+    else m.once('style.load', capture)
+    m.on('moveend', onMoveEnd)
+    return () => {
+      if (timer !== undefined) window.clearTimeout(timer)
+      m.off('moveend', onMoveEnd)
+    }
+    // We only ever mount the map once, so the listener lifecycle is
+    // effectively pinned to the component lifetime.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // When someone comes here via a "My Reports" link they might be pointing
   // at a private scan or a draft report that hasn't actually been published
   // as a public sighting yet. So we draw its marker separately from the API
@@ -457,6 +498,15 @@ export function ThreatMapPage() {
       position: 'relative', height: '100%', minHeight: 0,
       display: 'flex', flexDirection: 'column',
     }}>
+      <PlaceDiscoverySheet
+        placeId={selectedPlaceId}
+        onClose={() => setSelectedPlaceId(null)}
+      />
+      <PlaceLayer
+        map={map.current}
+        viewport={viewportBbox ? { bbox: viewportBbox } : null}
+        onPlaceClick={setSelectedPlaceId}
+      />
       {/* Accessibility bit - the map canvas itself is basically invisible
           to keyboard-only or screen reader users. So we always render an
           AccessibleSightingList below that mirrors the pins, including
@@ -540,6 +590,10 @@ export function ThreatMapPage() {
         isLoading={isLoading}
         isError={isError}
         onRetry={() => void refetch()}
+      />
+      <AccessiblePlaceList
+        bbox={viewportBbox}
+        onSelect={setSelectedPlaceId}
       />
       <SightingDetailsSheet />
       <SavedRecordDetailsSheet
@@ -724,6 +778,38 @@ function AccessibleSightingList({
           )}
         </>
       )}
+    </section>
+  )
+}
+
+/** Wave 2c — screen-reader mirror of the place polygons in the current
+ *  viewport, so keyboard-only users can open the discovery sheet
+ *  without ever interacting with the map canvas. Skipped when the
+ *  viewport list is empty. */
+function AccessiblePlaceList({
+  bbox,
+  onSelect,
+}: {
+  bbox: [number, number, number, number] | null
+  onSelect: (placeId: string) => void
+}) {
+  const { data } = usePlaces({ bbox: bbox ?? undefined })
+  const items: PlaceListItem[] = data?.items ?? []
+  if (items.length === 0) return null
+  return (
+    <section aria-label="Places in current map view" className="sr-only">
+      <p>
+        {`${items.length} named place${items.length === 1 ? '' : 's'} in the current map view.`}
+      </p>
+      <ul>
+        {items.map((place) => (
+          <li key={place.placeId}>
+            <button type="button" onClick={() => onSelect(place.placeId)}>
+              {place.displayName} ({place.placeType})
+            </button>
+          </li>
+        ))}
+      </ul>
     </section>
   )
 }

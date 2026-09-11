@@ -105,6 +105,20 @@ def main() -> None:
         action="store_true",
         help="required guard: confirm the extract is already clipped to Malaysia",
     )
+    osm.add_argument(
+        "--include-waterways",
+        action="store_true",
+        help="also ingest waterway=river|stream|canal|drain ways (Phase 10 Wave 2b)",
+    )
+    osm.add_argument("--provider", default="openstreetmap.fr")
+    osm.add_argument("--source-url", default=None)
+    # Phase 10 Wave 2b - direction-aware place association data pack.
+    pack = commands.add_parser(
+        "import-place-association-data",
+        help="import curated species-dispersal / GBIF-occurrence data pack",
+    )
+    pack.add_argument("pack_path", type=Path)
+    pack.add_argument("--dry-run", action="store_true")
     cleanup = commands.add_parser(
         "cleanup-uploads", help="delete expired, unsubmitted photo uploads"
     )
@@ -146,16 +160,57 @@ def main() -> None:
     elif args.command == "import-osm":
         if not args.confirm_malaysia_clipped:
             raise SystemExit("Refusing import without --confirm-malaysia-clipped.")
+        src = args.path.resolve()
+        if not src.is_file():
+            raise SystemExit(f"PBF not found: {src}")
+        name_lower = src.name.lower()
+        if not name_lower.endswith(".osm.pbf") and not name_lower.endswith(".pbf"):
+            raise SystemExit("Expected a .osm.pbf file.")
+        if src.stat().st_size < 10 * 1024 * 1024:
+            raise SystemExit("PBF must be larger than 10MB (safety guard).")
         # Lazy import so the rest of the CLI (worker, seed, cleanup) does not
         # pull in the pyosmium native extension, which the API/worker images
         # do not need at runtime.
         from app.osm_import import import_malaysia_pbf
         with SessionLocal() as session:
             imported = import_malaysia_pbf(
-                session, source_path=args.path.resolve(), source_date=args.source_date
+                session,
+                source_path=src,
+                source_date=args.source_date,
+                include_waterways=args.include_waterways,
+                provider=args.provider,
+                source_url=args.source_url,
             )
+        if imported.status == "active" and imported.completed_at is None:
+            # Cheap idempotent no-op path - existing row returned.
+            print("PBF already imported (sha256 match), no-op.")
+        else:
+            print(
+                f"Imported {imported.area_count} named areas, "
+                f"{imported.trail_count} named trails, "
+                f"{imported.waterway_count} waterways."
+            )
+    elif args.command == "import-place-association-data":
+        from app.place_association_import import (
+            PackValidationError,
+            import_place_association_pack,
+        )
+        pack_dir = args.pack_path.resolve()
+        if not pack_dir.is_dir():
+            raise SystemExit(f"pack path not found: {pack_dir}")
+        try:
+            with SessionLocal() as session:
+                summary = import_place_association_pack(
+                    session, pack_dir, dry_run=args.dry_run
+                )
+        except PackValidationError as e:
+            raise SystemExit(f"pack validation failed: {e}") from e
         print(
-            f"Imported {imported.area_count} named areas and {imported.trail_count} named trails."
+            "Place-association pack import "
+            f"({'DRY-RUN' if summary.dry_run else 'APPLIED'}): "
+            f"manifest_ok={summary.manifest_ok} "
+            f"inserted={summary.inserted} rejected={summary.rejected} "
+            f"reject_reasons={summary.reject_reasons}"
         )
     elif args.command in {"cleanup-uploads", "cleanup-worker"}:
         if args.limit < 1 or args.limit > 10_000:

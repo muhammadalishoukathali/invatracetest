@@ -96,6 +96,12 @@ class Settings(BaseSettings):
     discovery_trail_buffer_m: int = Field(default=750, ge=50, le=20_000)
     discovery_decay_scale_m: int = Field(default=250, ge=10, le=20_000)
     waterway_upstream_max_km: int = Field(default=5, ge=1, le=100)
+    # Phase 10 Wave 1 - direction-aware place association. snap tolerance is
+    # the distance (m) within which an occurrence or place snaps onto the
+    # nearest waterway; fetch radius (km) bounds the neighbourhood the
+    # discovery engine loads into memory around a report point.
+    waterway_snap_tolerance_m: int = Field(default=100, ge=1, le=10_000)
+    waterway_fetch_radius_km: int = Field(default=6, ge=1, le=100)
     occurrence_coord_uncertainty_max_m: int = Field(default=1000, ge=10, le=100_000)
     adoption_max_per_identity: int = Field(default=50, ge=1, le=10_000)
     adoption_rate_limit_per_hour: int = Field(default=30, ge=1, le=10_000)

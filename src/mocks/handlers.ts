@@ -528,6 +528,71 @@ export const handlers = [
     })
   }),
 
+  // Wave 2c — viewport-driven place index. Returns 3 fixtures somewhere
+  // in Peninsular Malaysia so the map overlay has something to paint
+  // even without the real backend running. Query params are accepted
+  // but not enforced; the mock always returns the same three places.
+  http.get(url('/api/v1/places'), () =>
+    HttpResponse.json({
+      items: [
+        {
+          placeId: 'bukit-kiara-park',
+          displayName: 'Bukit Kiara Federal Park',
+          placeType: 'park',
+          sourceFeatureId: 'osm-way-123456',
+          geometryStatus: 'authoritative',
+          source: 'openstreetmap',
+          sourceVersion: '2026-09-01',
+          geometrySimplified: {
+            type: 'Polygon',
+            coordinates: [[
+              [101.6362, 3.1452],
+              [101.6462, 3.1452],
+              [101.6462, 3.1542],
+              [101.6362, 3.1542],
+              [101.6362, 3.1452],
+            ]],
+          },
+        },
+        {
+          placeId: 'ampang-forest-reserve',
+          displayName: 'Ampang Forest Reserve',
+          placeType: 'forest',
+          sourceFeatureId: 'osm-relation-987654',
+          geometryStatus: 'authoritative',
+          source: 'openstreetmap',
+          sourceVersion: '2026-09-01',
+          geometrySimplified: {
+            type: 'Polygon',
+            coordinates: [[
+              [101.7700, 3.1600],
+              [101.7900, 3.1600],
+              [101.7900, 3.1800],
+              [101.7700, 3.1800],
+              [101.7700, 3.1600],
+            ]],
+          },
+        },
+        {
+          placeId: 'kiara-jungle-trail',
+          displayName: 'Kiara Jungle Trail',
+          placeType: 'trail',
+          sourceFeatureId: 'osm-way-555111',
+          geometryStatus: 'authoritative',
+          source: 'openstreetmap',
+          sourceVersion: '2026-09-01',
+          geometrySimplified: {
+            type: 'LineString',
+            coordinates: [
+              [101.6380, 3.1470],
+              [101.6420, 3.1495],
+              [101.6450, 3.1520],
+            ],
+          },
+        },
+      ],
+    })),
+
   http.get(url('/api/v1/places/:placeId'), ({ params }) => {
     const placeId = String(params.placeId ?? '')
     if (placeId === 'unsupported-place') {
@@ -578,12 +643,24 @@ export const handlers = [
           evidence: [
             { kind: 'inside', distanceM: 0.0, weight: 1.0, qualifyingRecords: 2, mostRecentYear: 2025 },
           ],
+          evidenceCodes: ['G'],
+          malaysianStates: ['Selangor'],
           totalScore: 1.5,
           qualifyingRecords: 2,
           mostRecentYear: 2025,
           closestDistanceM: 0.0,
           insideArea: true,
           directionAwareEvidence: false,
+          rankComponents: { tier: 1, nearbyComponent: 1.0, upstreamComponent: 0.0 },
+          evidenceRecords: [
+            {
+              type: 'inside',
+              distanceM: 0.0,
+              occurrenceRecordUid: 'gbif:1234567890',
+              sourceUrl: 'https://www.gbif.org/occurrence/1234567890',
+              licence: 'CC-BY 4.0',
+            },
+          ],
         },
         {
           speciesId: 'eichhornia-crassipes',
@@ -600,18 +677,42 @@ export const handlers = [
               mostRecentYear: 2024,
             },
           ],
+          evidenceCodes: ['G', 'A'],
+          malaysianStates: ['Selangor', 'Sabah'],
           totalScore: 0.86,
           qualifyingRecords: 1,
           mostRecentYear: 2024,
           closestDistanceM: 120.0,
           insideArea: false,
           directionAwareEvidence: true,
+          rankComponents: { tier: 2, nearbyComponent: 0.62, upstreamComponent: 0.6 },
+          evidenceRecords: [
+            {
+              type: 'nearby',
+              distanceM: 120.0,
+              occurrenceRecordUid: 'gbif:2222222222',
+              sourceUrl: 'https://www.gbif.org/occurrence/2222222222',
+              licence: 'CC-BY-NC 4.0',
+            },
+            {
+              type: 'upstream_waterway',
+              distanceM: 300.0,
+              networkDistanceM: 420.0,
+              occurrenceRecordUid: 'gbif:3333333333',
+              sourceUrl: 'https://www.gbif.org/occurrence/3333333333',
+              licence: 'CC0 1.0',
+            },
+          ],
         },
       ],
       catalogueVersion: 'v2026-09-08',
       occurrenceDataUpdatedAt: '2026-09-10T12:00:00Z',
       disclaimer:
         'Occurrence-based inference from public records - not a live census. Absence of a plant from this list does not mean it is absent from the site.',
+      interpretation:
+        'Historical observations do not guarantee current presence.',
+      processedDataVersion: 'proc-2026-09-10',
+      osmSourceVersion: '2026-09-01',
     })
   }),
 

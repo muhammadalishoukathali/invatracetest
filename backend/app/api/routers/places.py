@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import Field
 from sqlalchemy.orm import Session
 
@@ -30,10 +30,15 @@ from app.db.base import get_session
 from app.domain.place_discovery import (
     PlantAssociation,
     PlaceAssociationsResult,
+    PlaceListItem,
     PlaceRecord,
     compute_associations,
+    list_places,
     load_place,
 )
+
+
+PLACE_INTERPRETATION = "Historical observations do not guarantee current presence."
 
 
 router = APIRouter(prefix="/api/v1/places", tags=["places"])
@@ -88,6 +93,24 @@ class PlantAssociationsResponse(ApiModel):
     catalogue_version: str
     occurrence_data_updated_at: str | None
     disclaimer: str
+    interpretation: str = PLACE_INTERPRETATION
+    processed_data_version: str | None = None
+    osm_source_version: str | None = None
+
+
+class PlaceListItemPayload(ApiModel):
+    place_id: uuid.UUID
+    display_name: str
+    place_type: str
+    source_feature_id: str | None = None
+    geometry_status: str
+    source: str
+    source_version: str
+    geometry_simplified: dict
+
+
+class PlaceListResponse(ApiModel):
+    items: list[PlaceListItemPayload] = Field(default_factory=list)
 
 
 def _place_payload(record: PlaceRecord) -> PlaceResponse:
@@ -138,6 +161,51 @@ def _association_payload(item: PlantAssociation) -> PlantAssociationPayload:
     )
 
 
+@router.get("", response_model=PlaceListResponse)
+def list_places_endpoint(
+    q: str | None = Query(None, description="Case-insensitive name substring."),
+    place_type: str | None = Query(None, pattern="^(park|forest|trail|line)$"),
+    bbox: str | None = Query(None, description="west,south,east,north"),
+    limit: int = Query(100, ge=1, le=250),
+    session: Session = Depends(get_session),
+) -> PlaceListResponse:
+    """AC 5.1.1 map layer: selectable places for the current viewport."""
+    parsed_bbox: tuple[float, float, float, float] | None = None
+    if bbox:
+        try:
+            parts = [float(x) for x in bbox.split(",")]
+            if len(parts) == 4:
+                parsed_bbox = (parts[0], parts[1], parts[2], parts[3])
+        except ValueError:
+            raise ApiProblem(
+                422,
+                "invalid_bbox",
+                "bbox must be 4 comma-separated numbers: west,south,east,north.",
+            )
+    items = list_places(
+        session,
+        q=q,
+        place_type=place_type,
+        bbox=parsed_bbox,
+        limit=limit,
+    )
+    return PlaceListResponse(
+        items=[
+            PlaceListItemPayload(
+                place_id=item.id,
+                display_name=item.name,
+                place_type=item.place_type,
+                source_feature_id=item.source_feature_id,
+                geometry_status=item.geometry_status,
+                source=item.source,
+                source_version=item.geometry_version,
+                geometry_simplified=item.geometry_simplified,
+            )
+            for item in items
+        ]
+    )
+
+
 @router.get("/{place_id}", response_model=PlaceResponse)
 def get_place(
     place_id: uuid.UUID,
@@ -183,4 +251,7 @@ def plant_associations(
         catalogue_version=result.catalogue_version,
         occurrence_data_updated_at=result.occurrence_data_updated_at,
         disclaimer=result.disclaimer,
+        interpretation=PLACE_INTERPRETATION,
+        processed_data_version=getattr(result, "processed_data_version", None),
+        osm_source_version=getattr(result, "osm_source_version", None),
     )

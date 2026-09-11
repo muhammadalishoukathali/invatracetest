@@ -314,6 +314,10 @@ class MonitoredArea(Base):
     geometry_version: Mapped[str] = mapped_column(
         String(64), nullable=False, default="seed-2026-09"
     )
+    # Phase 10 Wave 1 - stable external id (e.g. OSM feature id) so re-imports
+    # can round-trip without duplicating rows. Uniqueness is enforced by a
+    # partial index in the migration; the mapped_column stays plain.
+    source_feature_id: Mapped[str | None] = mapped_column(String(80))
 
 
 class ProtectedArea(Base):
@@ -350,6 +354,8 @@ class Trail(Base):
         Geography("MULTILINESTRING", srid=4326, spatial_index=False), nullable=False
     )
     metadata_json: Mapped[dict[str, Any]] = mapped_column(JSON_TYPE, default=dict, nullable=False)
+    # Phase 10 Wave 1 - stable external id; partial unique index in migration.
+    source_feature_id: Mapped[str | None] = mapped_column(String(80))
 
 
 class UploadGrant(Base):
@@ -827,6 +833,15 @@ class OsmImport(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    # Phase 10 Wave 1 - provenance + load lifecycle. status is one of
+    # 'loading' | 'active' | 'failed' (enforced by a CHECK constraint).
+    provider: Mapped[str | None] = mapped_column(String(80))
+    source_url: Mapped[str | None] = mapped_column(Text)
+    download_date: Mapped[Any | None] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
+    waterway_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Waterway(Base):
@@ -851,6 +866,80 @@ class Waterway(Base):
         Geography("LINESTRING", srid=4326, spatial_index=False), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class SpeciesDispersalTrait(Base):
+    """Reviewed dispersal mechanisms for the 32 approved species. Backs
+    AC 5.1.4 - upstream waterway evidence is only permitted when a species
+    has a curated waterway_direction_eligible=True row here. Habitat
+    string matching is explicitly forbidden as a substitute.
+    """
+
+    __tablename__ = "species_dispersal_traits"
+
+    species_id: Mapped[str] = mapped_column(
+        ForeignKey("species.id", ondelete="CASCADE"), primary_key=True
+    )
+    # ARRAY(String) doesn't exist on sqlite, so we ride the cross-dialect
+    # JSON_TYPE variant. On postgres the underlying column is TEXT[] (see
+    # migration 20260911_19); SQLAlchemy coerces JSON list <-> array.
+    spread_mechanisms: Mapped[list[str]] = mapped_column(
+        JSON_TYPE, default=list, nullable=False
+    )
+    primary_mechanism: Mapped[str | None] = mapped_column(String(40))
+    waterway_direction_eligible: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
+    waterway_evidence_type: Mapped[str | None] = mapped_column(String(40))
+    evidence_strength: Mapped[str | None] = mapped_column(String(24))
+    source_title: Mapped[str | None] = mapped_column(Text)
+    source_organisation: Mapped[str | None] = mapped_column(Text)
+    source_url: Mapped[str | None] = mapped_column(Text)
+    evidence_summary: Mapped[str | None] = mapped_column(Text)
+    reviewed_at: Mapped[Any | None] = mapped_column(Date)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class WaterwayWay(Base):
+    """One row per accepted OSM waterway way. Per HANDOVER_PBF doc 2 the
+    node ordering is stored in node_ids so the runtime can split each way
+    into consecutive directed segments in memory at query time - no per-
+    node-pair table row. Direction basis is always OSM node order.
+    """
+
+    __tablename__ = "waterway_ways"
+    __table_args__ = (
+        UniqueConstraint(
+            "osm_import_id", "osm_way_id", name="uq_waterway_ways_import_way"
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    osm_import_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("osm_imports.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    osm_way_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
+    waterway_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    name: Mapped[str | None] = mapped_column(String(200))
+    # BIGINT[] on postgres, JSON list on sqlite.
+    node_ids: Mapped[list[int]] = mapped_column(JSON_TYPE, nullable=False)
+    geometry: Mapped[Any] = mapped_column(
+        Geography("LINESTRING", srid=4326, spatial_index=False), nullable=False
+    )
+    length_m: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    direction_basis: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="OSM_WAY_NODE_ORDER"
+    )
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
@@ -891,6 +980,23 @@ class GbifOccurrence(Base):
     catalogue_version: Mapped[str] = mapped_column(String(32), nullable=False)
     ingested_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    # Phase 10 Wave 1 - richer GBIF provenance & downstream gating flags.
+    # record_uid is backfilled by migration 20260911_19 to `source:source_occurrence_id`
+    # and has a unique index (uq_gbif_occurrences_record_uid).
+    record_uid: Mapped[str | None] = mapped_column(String(64))
+    dataset_name: Mapped[str | None] = mapped_column(Text)
+    dataset_key: Mapped[str | None] = mapped_column(String(64))
+    licence: Mapped[str | None] = mapped_column(Text)
+    source_url: Mapped[str | None] = mapped_column(Text)
+    basis_of_record: Mapped[str | None] = mapped_column(String(32))
+    state_province: Mapped[str | None] = mapped_column(String(80))
+    locality: Mapped[str | None] = mapped_column(Text)
+    eligible_for_waterway_direction: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
+    processed_data_version: Mapped[str] = mapped_column(
+        String(64), nullable=False, default="legacy"
     )
 
 

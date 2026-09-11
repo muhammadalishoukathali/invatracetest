@@ -22,6 +22,8 @@ class ConfigLimitsResponse(ApiModel):
     discovery_trail_buffer_m: int
     discovery_decay_scale_m: int
     waterway_upstream_max_km: int
+    waterway_snap_tolerance_m: int
+    waterway_fetch_radius_km: int
     occurrence_coord_uncertainty_max_m: int
     adoption_max_per_identity: int
     adoption_rate_limit_per_hour: int
@@ -42,6 +44,8 @@ def get_limits() -> ConfigLimitsResponse:
         discovery_trail_buffer_m=s.discovery_trail_buffer_m,
         discovery_decay_scale_m=s.discovery_decay_scale_m,
         waterway_upstream_max_km=s.waterway_upstream_max_km,
+        waterway_snap_tolerance_m=s.waterway_snap_tolerance_m,
+        waterway_fetch_radius_km=s.waterway_fetch_radius_km,
         occurrence_coord_uncertainty_max_m=s.occurrence_coord_uncertainty_max_m,
         adoption_max_per_identity=s.adoption_max_per_identity,
         adoption_rate_limit_per_hour=s.adoption_rate_limit_per_hour,
