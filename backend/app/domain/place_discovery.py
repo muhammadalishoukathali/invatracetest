@@ -585,32 +585,67 @@ def _snap_occurrences_to_ways(
     out: dict[str, tuple[SnapPoint, OccurrenceCandidate]] = {}
     if not candidates or not way_ids:
         return out
-    # One query per candidate keeps the SQL trivial; volume of eligible
-    # candidates in the fetch radius is small (32-species catalogue).
-    for cand in candidates:
-        point = func.ST_SetSRID(
-            func.ST_MakePoint(literal(cand.longitude), literal(cand.latitude)), 4326
+    # One round-trip: build a (record_uid, lon, lat) VALUES table and
+    # LATERAL-join each candidate to its nearest waterway within tolerance.
+    # Previously this was N+1 round-trips per candidate. Postgres LATERAL
+    # keyword + ORDER BY dist LIMIT 1 gives us the nearest-neighbour per
+    # candidate in a single plan.
+    cand_by_uid = {c.record_uid: c for c in candidates}
+    stmt = text(
+        """
+        WITH cand(record_uid, lon, lat) AS (
+            SELECT * FROM unnest(
+                CAST(:uids AS text[]),
+                CAST(:lons AS double precision[]),
+                CAST(:lats AS double precision[])
+            )
         )
-        point_geog = cast(point, Geography)
-        row = session.execute(
-            select(
-                WaterwayWay.id,
-                func.ST_Distance(WaterwayWay.geometry, point_geog).label("dist"),
-                func.ST_LineLocatePoint(
-                    cast(WaterwayWay.geometry, Geometry), point
-                ).label("frac"),
-            )
-            .where(
-                WaterwayWay.id.in_(way_ids),
-                func.ST_DWithin(WaterwayWay.geometry, point_geog, tolerance_m),
-            )
-            .order_by(text("dist ASC"))
-            .limit(1)
-        ).first()
-        if row is None:
+        SELECT
+            cand.record_uid AS record_uid,
+            snap.id AS way_id,
+            snap.dist AS dist,
+            snap.frac AS frac
+        FROM cand
+        JOIN LATERAL (
+            SELECT
+                w.id,
+                ST_Distance(
+                    w.geometry,
+                    ST_SetSRID(ST_MakePoint(cand.lon, cand.lat), 4326)::geography
+                ) AS dist,
+                ST_LineLocatePoint(
+                    w.geometry::geometry,
+                    ST_SetSRID(ST_MakePoint(cand.lon, cand.lat), 4326)
+                ) AS frac
+            FROM waterway_ways AS w
+            WHERE w.id = ANY(CAST(:way_ids AS uuid[]))
+              AND ST_DWithin(
+                  w.geometry,
+                  ST_SetSRID(ST_MakePoint(cand.lon, cand.lat), 4326)::geography,
+                  :tol
+              )
+            ORDER BY dist ASC
+            LIMIT 1
+        ) AS snap ON TRUE
+        """
+    )
+    rows = session.execute(
+        stmt,
+        {
+            "uids": list(cand_by_uid.keys()),
+            "lons": [c.longitude for c in cand_by_uid.values()],
+            "lats": [c.latitude for c in cand_by_uid.values()],
+            "way_ids": [str(w) for w in way_ids],
+            "tol": tolerance_m,
+        },
+    ).all()
+    for row in rows:
+        cand = cand_by_uid.get(row.record_uid)
+        if cand is None:
             continue
+        way_id = row.way_id if isinstance(row.way_id, uuid.UUID) else uuid.UUID(str(row.way_id))
         snap = _snap_from_fraction(
-            row.id, float(row.frac or 0.0), float(row.dist or 0.0), way_segments
+            way_id, float(row.frac or 0.0), float(row.dist or 0.0), way_segments
         )
         if snap is None:
             continue
