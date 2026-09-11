@@ -40,6 +40,9 @@ import { parseMapLocationTarget, type MapLocationTarget } from './map-location-l
 import { PlaceLayer } from '@/features/place-discovery/PlaceLayer'
 import { PlaceDiscoverySheet } from '@/features/place-discovery/PlaceDiscoverySheet'
 import { usePlaces, type PlaceListItem } from '@/services/place-discovery'
+import { HistoricalRecordsLayer } from './HistoricalRecordsLayer'
+import { HistoricalRecordDetailsSheet } from './HistoricalRecordDetailsSheet'
+import type { HistoricalOccurrence } from '@/services/historical-occurrences'
 
 // Point MapLibre at its worker file ourselves. If we don't, it tries to
 // guess a URL that sits next to Vite's optimized dep file in dev, and the
@@ -186,6 +189,12 @@ export function ThreatMapPage() {
   // bounds so the places query can key its cache on it.
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null)
   const [viewportBbox, setViewportBbox] = useState<[number, number, number, number] | null>(null)
+  // Phase 11B - Historical Records opt-in layer. Off by default so the
+  // primary map surface stays about live community reporting. The toggle
+  // chip sits inside MapLegend. Selecting a diamond opens a small sheet
+  // that credits GBIF and links back to the source record.
+  const [historicalEnabled, setHistoricalEnabled] = useState(false)
+  const [selectedHistorical, setSelectedHistorical] = useState<HistoricalOccurrence | null>(null)
 
   // When we successfully recenter the user, the toast is really just a
   // quick "yep, done" - no reason to leave it stuck on screen. Errors
@@ -507,6 +516,16 @@ export function ThreatMapPage() {
         viewport={viewportBbox ? { bbox: viewportBbox } : null}
         onPlaceClick={setSelectedPlaceId}
       />
+      <HistoricalRecordsLayer
+        map={map.current}
+        viewportBbox={viewportBbox}
+        enabled={historicalEnabled}
+        onSelect={setSelectedHistorical}
+      />
+      <HistoricalRecordDetailsSheet
+        occurrence={selectedHistorical}
+        onClose={() => setSelectedHistorical(null)}
+      />
       {/* Accessibility bit - the map canvas itself is basically invisible
           to keyboard-only or screen reader users. So we always render an
           AccessibleSightingList below that mirrors the pins, including
@@ -543,6 +562,47 @@ export function ThreatMapPage() {
           </div>
         )}
         <MapLegend />
+        <button
+          type="button"
+          onClick={() => setHistoricalEnabled((v) => !v)}
+          aria-pressed={historicalEnabled}
+          aria-label={
+            historicalEnabled
+              ? 'Hide historical records layer'
+              : 'Show historical records layer'
+          }
+          style={{
+            position: 'absolute',
+            bottom: 12,
+            right: 12,
+            zIndex: 5,
+            padding: '8px 12px',
+            borderRadius: 'var(--r-chip)',
+            background: historicalEnabled ? '#6a4baa' : 'var(--surface)',
+            color: historicalEnabled ? '#ffffff' : 'var(--body)',
+            border: '1px solid ' + (historicalEnabled ? '#4b3178' : 'var(--border)'),
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: 'pointer',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+          }}
+        >
+          <span
+            aria-hidden
+            style={{
+              width: 10,
+              height: 10,
+              background: '#6a4baa',
+              transform: 'rotate(45deg)',
+              display: 'inline-block',
+              border: '1px solid #ffffff',
+            }}
+          />
+          {historicalEnabled ? 'Historical: on' : 'Historical records'}
+        </button>
         <MapAttribution />
         {/* Same AC 4.2.3 - the visible count chip. We set aria-live so
             screen readers actually hear the new number after someone
