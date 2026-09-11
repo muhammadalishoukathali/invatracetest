@@ -29,7 +29,19 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+pytestmark = pytest.mark.skipif(
+    not (REPO_ROOT / "render.yaml").exists(),
+    reason=(
+        "Deploy-config regression tests require the repository root "
+        "(render.yaml + backend/Dockerfile + backend/docker-entrypoint.sh) "
+        "on disk. Skip when running inside the production image, which "
+        "only ships /service/backend."
+    ),
+)
 
 
 def _read(relative: str) -> str:

@@ -81,10 +81,13 @@ def test_search_endpoint_accepts_empty_query() -> None:
     assert isinstance(body["items"], list)
 
 
-@pytest.mark.parametrize("species_id", ["mikania-micrantha", "psidium-guajava"])
-def test_detail_endpoint_404s_when_species_not_seeded(species_id: str) -> None:
-    # Without the seed running the DB row does not exist yet - the endpoint
-    # must fail closed with 404 rather than returning a partial record.
+@pytest.mark.parametrize(
+    "species_id",
+    ["not-a-real-species", "definitely-missing-plant-xyz"],
+)
+def test_detail_endpoint_404s_for_unknown_species(species_id: str) -> None:
+    # Endpoint must fail closed with 404 for species IDs outside the
+    # curated 32-species catalogue rather than returning a partial record.
     client = TestClient(create_app())
     resp = client.get(f"/api/v1/catalogue/{species_id}")
     assert resp.status_code == 404

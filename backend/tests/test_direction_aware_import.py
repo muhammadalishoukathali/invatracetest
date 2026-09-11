@@ -31,6 +31,16 @@ from app.place_association_import import (
 
 PACK_SRC = Path("/tmp/direction-aware-pack")
 
+pytestmark = pytest.mark.skipif(
+    not PACK_SRC.exists(),
+    reason=(
+        "Direction-aware place-association pack not present at "
+        f"{PACK_SRC}; skip in environments where the RAR pack has not "
+        "been extracted (prod container image, fresh dev checkouts). "
+        "Run on host after unpacking the pack to exercise."
+    ),
+)
+
 
 def _copy_pack(dst: Path) -> Path:
     shutil.copytree(PACK_SRC, dst)
