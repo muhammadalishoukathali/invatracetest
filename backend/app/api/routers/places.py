@@ -45,6 +45,7 @@ class PlaceResponse(ApiModel):
     place_type: str
     geometry_status: str
     geometry_version: str
+    source: str
 
 
 class EvidenceComponentPayload(ApiModel):
@@ -53,6 +54,12 @@ class EvidenceComponentPayload(ApiModel):
     weight: float
     qualifying_records: int
     most_recent_year: int | None
+
+
+class RankingFormulaPayload(ApiModel):
+    formula: str
+    coefficients: dict[str, float]
+    components: list[dict[str, object]] = Field(default_factory=list)
 
 
 class PlantAssociationPayload(ApiModel):
@@ -67,6 +74,7 @@ class PlantAssociationPayload(ApiModel):
     closest_distance_m: float | None
     inside_area: bool
     direction_aware_evidence: bool
+    ranking_formula: RankingFormulaPayload | None = None
 
 
 class PlantAssociationsResponse(ApiModel):
@@ -84,6 +92,7 @@ def _place_payload(record: PlaceRecord) -> PlaceResponse:
         place_type=record.place_type,
         geometry_status=record.geometry_status,
         geometry_version=record.geometry_version,
+        source=record.source,
     )
 
 
@@ -109,6 +118,15 @@ def _association_payload(item: PlantAssociation) -> PlantAssociationPayload:
         closest_distance_m=item.closest_distance_m,
         inside_area=item.inside_area,
         direction_aware_evidence=item.direction_aware_evidence,
+        ranking_formula=(
+            RankingFormulaPayload(
+                formula=item.ranking_formula.formula,
+                coefficients=item.ranking_formula.coefficients,
+                components=item.ranking_formula.components,
+            )
+            if item.ranking_formula is not None
+            else None
+        ),
     )
 
 
@@ -121,10 +139,15 @@ def get_place(
     if record is None:
         raise ApiProblem(404, "place_not_found", "Place not found.")
     if record.geometry_status == "unsupported":
-        # Rejecting the whole call would prevent the UI from explaining WHY
-        # discovery is not available here. Return the metadata so the UI
-        # can render the coverage-not-available state instead.
-        return _place_payload(record)
+        # AC 5.1.1 - a place whose geometry we cannot support for
+        # discovery must be a hard 422 so the client cannot silently
+        # render an empty associations list as "no plants here". The
+        # UI branches on the machine-readable ``code``.
+        raise ApiProblem(
+            422,
+            "PLACE_GEOMETRY_UNSUPPORTED",
+            "This place's geometry is not supported for plant discovery.",
+        )
     return _place_payload(record)
 
 
@@ -139,6 +162,13 @@ def plant_associations(
     result: PlaceAssociationsResult | None = compute_associations(session, place_id)
     if result is None:
         raise ApiProblem(404, "place_not_found", "Place not found.")
+    if result.place.geometry_status == "unsupported":
+        # AC 5.1.1 - see get_place for rationale.
+        raise ApiProblem(
+            422,
+            "PLACE_GEOMETRY_UNSUPPORTED",
+            "This place's geometry is not supported for plant discovery.",
+        )
     return PlantAssociationsResponse(
         place=_place_payload(result.place),
         associations=[_association_payload(item) for item in result.associations],

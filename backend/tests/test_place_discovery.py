@@ -102,3 +102,125 @@ def test_place_router_exposes_both_endpoints() -> None:
     src = _read("app/api/routers/places.py")
     assert '"/{place_id}"' in src
     assert '"/{place_id}/plant-associations"' in src
+
+
+# ---------------------------------------------------------------------------
+# Regression tests for the AC 5.1.x guardrails that were re-tightened
+# after the iteration-2 audit.
+# ---------------------------------------------------------------------------
+
+
+def test_trail_places_use_trail_buffer_not_park_buffer() -> None:
+    """AC 5.1.3 - trail places must draw evidence from a 750m buffer around
+    the line, not the 1000m park buffer. A regression to a single
+    park-buffer-for-all-place-types would leak trail evidence in from
+    250m further out than the AC allows.
+    """
+    src = _read("app/domain/place_discovery.py")
+    # A branch on place_type must select the trail buffer setting.
+    assert "discovery_trail_buffer_m" in src
+    assert "_TRAIL_PLACE_TYPES" in src
+    # Trails must skip the inside bucket - a thin polygon-representation
+    # of a trail can technically ST_Cover a point but that is not the
+    # semantics the AC intends.
+    assert "not is_trail" in src
+
+
+def test_upstream_uses_line_locate_point_not_euclidean() -> None:
+    """AC 5.1.4 - the upstream bucket must use ST_LineLocatePoint /
+    ST_LineSubstring to compute a real along-line distance. A Euclidean
+    fallback (ST_Distance between the point and the polygon) would let
+    a downstream occurrence surface as evidence for an upstream place.
+    """
+    src = _read("app/domain/place_discovery.py")
+    assert "ST_LineLocatePoint" in src
+    assert "ST_LineSubstring" in src
+    # occurrence fraction must be strictly less than place fraction -
+    # OSM waterway linestrings are stored in flow direction.
+    assert "occ_frac < place_frac" in src
+    # And the along-line distance capped by upstream_max_m.
+    assert "along_dist_m <= upstream_max_m" in src
+
+
+def test_upstream_and_place_ride_same_waterway_segment() -> None:
+    """AC 5.1.4 - both the occurrence and the place must intersect a
+    buffer of the SAME waterway line, or we cannot claim the occurrence
+    is upstream of the place.
+    """
+    src = _read("app/domain/place_discovery.py")
+    # Two separate ST_DWithin gates against Waterway.line.
+    assert src.count("Waterway.line") >= 2
+    assert "_WATERWAY_SNAP_TOLERANCE_M" in src
+
+
+def test_distances_are_geodesic_metres_not_degrees() -> None:
+    """AC 5.1.3 - ST_Distance / ST_DWithin must run on ``geography``
+    values so the units are metres. A ``cast(..., Geometry)`` on either
+    side of these calls silently downgrades to degrees, breaking every
+    downstream distance-in-metres assertion.
+    """
+    src = _read("app/domain/place_discovery.py")
+    # The distance/DWithin calls must reference the geography columns
+    # directly - not wrapped in cast(..., Geometry).
+    assert (
+        "func.ST_Distance(MonitoredArea.geometry, GbifOccurrence.location)" in src
+    )
+    assert (
+        "func.ST_DWithin(MonitoredArea.geometry, GbifOccurrence.location" in src
+    )
+    # And the distance / DWithin expressions themselves must not wrap the
+    # geography columns in cast(..., Geometry) - a legitimate cast for
+    # ST_LineLocatePoint / ST_LineSubstring is allowed further down but
+    # never inside a distance/DWithin call.
+    assert "ST_Distance(cast(MonitoredArea.geometry, Geometry)" not in src
+    assert "ST_DWithin(cast(MonitoredArea.geometry, Geometry)" not in src
+    assert "ST_DWithin(cast(Waterway.line, Geometry)" not in src
+
+
+def test_unsupported_geometry_returns_422_not_200() -> None:
+    """AC 5.1.1 - a place whose geometry_status is ``unsupported`` must
+    fail with a 422 and a machine-readable ``PLACE_GEOMETRY_UNSUPPORTED``
+    code. Returning 200 with an empty associations list would let a
+    client render "no invasive plants here" as if it were the real
+    answer.
+    """
+    src = _read("app/api/routers/places.py")
+    assert "PLACE_GEOMETRY_UNSUPPORTED" in src
+    assert "422" in src
+
+
+def test_place_response_carries_source_field() -> None:
+    """Audit follow-up - the place card in the UI needs a ``source``
+    field alongside geometry_status so it can attribute the polygon.
+    """
+    src = _read("app/api/routers/places.py")
+    assert "source: str" in src
+
+
+def test_ranking_response_includes_formula_block() -> None:
+    """AC 5.1.5 - each association row must carry a ``ranking_formula``
+    block showing formula, coefficients, and per-component contribution
+    so the UI can explain the score.
+    """
+    src = _read("app/domain/place_discovery.py")
+    assert "RankingFormula" in src
+    assert "inside_weight" in src
+    assert "nearby_weight" in src
+    assert "upstream_weight" in src
+    assert "decay_scale_m" in src
+    router_src = _read("app/api/routers/places.py")
+    assert "ranking_formula" in router_src
+
+
+def test_place_discovery_never_casts_waterway_line_to_geometry_for_distance() -> None:
+    """AC 5.1.3 - Waterway.line is a geography column. ST_DWithin against
+    it must use it directly so the tolerance argument is metres, not
+    degrees.
+    """
+    src = _read("app/domain/place_discovery.py")
+    # The DWithin against Waterway.line must not go through
+    # cast(Waterway.line, Geometry) - it must use the geography column
+    # directly so the tolerance argument is metres.
+    assert "ST_DWithin(cast(Waterway.line, Geometry)" not in src
+    assert "ST_DWithin(\n                    cast(Waterway.line, Geometry)" not in src
+    assert "ST_DWithin(\n                        cast(Waterway.line, Geometry)" not in src

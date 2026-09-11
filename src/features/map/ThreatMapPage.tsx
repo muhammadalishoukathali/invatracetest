@@ -24,7 +24,7 @@ import { createPortal } from 'react-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import * as maplibregl from 'maplibre-gl'
-import type { Map, Marker } from 'maplibre-gl'
+import type { GeoJSONSource, Map, MapGeoJSONFeature, MapMouseEvent, Marker } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import mapLibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 
@@ -68,6 +68,11 @@ const TILE_ATTRIBUTION =
 
 const STYLE_URL: maplibregl.StyleSpecification = {
   version: 8,
+  // Cluster count labels need a glyphs endpoint. MapLibre's demotiles CDN
+  // ships an Open Sans stack that covers Latin-1 for our count-badge use
+  // case; if this ever gets swapped for a self-hosted glyph server, update
+  // the `text-font` used by the `cluster-count` layer below to match.
+  glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
   sources: {
     'basemap-src': {
       type: 'raster',
@@ -80,10 +85,77 @@ const STYLE_URL: maplibregl.StyleSpecification = {
   layers: [{ id: 'basemap', type: 'raster', source: 'basemap-src' }],
 }
 
+// Source + layer ids for the clustered sighting overlay. Kept as constants
+// so the effect that rebuilds the FeatureCollection can setData without
+// re-reading string literals scattered through the file.
+const SIGHTINGS_SOURCE_ID = 'sightings'
+const CLUSTER_LAYER_ID = 'sightings-clusters'
+const CLUSTER_COUNT_LAYER_ID = 'sightings-cluster-count'
+const UNCLUSTERED_LAYER_ID = 'sightings-unclustered'
+const UNCLUSTERED_REMOVED_LAYER_ID = 'sightings-unclustered-removed'
+const REMOVED_ICON_ID = 'sighting-pin-removed'
+
+/**
+ * Paint one "removed" pin into an offscreen canvas so MapLibre can register
+ * it as a sprite image (`map.addImage(...)`) and use it in a symbol layer.
+ *
+ * AC 7.2.1 — the "removed" state must be distinguishable without colour, so
+ * this image bakes in the dashed outer ring and diagonal slash mark that
+ * used to be drawn as inline SVG on each DOM marker. Colour-blind users and
+ * anyone in high-contrast mode still get the shape cue after the switch to
+ * a GeoJSON source. MapLibre's `circle` type cannot draw dashed strokes, so
+ * we go via a symbol image for this tier while non-removed tiers stay on
+ * the (much cheaper) `circle` layer.
+ */
+function buildRemovedPinImage(pixelRatio: number): ImageData | null {
+  if (typeof document === 'undefined') return null
+  const size = Math.round(24 * pixelRatio)
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return null
+  ctx.scale(pixelRatio, pixelRatio)
+  const cx = 12
+  const cy = 12
+  // Greyed fill.
+  ctx.beginPath()
+  ctx.arc(cx, cy, 8, 0, Math.PI * 2)
+  ctx.fillStyle = PIN_TIERS.removed.fill
+  ctx.globalAlpha = 0.85
+  ctx.fill()
+  // White outer stroke for legibility on both light and dark tiles.
+  ctx.globalAlpha = 1
+  ctx.lineWidth = 1.25
+  ctx.strokeStyle = '#ffffff'
+  ctx.stroke()
+  // Dashed inner ring — the non-colour shape cue.
+  ctx.beginPath()
+  ctx.arc(cx, cy, 6, 0, Math.PI * 2)
+  ctx.setLineDash([1.5, 1.5])
+  ctx.lineWidth = 1
+  ctx.strokeStyle = '#ffffff'
+  ctx.stroke()
+  ctx.setLineDash([])
+  // Diagonal slash — the second non-colour shape cue.
+  ctx.beginPath()
+  ctx.moveTo(6, 18)
+  ctx.lineTo(18, 6)
+  ctx.lineWidth = 1.75
+  ctx.lineCap = 'round'
+  ctx.strokeStyle = '#ffffff'
+  ctx.stroke()
+  return ctx.getImageData(0, 0, size, size)
+}
+
 export function ThreatMapPage() {
   const container = useRef<HTMLDivElement>(null)
   const map = useRef<Map | null>(null)
-  const markers = useRef<Marker[]>([])
+  // AC 7.1.2 — no DOM-per-marker beyond ~100 pins. The clustered sightings
+  // overlay lives on a MapLibre GeoJSON source with cluster + unclustered
+  // layers; the only DOM marker still created here is the one-off "My
+  // Reports" pin (`recordLocationMarker`), which is always a single node.
+  const sightingsSourceReady = useRef(false)
   const recordLocationMarker = useRef<Marker | null>(null)
   const latestVisibleSightings = useRef<Sighting[]>([])
   const reportsHaveLoaded = useRef(false)
@@ -231,6 +303,19 @@ export function ThreatMapPage() {
     let locationReadyTimer: number | undefined
     m.once('style.load', () => {
       m.resize()
+      // AC 7.1.2 — install the clustered sightings overlay once the style
+      // has loaded. All rebuilds after this are `setData` calls on the same
+      // source, so pin count no longer scales DOM node count.
+      installSightingsOverlay(m, (id) => select(id))
+      sightingsSourceReady.current = true
+      // Backfill: if the sightings query resolved before the style did, the
+      // data effect will have bailed early. Seed the source now so the map
+      // paints on first load without waiting for the next refetch tick.
+      const pending = latestVisibleSightings.current
+      if (pending.length > 0) {
+        const source = m.getSource(SIGHTINGS_SOURCE_ID) as GeoJSONSource | undefined
+        source?.setData(sightingsToFeatureCollection(pending))
+      }
       if (targetSightingId.current || requestedLocation) return
       m.jumpTo({ center: CENTRE, zoom: isDesktop ? INITIAL_ZOOM : INITIAL_ZOOM_MOBILE })
       setLocationNotice({ tone: 'pending', text: 'Finding your location…' })
@@ -305,15 +390,13 @@ export function ThreatMapPage() {
     }
   }, [requestedLocation, isDesktop])
 
-  // Whenever the data or filter set changes we blow away the old markers
-  // and rebuild the whole lot. Not the most efficient thing in the world
-  // but the pin count is small enough that it's fine, and it saved us
-  // writing a diff routine.
+  // Whenever the data or filter set changes we push a fresh FeatureCollection
+  // into the `sightings` source. MapLibre handles clustering and rendering,
+  // so this stays cheap regardless of how many reports come back — the DOM
+  // node count is fixed (AC 7.1.2), unlike the old per-marker `new Marker()`
+  // loop this replaced.
   useEffect(() => {
     if (!map.current || !data) return
-
-    markers.current.forEach((m) => m.remove())
-    markers.current = []
 
     const q = search.trim().toLowerCase()
     const filtered = data.items.filter((s) => {
@@ -326,17 +409,13 @@ export function ThreatMapPage() {
     latestVisibleSightings.current = filtered
     reportsHaveLoaded.current = true
 
-    for (const s of filtered) {
-      const el = pinElement(s)
-      el.addEventListener('click', () => select(s.id))
-      const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
-        .setLngLat([s.location.lng, s.location.lat])
-        .addTo(map.current!)
-      markers.current.push(marker)
+    if (sightingsSourceReady.current) {
+      const source = map.current.getSource(SIGHTINGS_SOURCE_ID) as GeoJSONSource | undefined
+      source?.setData(sightingsToFeatureCollection(filtered))
     }
 
     // If we got here from a notification tap or a "My Reports" link, the
-    // marker has to actually be on the map before we can select it and
+    // feature has to be visible on the map before we can select it and
     // fly the camera - that's why this bit lives at the end of the
     // rebuild, not up top.
     if (requestedSightingId) {
@@ -668,47 +747,186 @@ export function pinTier(s: Pick<Sighting, 'status' | 'reportCount'>): PinTier {
   return 'isolated'
 }
 
-/**
- * Builds the DOM element for one marker on the map. I went with a
- * teardrop shape rather than a plain circle - the pointy tip actually
- * lands on the coordinate, so users can tell which spot it means. A
- * hovering circle looked ambiguous during pilot testing.
- */
-function pinElement(s: Sighting): HTMLElement {
-  const el = document.createElement('button')
-  el.type = 'button'
-  const statusLabel = s.status === 'screened'
-    ? 'Community report - not expert validated'
-    : 'Removed'
-  const tier = pinTier(s)
-  const tierInfo = PIN_TIERS[tier]
-  const ariaLabel = `${s.speciesName} - ${tierInfo.label} - ${statusLabel}`
-  el.setAttribute('aria-label', ariaLabel)
-  el.title = `${tierInfo.label}\n${statusLabel}`
-  el.dataset.sightingId = s.id
-  el.dataset.tier = tier
-  el.className = 'map-pin'
-  const isRemoved = tier === 'removed'
-  // AC 7.3 - marker states must be distinguishable without colour, so
-  // the "removed" tier gets a dashed outer ring and a slash mark on top
-  // of the greyed fill. Colour-blind users and anyone in high-contrast
-  // mode still get the shape cue.
-  const pinId = `pin-${s.id.replace(/[^a-z0-9]/gi, '')}`
-  const removedOverlay = isRemoved
-    ? `<circle cx="13" cy="11" r="10" fill="none" stroke="#fff" stroke-width="1.5" stroke-dasharray="2 2" />
-       <line x1="6" y1="17" x2="20" y2="5" stroke="#fff" stroke-width="2" stroke-linecap="round" />`
-    : ''
-  el.innerHTML = `
-    <svg width="26" height="34" viewBox="0 0 26 34" xmlns="http://www.w3.org/2000/svg" style="display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.3));" aria-hidden="true" data-pin-id="${pinId}">
-      <path d="M13 33 C 13 33 24 20 24 11 A 11 11 0 1 0 2 11 C 2 20 13 33 13 33 Z"
-            fill="${tierInfo.fill}" stroke="#fff" stroke-width="2" />
-      <circle cx="13" cy="11" r="4.5" fill="#fff" opacity="${isRemoved ? 0.6 : 0.9}" />
-      ${removedOverlay}
-    </svg>`
-  el.style.cssText = `
-    width: 26px; height: 34px; padding: 0; background: transparent;
-    border: none; cursor: pointer; opacity: ${isRemoved ? 0.7 : 1};
-    -webkit-tap-highlight-color: transparent;
-  `
-  return el
+type SightingFeatureProps = {
+  sighting_id: string
+  tier: PinTier
+  species_name: string
+  observation_date: string
+  status: Sighting['status']
 }
+
+/** Turn the currently-visible sighting list into a FeatureCollection the
+ *  `sightings` GeoJSON source can consume. Kept as a plain function so the
+ *  data effect can call `setData` without having to know how MapLibre lays
+ *  out features. */
+function sightingsToFeatureCollection(
+  items: Sighting[],
+): GeoJSON.FeatureCollection<GeoJSON.Point, SightingFeatureProps> {
+  return {
+    type: 'FeatureCollection',
+    features: items.map((s) => ({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [s.location.lng, s.location.lat] },
+      properties: {
+        sighting_id: s.id,
+        tier: pinTier(s),
+        species_name: s.speciesName,
+        observation_date: s.lastReportedAt,
+        status: s.status,
+      },
+    })),
+  }
+}
+
+/**
+ * One-time setup of the clustered sightings overlay on a MapLibre map. It
+ * registers the "removed" pin icon (a canvas image that bakes in the
+ * dashed ring + slash shape cues from AC 7.2.1), installs the GeoJSON
+ * source with supercluster options, and wires up the four render layers
+ * plus click handlers.
+ *
+ * Layer topology:
+ *   - `sightings-clusters` — filled circle sized by point_count
+ *   - `sightings-cluster-count` — numeric badge on top of each cluster
+ *   - `sightings-unclustered` — circle for hotspot/spreading/isolated pins
+ *   - `sightings-unclustered-removed` — symbol layer for removed pins,
+ *     using the canvas image so the dashed-ring + slash cues stay
+ *     readable without colour.
+ */
+function installSightingsOverlay(
+  m: Map,
+  onSelect: (id: string) => void,
+): void {
+  const removed = buildRemovedPinImage(window.devicePixelRatio || 1)
+  if (removed && !m.hasImage(REMOVED_ICON_ID)) {
+    m.addImage(REMOVED_ICON_ID, removed, { pixelRatio: window.devicePixelRatio || 1 })
+  }
+
+  if (!m.getSource(SIGHTINGS_SOURCE_ID)) {
+    m.addSource(SIGHTINGS_SOURCE_ID, {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] },
+      cluster: true,
+      clusterMaxZoom: 14,
+      clusterRadius: 50,
+    })
+  }
+
+  if (!m.getLayer(CLUSTER_LAYER_ID)) {
+    m.addLayer({
+      id: CLUSTER_LAYER_ID,
+      type: 'circle',
+      source: SIGHTINGS_SOURCE_ID,
+      filter: ['has', 'point_count'],
+      paint: {
+        // Neutral cluster colour keeps clusters visually distinct from
+        // any single-tier pin colour so they read as aggregations.
+        'circle-color': '#4B6B58',
+        'circle-opacity': 0.9,
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': 2,
+        'circle-radius': [
+          'step', ['get', 'point_count'],
+          14,
+          10, 18,
+          30, 22,
+        ],
+      },
+    })
+  }
+
+  if (!m.getLayer(CLUSTER_COUNT_LAYER_ID)) {
+    m.addLayer({
+      id: CLUSTER_COUNT_LAYER_ID,
+      type: 'symbol',
+      source: SIGHTINGS_SOURCE_ID,
+      filter: ['has', 'point_count'],
+      layout: {
+        'text-field': ['get', 'point_count_abbreviated'],
+        'text-font': ['Open Sans Semibold'],
+        'text-size': 12,
+        'text-allow-overlap': true,
+      },
+      paint: {
+        'text-color': '#ffffff',
+      },
+    })
+  }
+
+  if (!m.getLayer(UNCLUSTERED_LAYER_ID)) {
+    m.addLayer({
+      id: UNCLUSTERED_LAYER_ID,
+      type: 'circle',
+      source: SIGHTINGS_SOURCE_ID,
+      filter: ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'tier'], 'removed']],
+      paint: {
+        'circle-color': [
+          'match', ['get', 'tier'],
+          'hotspot', PIN_TIERS.hotspot.fill,
+          'spreading', PIN_TIERS.spreading.fill,
+          'isolated', PIN_TIERS.isolated.fill,
+          /* default */ '#666666',
+        ],
+        'circle-radius': 8,
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': 1,
+      },
+    })
+  }
+
+  if (!m.getLayer(UNCLUSTERED_REMOVED_LAYER_ID)) {
+    m.addLayer({
+      id: UNCLUSTERED_REMOVED_LAYER_ID,
+      type: 'symbol',
+      source: SIGHTINGS_SOURCE_ID,
+      filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'tier'], 'removed']],
+      layout: {
+        'icon-image': REMOVED_ICON_ID,
+        'icon-size': 1,
+        'icon-allow-overlap': true,
+      },
+    })
+  }
+
+  // Cluster click — zoom in to the expansion zoom returned by supercluster.
+  m.on('click', CLUSTER_LAYER_ID, (e: MapMouseEvent & { features?: MapGeoJSONFeature[] }) => {
+    const feature = e.features?.[0]
+    if (!feature) return
+    const clusterId = feature.properties?.cluster_id
+    const source = m.getSource(SIGHTINGS_SOURCE_ID) as GeoJSONSource | undefined
+    if (typeof clusterId !== 'number' || !source) return
+    void source.getClusterExpansionZoom(clusterId).then((zoom) => {
+      const coords = (feature.geometry as GeoJSON.Point).coordinates
+      m.easeTo({ center: [coords[0], coords[1]], zoom, duration: 500 })
+    }).catch(() => {
+      /* ignore — clicking a cluster that vanished mid-fetch is harmless */
+    })
+  })
+
+  const onFeatureClick = (e: MapMouseEvent & { features?: MapGeoJSONFeature[] }) => {
+    const feature = e.features?.[0]
+    const id = feature?.properties?.sighting_id
+    if (typeof id === 'string') onSelect(id)
+  }
+  m.on('click', UNCLUSTERED_LAYER_ID, onFeatureClick)
+  m.on('click', UNCLUSTERED_REMOVED_LAYER_ID, onFeatureClick)
+
+  // Standard cursor affordances so users know the pins and clusters are
+  // interactive even before they click.
+  const setPointer = () => { m.getCanvas().style.cursor = 'pointer' }
+  const clearPointer = () => { m.getCanvas().style.cursor = '' }
+  for (const id of [CLUSTER_LAYER_ID, UNCLUSTERED_LAYER_ID, UNCLUSTERED_REMOVED_LAYER_ID]) {
+    m.on('mouseenter', id, setPointer)
+    m.on('mouseleave', id, clearPointer)
+  }
+}
+
+/*
+ * NOTE (AC 7.1.2): the previous `pinElement()` helper that materialised one
+ * DOM marker per sighting has been removed. The map now renders every
+ * sighting through the `sightings` GeoJSON source configured in
+ * `installSightingsOverlay` above — no DOM node grows with pin count.
+ * The one-off "My Reports" pin (single node) is still built inline in the
+ * component; the accessible list mirrors sightings without any DOM markers
+ * at all.
+ */

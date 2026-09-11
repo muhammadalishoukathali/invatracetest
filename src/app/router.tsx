@@ -28,6 +28,10 @@ const PlaceAssociationsPage = lazy(() => import('@/features/discovery/PlaceAssoc
   .then((module) => ({ default: module.PlaceAssociationsPage })))
 const OfflineSettingsPage = lazy(() => import('@/features/bestiary/offline/OfflineSettingsPage')
   .then((module) => ({ default: module.OfflineSettingsPage })))
+const BestiaryPage = lazy(() => import('@/features/bestiary/BestiaryPage')
+  .then((module) => ({ default: module.BestiaryPage })))
+const PlantDetailPage = lazy(() => import('@/features/bestiary/PlantDetailPage')
+  .then((module) => ({ default: module.PlantDetailPage })))
 const AreasPage = lazy(() => import('@/features/areas/AreasPage')
   .then((module) => ({ default: module.AreasPage })))
 const AreaDetailPage = lazy(() => import('@/features/areas/AreaDetailPage')
@@ -85,6 +89,8 @@ export const router = createBrowserRouter([
       { path: 'reports/:reportId', element: loadRoute(<ReportTrackingPage />) },
       { path: 'places/:placeId/plants', element: loadRoute(<PlaceAssociationsPage />) },
       { path: 'settings/offline', element: loadRoute(<OfflineSettingsPage />) },
+      { path: 'plants', element: loadRoute(<BestiaryPage />) },
+      { path: 'plants/:speciesId', element: loadRoute(<PlantDetailPage />) },
       { path: 'areas', element: loadRoute(<AreasPage />) },
       { path: 'areas/:adoptionId', element: loadRoute(<AreaDetailPage />) },
       { path: '*', element: <Navigate to="/map" replace /> },

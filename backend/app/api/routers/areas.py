@@ -11,12 +11,15 @@ The list endpoint returns the 30-day indicator bundle per adopted place
 so the AreasPage does not need a fan-out N+1 for its dashboard. The
 activity endpoint returns the DBSCAN clusters + marker list scoped to
 the place polygon so AreaActivityMap can render both layers off one
-call.
+call. AC 6.3.3's filter set (plant, status, period_days) is applied
+server-side so the empty-state, counts and marker list all read from
+the same source of truth.
 """
 
 from __future__ import annotations
 
 import uuid
+from datetime import date
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Query, Request, Response
@@ -47,6 +50,7 @@ class AdoptedAreaIndicators(ApiModel):
     reports_new_30d: int
     removal_reported_30d: int
     days_since_most_recent: int | None
+    most_recent_report_date: date | None = None
     reports_previous_30d: int
     change_direction: Literal[
         "increase", "decrease", "unchanged", "insufficient_history"
@@ -94,6 +98,14 @@ class ActivityMarker(ApiModel):
     longitude: float
     observed_at: str
     cluster_id: int | None
+    # AC 6.3.2 - human-readable marker detail so the UI never has to
+    # look up the species table for a marker popover.
+    plant_name: str
+    plant_common_name: str | None = None
+    community_report_label: str = "Community-reported sighting"
+    observation_date: date
+    current_status: str
+    status_date: str
 
 
 class ActivitySnapshotResponse(ApiModel):
@@ -103,12 +115,22 @@ class ActivitySnapshotResponse(ApiModel):
     place_type: str
     window_start_utc: str
     window_end_utc: str
+    # AC 6.3.1 - clients cache the polygon by version so a re-import of
+    # the OSM boundary busts their cache without a hash comparison.
+    geometry_version: str
+    geometry_geojson: str | None = None
     indicators: AdoptedAreaIndicators
     clusters: list[ActivityCluster] = Field(default_factory=list)
     markers: list[ActivityMarker] = Field(default_factory=list)
 
 
-SortKey = Literal["adopted_at", "active_sighting_count", "reports_new_30d", "place_name"]
+SortKey = Literal[
+    "adopted_at",
+    "active_sighting_count",
+    "reports_new_30d",
+    "place_name",
+    "recent_activity",
+]
 
 
 def _to_indicators_payload(indicators) -> AdoptedAreaIndicators:
@@ -118,6 +140,7 @@ def _to_indicators_payload(indicators) -> AdoptedAreaIndicators:
         reports_new_30d=indicators.reports_new_30d,
         removal_reported_30d=indicators.removal_reported_30d,
         days_since_most_recent=indicators.days_since_most_recent,
+        most_recent_report_date=indicators.most_recent_report_date,
         reports_previous_30d=indicators.reports_previous_30d,
         change_direction=indicators.change_direction,
         change_pct=indicators.change_pct,
@@ -235,6 +258,17 @@ def list_adopted_areas(
         items.sort(key=lambda x: x.indicators.reports_new_30d, reverse=True)
     elif sort == "place_name":
         items.sort(key=lambda x: x.place_name.lower())
+    elif sort == "recent_activity":
+        # NULLS LAST: places with no reports at all sink to the bottom.
+        # A place with a recent report (small days_since) comes first.
+        items.sort(
+            key=lambda x: (
+                x.indicators.days_since_most_recent is None,
+                x.indicators.days_since_most_recent
+                if x.indicators.days_since_most_recent is not None
+                else 10**9,
+            )
+        )
     else:
         items.sort(key=lambda x: x.adopted_at, reverse=True)
 
@@ -266,11 +300,20 @@ def adoption_activity(
     adoption_id: uuid.UUID,
     auth: AuthContext = Depends(require_auth),
     session: Session = Depends(get_session),
+    plant: str | None = Query(default=None, alias="species_id"),
+    status: str | None = Query(default=None),
+    period_days: int = Query(default=30, ge=1, le=365),
 ) -> ActivitySnapshotResponse:
     adoption = session.get(AreaAdoption, adoption_id)
     if adoption is None or adoption.profile_id != auth.profile.id:
         raise ApiProblem(404, "adoption_not_found", "Adoption not found.")
-    snapshot = compute_activity(session, adoption.place_id)
+    snapshot = compute_activity(
+        session,
+        adoption.place_id,
+        species_id=plant,
+        status=status,
+        period_days=period_days,
+    )
     if snapshot is None:
         raise ApiProblem(404, "place_not_found", "Place not found.")
     return ActivitySnapshotResponse(
@@ -280,6 +323,8 @@ def adoption_activity(
         place_type=snapshot.place_type,
         window_start_utc=snapshot.window_start_utc,
         window_end_utc=snapshot.window_end_utc,
+        geometry_version=snapshot.geometry_version,
+        geometry_geojson=snapshot.geometry_geojson,
         indicators=_to_indicators_payload(snapshot.indicators),
         clusters=[
             ActivityCluster(
@@ -300,6 +345,12 @@ def adoption_activity(
                 longitude=m.longitude,
                 observed_at=m.observed_at,
                 cluster_id=m.cluster_id,
+                plant_name=m.plant_name,
+                plant_common_name=m.plant_common_name,
+                community_report_label=m.community_report_label,
+                observation_date=m.observation_date,
+                current_status=m.current_status,
+                status_date=m.status_date,
             )
             for m in snapshot.markers
         ],

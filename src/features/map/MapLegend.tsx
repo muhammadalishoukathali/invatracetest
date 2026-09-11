@@ -82,11 +82,16 @@ export function MapLegend() {
       <Row colour="#D9880F" label="Spreading (2-4 reports)" />
       <Row colour="#2E7D3F" label="Isolated (1 report)" />
       <Row colour="#8B978F" label="Removed" muted removedPattern />
+      {/* AC 7.1.2 - the map clusters nearby pins into a single circle with
+          a count when zoomed out. Called out here so users know a grey-green
+          circle is an aggregate, not a fifth tier. */}
+      <Row colour="#4B6B58" label="Cluster (tap to expand)" cluster />
       <p className="map-legend-card__note">
         Colour reflects how many community reports share the same spot.
         Removed sightings also carry a dashed ring and slash mark so the
-        state is readable without colour. Reports appear once they pass
-        automated checks.
+        state is readable without colour. Zoom in on a cluster circle to
+        see the individual reports it groups together. Reports appear once
+        they pass automated checks.
       </p>
     </div>
   )
@@ -119,7 +124,14 @@ function Row({
   label,
   muted,
   removedPattern,
-}: { colour: string; label: string; muted?: boolean; removedPattern?: boolean }) {
+  cluster,
+}: {
+  colour: string
+  label: string
+  muted?: boolean
+  removedPattern?: boolean
+  cluster?: boolean
+}) {
   return (
     <div className="map-legend-card__row">
       {removedPattern ? (
@@ -134,6 +146,28 @@ function Row({
           <circle cx="7" cy="7" r="6" fill={colour} opacity={muted ? 0.65 : 1} />
           <circle cx="7" cy="7" r="5" fill="none" stroke="#fff" strokeWidth="1" strokeDasharray="1.5 1.5" />
           <line x1="3" y1="11" x2="11" y2="3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      ) : cluster ? (
+        <svg
+          aria-hidden
+          width="14"
+          height="14"
+          viewBox="0 0 14 14"
+          className="map-legend-card__dot"
+          style={{ background: 'transparent' }}
+        >
+          <circle cx="7" cy="7" r="6" fill={colour} stroke="#fff" strokeWidth="1.25" />
+          <text
+            x="7"
+            y="10"
+            textAnchor="middle"
+            fontSize="7"
+            fontWeight={600}
+            fill="#fff"
+            fontFamily="system-ui, -apple-system, sans-serif"
+          >
+            N
+          </text>
         </svg>
       ) : (
         <span aria-hidden className="map-legend-card__dot" style={{ background: colour, opacity: muted ? 0.65 : 1 }} />

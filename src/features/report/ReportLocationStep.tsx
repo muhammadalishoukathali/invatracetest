@@ -4,7 +4,8 @@ import { Icon } from '@/components/Icon'
 import { useReportDraft } from '@/features/report/report-draft-store'
 import { useScan } from '@/features/scan/scan-store'
 import { ReportNextButton } from './components/ReportNextButton'
-import { LOCATION_ACCURACY_MAX_M } from './gps-policy'
+import { accuracyExceedsThreshold, formatAccuracyMessage } from './gps-policy'
+import { useLimits } from '@/services/config-limits'
 
 type Status = 'idle' | 'locating' | 'located' | 'denied' | 'unavailable'
 
@@ -36,6 +37,11 @@ export function ReportLocationStep() {
   const scanLoc = useScan((s) => s.location)
   const scanLocStatus = useScan((s) => s.locationStatus)
   const [status, setStatus] = useState<Status>('idle')
+  // AC 7.3.1 - read the accuracy ceiling from the server config, not a
+  // hardcoded copy in the client. `useLimits()` is cached aggressively so
+  // this is a memory read after the first hydration.
+  const { data: limits, isPending: limitsPending, isError: limitsError } = useLimits()
+  const accuracyThresholdM = limits?.locationAccuracyMaxM ?? null
 
   const cancelReport = () => {
     // We don't throw away the scan here - just cancel the report - so the
@@ -95,7 +101,8 @@ export function ReportLocationStep() {
   const hasFiniteAccuracy = accuracy !== null && Number.isFinite(accuracy) && accuracy >= 0
   const withinMalaysia = inMalaysia(loc)
   const canProceed = !!loc && hasFiniteAccuracy && withinMalaysia
-  const accuracyWarning = hasFiniteAccuracy && accuracy != null && accuracy > LOCATION_ACCURACY_MAX_M
+  const accuracyWarning = accuracyThresholdM != null
+    && accuracyExceedsThreshold(accuracy, accuracyThresholdM)
 
   return (
     <div style={{ padding: 16, maxWidth: 520, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -136,11 +143,27 @@ export function ReportLocationStep() {
                })()} />
         )}
 
-        {loc && accuracyWarning && (
+        {loc && accuracyWarning && accuracyThresholdM != null && (
           <div style={{ marginTop: 12 }}>
             <Row icon="AlertTriangle" tint="var(--amber)"
                  title="Location fix is approximate"
-                 body={`Reported accuracy is above ${LOCATION_ACCURACY_MAX_M} m. You can still submit, but a fresh fix in an open area will give reviewers a more useful location.`} />
+                 body={formatAccuracyMessage(accuracy, accuracyThresholdM)} />
+          </div>
+        )}
+
+        {loc && hasFiniteAccuracy && limitsPending && (
+          <div style={{ marginTop: 12 }}>
+            <Row icon="Clock" tint="var(--muted)"
+                 title="Checking accuracy policy…"
+                 body="One moment while we confirm the current accuracy requirement." />
+          </div>
+        )}
+
+        {loc && hasFiniteAccuracy && limitsError && (
+          <div style={{ marginTop: 12 }}>
+            <Row icon="AlertTriangle" tint="var(--amber)"
+                 title="Accuracy policy unavailable"
+                 body="The server's current accuracy requirement could not be loaded, so no warning is shown. You can still submit." />
           </div>
         )}
 

@@ -103,8 +103,10 @@ def test_activity_domain_change_direction_respects_tolerance() -> None:
     direction, pct = _classify_change(80, 100, 10)
     assert direction == "decrease"
     assert pct == pytest.approx(-20.0)
-    # Previous zero + current non-zero -> insufficient_history, never a fake %.
-    assert _classify_change(5, 0, 10) == ("insufficient_history", None)
+    # AC 6.3.5 clarification - a first cycle with any current activity
+    # counts as an increase in absolute terms; percentage stays null
+    # rather than being invented as "infinity%".
+    assert _classify_change(5, 0, 10) == ("increase", None)
     # Both zero -> unchanged, no divide-by-zero on the client.
     assert _classify_change(0, 0, 10) == ("unchanged", 0.0)
 

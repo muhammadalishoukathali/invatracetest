@@ -74,7 +74,7 @@ export function AdoptAreaPrompt({
         onClick={handleAdopt}
         disabled={state.kind === 'pending'}
       >
-        {state.kind === 'pending' ? 'Adopting…' : 'Adopt this area'}
+        {state.kind === 'pending' ? 'Adopting for monitoring…' : 'Adopt for monitoring'}
       </button>
       {state.kind === 'error' && (
         <p className="adopt-area-prompt__error" role="alert">{state.message}</p>
