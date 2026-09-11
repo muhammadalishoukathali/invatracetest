@@ -932,8 +932,13 @@ class WaterwayWay(Base):
     name: Mapped[str | None] = mapped_column(String(200))
     # BIGINT[] on postgres, JSON list on sqlite.
     node_ids: Mapped[list[int]] = mapped_column(JSON_TYPE, nullable=False)
+    # GiST-indexed: runtime does ST_DWithin(geometry, place_geom, 6km) per
+    # place discovery, which needs a spatial index to avoid a full scan of
+    # the malaysia-wide waterway table. Migration 20260911_19 creates the
+    # index explicitly; keep spatial_index=True so metadata.create_all()
+    # bootstraps (test DBs) match production.
     geometry: Mapped[Any] = mapped_column(
-        Geography("LINESTRING", srid=4326, spatial_index=False), nullable=False
+        Geography("LINESTRING", srid=4326, spatial_index=True), nullable=False
     )
     length_m: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     direction_basis: Mapped[str] = mapped_column(

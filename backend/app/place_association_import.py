@@ -242,8 +242,9 @@ def _upsert_dispersal_traits(
                 updated += 1
             else:
                 inserted += 1
-    if not dry_run:
-        session.commit()
+    # NOTE: commit deferred to import_place_association_pack() so trait +
+    # occurrence upsert is a single atomic transaction. If the occurrence
+    # phase raises, the trait writes must roll back with it.
     return inserted, updated
 
 
@@ -276,7 +277,10 @@ def _import_occurrences(
     with occ_path.open() as fh:
         reader = csv.DictReader(fh)
         for row in reader:
-            record_uid = row["record_uid"]
+            record_uid = (row.get("record_uid") or "").strip()
+            if not record_uid:
+                summary.note_reject("missing_record_uid")
+                continue
             if row.get("country_code") != "MY":
                 summary.note_reject("country_code_not_MY")
                 continue
@@ -352,7 +356,8 @@ def _import_occurrences(
         # first run, updated otherwise, based on pre-existing count.
         if result.rowcount is not None:
             summary.inserted += result.rowcount
-    session.commit()
+    # commit performed by import_place_association_pack() after both trait
+    # + occurrence phases succeed (atomic pack import).
 
 
 def import_place_association_pack(
@@ -377,14 +382,21 @@ def import_place_association_pack(
         updated=traits_updated,
         dry_run=dry_run,
     )
-    _import_occurrences(
-        session,
-        pack_path,
-        known_species,
-        manifest,
-        dry_run=dry_run,
-        summary=summary,
-    )
+    try:
+        _import_occurrences(
+            session,
+            pack_path,
+            known_species,
+            manifest,
+            dry_run=dry_run,
+            summary=summary,
+        )
+    except Exception:
+        if not dry_run:
+            session.rollback()
+        raise
+    if not dry_run:
+        session.commit()
     log.info(
         "occurrence_import_summary",
         inserted=summary.inserted,

@@ -48,13 +48,14 @@ from dataclasses import dataclass, field
 from typing import Iterable, Mapping
 
 from geoalchemy2 import Geography, Geometry
-from sqlalchemy import and_, cast, func, literal, select, text
+from sqlalchemy import and_, case, cast, func, literal, select, text
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.db.models import (
     GbifOccurrence,
     MonitoredArea,
+    OsmImport,
     Species,
     SpeciesDispersalTrait,
     WaterwayWay,
@@ -140,6 +141,8 @@ class PlaceAssociationsResult:
     catalogue_version: str
     occurrence_data_updated_at: str | None
     disclaimer: str
+    processed_data_version: str | None = None
+    osm_source_version: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -274,8 +277,11 @@ def dijkstra_upstream_distance(
     # ---- Same-way case -------------------------------------------------
     if occ_snap.way_id == place_snap.way_id:
         if occ_snap.segment_index == place_snap.segment_index:
-            if occ_snap.local_frac >= place_snap.local_frac:
-                return None  # downstream (or coincident)
+            if occ_snap.local_frac > place_snap.local_frac:
+                return None  # strictly downstream
+            # Coincident (equal fraction) is a zero-metre upstream hit, not
+            # a miss. Handover treats an occurrence touching the place-snap
+            # point as maximally upstream.
             return (place_snap.local_frac - occ_snap.local_frac) * occ_seg.length_m
         if occ_snap.segment_index > place_snap.segment_index:
             return None  # downstream
@@ -378,10 +384,17 @@ def list_places(
     (``ST_SimplifyPreserveTopology`` on the geometry cast, then re-cast to
     geography for shape consistency) to shrink the payload.
     """
+    # ~11 m tolerance in polygon degrees would over-simplify a narrow
+    # trail LINESTRING (a slightly wiggly footpath collapses to a chord).
+    # Use a tighter tolerance for line-shaped places.
+    simplify_tolerance = case(
+        (MonitoredArea.place_type.in_(list(_TRAIL_PLACE_TYPES)), literal(0.00002)),
+        else_=literal(0.0001),
+    )
     simplified = func.ST_AsGeoJSON(
         func.ST_SimplifyPreserveTopology(
             cast(MonitoredArea.geometry, Geometry()),
-            literal(0.0001),
+            simplify_tolerance,
         )
     ).label("geom")
     stmt = select(
@@ -528,6 +541,11 @@ def _snap_place_to_way(
     if not ways:
         return None
     way_ids = [w.id for w in ways]
+    # AC 5.1.4: snap the place to its NEAREST point on the way, not its
+    # centroid. Using ST_Centroid would inflate the along-way fraction when
+    # a river skirts a polygon edge — the place's real touch point on the
+    # network is where the boundary meets the line, not deep inside the
+    # polygon.
     row = session.execute(
         select(
             WaterwayWay.id,
@@ -536,7 +554,7 @@ def _snap_place_to_way(
                 cast(WaterwayWay.geometry, Geometry),
                 func.ST_ClosestPoint(
                     cast(WaterwayWay.geometry, Geometry),
-                    func.ST_Centroid(cast(MonitoredArea.geometry, Geometry)),
+                    cast(MonitoredArea.geometry, Geometry),
                 ),
             ).label("frac"),
         )
@@ -750,11 +768,14 @@ def rank(
         # break deterministically.
         record._nearby_component = nearby_component  # type: ignore[attr-defined]
         record._upstream_component = upstream_component  # type: ignore[attr-defined]
+    # AC 5.1.5 ordering: tier desc, nearby component desc, upstream
+    # component desc, most-recent-year desc, scientific name asc. total_score
+    # is kept on the response for debug/inspection but is not part of the
+    # ranking spec, so it is intentionally NOT a sort key here.
     return sorted(
         associations,
         key=lambda r: (
             -r.tier,
-            -r.total_score,
             -(getattr(r, "_nearby_component", 0.0)),
             -(getattr(r, "_upstream_component", 0.0)),
             -(r.most_recent_year or 0),
@@ -974,6 +995,17 @@ def compute_associations(
             GbifOccurrence.catalogue_version == catalogue_version
         )
     )
+    processed_data_version = session.scalar(
+        select(func.max(GbifOccurrence.processed_data_version)).where(
+            GbifOccurrence.catalogue_version == catalogue_version
+        )
+    )
+    osm_source_version = session.scalar(
+        select(OsmImport.source_date)
+        .where(OsmImport.status == "active")
+        .order_by(OsmImport.source_date.desc())
+        .limit(1)
+    )
     return PlaceAssociationsResult(
         place=place,
         associations=ranked,
@@ -984,6 +1016,12 @@ def compute_associations(
             else None
         ),
         disclaimer=_DISCLAIMER,
+        processed_data_version=processed_data_version,
+        osm_source_version=(
+            osm_source_version.isoformat().replace("+00:00", "Z")
+            if osm_source_version is not None
+            else None
+        ),
     )
 
 

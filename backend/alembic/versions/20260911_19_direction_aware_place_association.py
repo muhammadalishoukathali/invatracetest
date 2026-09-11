@@ -114,9 +114,12 @@ def upgrade() -> None:
         "UPDATE gbif_occurrences SET record_uid = source || ':' || source_occurrence_id "
         "WHERE record_uid IS NULL"
     )
+    # Partial: legacy rows without record_uid must not all collapse into one
+    # conflict target; the backfill above handles historical rows but a future
+    # legacy insert should still be allowed to leave record_uid NULL.
     op.execute(
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_gbif_occurrences_record_uid "
-        "ON gbif_occurrences(record_uid)"
+        "ON gbif_occurrences(record_uid) WHERE record_uid IS NOT NULL"
     )
 
     # 4. osm_imports extensions ----------------------------------------------

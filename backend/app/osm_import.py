@@ -29,6 +29,16 @@ AREA_TAGS = {
     ("landuse", "forest"),
     ("natural", "wood"),
 }
+# AC 5.1.1: list_places filters by place_type (park|forest|trail|line).
+# Map every accepted OSM area tag to one of park/forest.
+_AREA_PLACE_TYPE = {
+    ("leisure", "park"): "park",
+    ("leisure", "nature_reserve"): "forest",
+    ("boundary", "national_park"): "forest",
+    ("boundary", "protected_area"): "forest",
+    ("landuse", "forest"): "forest",
+    ("natural", "wood"): "forest",
+}
 TRAIL_HIGHWAYS = {"path", "footway", "track"}
 # Phase 10 Wave 2b - allow-listed waterway types. ditch is explicitly
 # excluded per HANDOVER_PBF_AND_WATERWAY_INGEST doc 2 (too noisy for
@@ -101,9 +111,12 @@ class MalaysiaOsmHandler(osmium.SimpleHandler):
             return
         label = self._unique_label(name, MonitoredArea, f"area/{area.orig_id()}")
         tag_key, tag_value = matched_tag
+        place_type = _AREA_PLACE_TYPE[matched_tag]
         self.session.add(
             MonitoredArea(
                 name=label,
+                place_type=place_type,
+                source_feature_id=f"osm:area:{area.orig_id()}",
                 geometry=func.ST_GeogFromText(f"SRID=4326;{wkt}"),
                 metadata_json={
                     "source": "OpenStreetMap",
@@ -132,6 +145,7 @@ class MalaysiaOsmHandler(osmium.SimpleHandler):
                 self.session.add(
                     Trail(
                         name=label,
+                        source_feature_id=f"osm:way:{way.id}",
                         geometry=func.ST_GeogFromText(f"SRID=4326;{multiline}"),
                         metadata_json={
                             "source": "OpenStreetMap",
@@ -228,7 +242,9 @@ class MalaysiaOsmHandler(osmium.SimpleHandler):
         result = self.session.execute(stmt)
         # rowcount is best-effort - trust the caller-visible counter over it.
         self.waterway_count += result.rowcount if result.rowcount is not None else len(rows)
-        self.session.commit()
+        # NOTE: no commit here. The outer import_malaysia_pbf() owns the
+        # transaction lifecycle so a mid-import failure rolls back cleanly.
+        self.session.flush()
 
     def _unique_label(self, name: str, model, osm_reference: str) -> str:
         existing = self.session.scalar(select(model.id).where(model.name == name))

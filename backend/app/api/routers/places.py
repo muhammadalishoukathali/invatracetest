@@ -82,6 +82,7 @@ class PlantAssociationPayload(ApiModel):
     qualifying_records: int
     most_recent_year: int | None
     closest_distance_m: float | None
+    closest_network_m: float | None = None
     inside_area: bool
     direction_aware_evidence: bool
     ranking_formula: RankingFormulaPayload | None = None
@@ -147,6 +148,7 @@ def _association_payload(item: PlantAssociation) -> PlantAssociationPayload:
         qualifying_records=item.qualifying_records,
         most_recent_year=item.most_recent_year,
         closest_distance_m=item.closest_distance_m,
+        closest_network_m=item.closest_network_m,
         inside_area=item.inside_area,
         direction_aware_evidence=item.direction_aware_evidence,
         ranking_formula=(
@@ -174,14 +176,19 @@ def list_places_endpoint(
     if bbox:
         try:
             parts = [float(x) for x in bbox.split(",")]
-            if len(parts) == 4:
-                parsed_bbox = (parts[0], parts[1], parts[2], parts[3])
         except ValueError:
             raise ApiProblem(
                 422,
                 "invalid_bbox",
                 "bbox must be 4 comma-separated numbers: west,south,east,north.",
             )
+        if len(parts) != 4:
+            raise ApiProblem(
+                422,
+                "invalid_bbox",
+                "bbox must be 4 comma-separated numbers: west,south,east,north.",
+            )
+        parsed_bbox = (parts[0], parts[1], parts[2], parts[3])
     items = list_places(
         session,
         q=q,
@@ -252,6 +259,6 @@ def plant_associations(
         occurrence_data_updated_at=result.occurrence_data_updated_at,
         disclaimer=result.disclaimer,
         interpretation=PLACE_INTERPRETATION,
-        processed_data_version=getattr(result, "processed_data_version", None),
-        osm_source_version=getattr(result, "osm_source_version", None),
+        processed_data_version=result.processed_data_version,
+        osm_source_version=result.osm_source_version,
     )
