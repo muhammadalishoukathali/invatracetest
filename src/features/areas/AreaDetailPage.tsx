@@ -1,38 +1,59 @@
 /** Iteration 2 Phase 7 - Epic 6 adopted-area detail view (AC 6.3.*).
  *
- *  Renders the indicator bundle for one adopted area plus a
- *  DBSCAN-clustered marker list from GET /adopted-areas/{id}/activity,
- *  and outlines the area polygon on a MapLibre canvas so the user can
- *  see WHERE the reports are, not just how many. Copy is deliberately
- *  "Recent reporting concentration" (AC 6.3.4) and never "invasion
- *  density" - Epic 6 review flagged the latter as loaded language.
+ *  One screen, one area. Layout keeps the user focused on THIS place:
+ *    - Full-bleed map with the polygon outline and sighting markers on top
+ *      (AC 6.3.1 - polygon boundary versioned, drawn once per activity load)
+ *    - Filter row: plant / status / period (AC 6.3.3 - client-selectable
+ *      filters plumbed straight through to the backend query params).
+ *    - Headline KPI + plain-English trend statement
+ *    - Species breakdown (AC 6.3.2 - marker.plantCommonName / plantName)
+ *    - Recent reports feed for the current window (AC 6.3.2)
+ *    - "Recent reporting concentration" cluster summary (AC 6.3.4 -
+ *      deliberately never "invasion density")
  *
- *  MapLibre is loaded dynamically inside a useEffect so the initial
- *  page chunk stays small; when it fails to load (offline first visit)
- *  the marker table below still renders every sighting keyboard- and
- *  screen-reader-legibly.
+ *  MapLibre is loaded dynamically so the initial page chunk stays small.
+ *  When the map fails (offline first visit, CSP block) the report list
+ *  below still renders every sighting keyboard- and SR-legibly.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
 import { fetchAdoptionActivity } from '@/services/adopted-areas'
+import { Icon } from '@/components/Icon'
+import './area-detail.css'
 
 
-// The service type predates the AC 6.3.2 marker-detail fields; extend
-// it here so the UI can consume `plant_name`, `observation_date` and
-// friends without waiting on a service-file bump.
-type MarkerExtras = {
-  plantName: string
-  plantCommonName: string | null
-  communityReportLabel: string
-  observationDate: string
-  currentStatus: string
-  statusDate: string
-}
-type ActivityResponseExtras = {
-  geometryVersion: string
-  geometryGeojson: string | null
+type Direction = 'increase' | 'decrease' | 'unchanged' | 'insufficient_history'
+
+// AC 6.3.3 - period options match how a user would ask about their
+// area: "this week", "this month", "this quarter". Backend accepts any
+// int 1-365 so we can extend without a schema change.
+const PERIOD_OPTIONS: { value: number; label: string }[] = [
+  { value: 7, label: '7d' },
+  { value: 30, label: '30d' },
+  { value: 90, label: '90d' },
+]
+
+// AC 6.3.3 - status filter surfaces the two states a community-facing
+// user cares about: still visible (screened) vs already removed
+// (removal_reported). Anything else (processing/rejected) is hidden
+// from the map anyway, so exposing it here would be misleading.
+const STATUS_OPTIONS: { value: string; label: string }[] = [
+  { value: 'screened', label: 'Sighting' },
+  { value: 'removal_reported', label: 'Cleared' },
+]
+
+function trendCopy(dir: Direction, pct: number | null, tol: number) {
+  if (dir === 'insufficient_history') return 'Not enough previous-month data to describe a trend.'
+  if (dir === 'unchanged') return `Reports are steady - within ${tol}% of the previous month.`
+  const abs = pct !== null ? `${Math.abs(pct).toFixed(0)}%` : ''
+  if (dir === 'increase') {
+    return pct === null
+      ? 'Reports rose from none in the previous month.'
+      : `Reports are up ${abs} vs the previous month.`
+  }
+  return `Reports are down ${abs} vs the previous month.`
 }
 
 
@@ -41,26 +62,86 @@ export function AreaDetailPage() {
   const mapContainer = useRef<HTMLDivElement | null>(null)
   const [mapError, setMapError] = useState<string | null>(null)
 
-  const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['adopted-area-activity', adoptionId],
-    queryFn: () => fetchAdoptionActivity(adoptionId!),
+  // AC 6.3.3 - filter state lives here and rides the query key so a
+  // change refetches without a page reload.
+  const [plant, setPlant] = useState<string>('')
+  const [status, setStatus] = useState<string>('')
+  const [periodDays, setPeriodDays] = useState<number>(30)
+
+  const { data, isLoading, isError, refetch, isFetching } = useQuery({
+    queryKey: ['adopted-area-activity', adoptionId, plant, status, periodDays],
+    queryFn: () =>
+      fetchAdoptionActivity(adoptionId!, {
+        speciesId: plant || null,
+        status: status || null,
+        periodDays,
+      }),
     enabled: Boolean(adoptionId),
     staleTime: 30_000,
   })
 
-  // Cast to the augmented shape the backend now serves (AC 6.3.1/6.3.2).
-  const extras = data as unknown as (typeof data & ActivityResponseExtras) | undefined
-  const markers = useMemo(
-    () =>
-      (data?.markers ?? []).map((m) => m as unknown as (typeof m & MarkerExtras)),
-    [data?.markers],
-  )
+  // Second lightweight query, unfiltered by plant, purely to keep the
+  // plant dropdown from collapsing to a single option once the user
+  // picks one. Follows period so the option list reflects the same
+  // window the user is currently looking at.
+  const { data: plantOptionsData } = useQuery({
+    queryKey: ['adopted-area-activity-options', adoptionId, periodDays],
+    queryFn: () =>
+      fetchAdoptionActivity(adoptionId!, {
+        speciesId: null,
+        status: null,
+        periodDays,
+      }),
+    enabled: Boolean(adoptionId),
+    staleTime: 60_000,
+  })
 
-  // AC 6.3.1 - outline the area polygon on a MapLibre canvas. Dynamic
-  // import so the initial page chunk is not weighed down by ~200 KB of
-  // map code for a user who only ever reads the indicator bundle.
+  const markers = data?.markers ?? []
+
+  // Group markers by species so the user gets a per-plant summary rather
+  // than one long ungrouped list (AC 6.3.2 spirit).
+  const speciesBreakdown = useMemo(() => {
+    const bySpecies = new Map<string, {
+      speciesId: string
+      plantName: string
+      plantCommonName: string | null
+      count: number
+      lastDate: string | null
+    }>()
+    for (const m of markers) {
+      const key = m.speciesId
+      const existing = bySpecies.get(key)
+      const date = m.observationDate ?? m.observedAt ?? null
+      if (existing) {
+        existing.count += 1
+        if (date && (!existing.lastDate || date > existing.lastDate)) existing.lastDate = date
+      } else {
+        bySpecies.set(key, {
+          speciesId: key,
+          plantName: m.plantName ?? key,
+          plantCommonName: m.plantCommonName ?? null,
+          count: 1,
+          lastDate: date,
+        })
+      }
+    }
+    return Array.from(bySpecies.values()).sort((a, b) => b.count - a.count)
+  }, [markers])
+
+  // Plant filter options come from the unfiltered snapshot so picking
+  // a plant does not shrink the dropdown to the picked plant.
+  const plantOptions = useMemo(() => {
+    const seen = new Map<string, { speciesId: string; plantName: string }>()
+    for (const m of plantOptionsData?.markers ?? []) {
+      if (!seen.has(m.speciesId)) {
+        seen.set(m.speciesId, { speciesId: m.speciesId, plantName: m.plantName ?? m.speciesId })
+      }
+    }
+    return Array.from(seen.values()).sort((a, b) => a.plantName.localeCompare(b.plantName))
+  }, [plantOptionsData?.markers])
+
   useEffect(() => {
-    if (!mapContainer.current || !extras?.geometryGeojson) return
+    if (!mapContainer.current || !data?.geometryGeojson) return
     let cancelled = false
     let mapInstance: unknown = null
     ;(async () => {
@@ -68,7 +149,7 @@ export function AreaDetailPage() {
         const maplibre = await import('maplibre-gl')
         await import('maplibre-gl/dist/maplibre-gl.css')
         if (cancelled || !mapContainer.current) return
-        const geom = JSON.parse(extras.geometryGeojson!)
+        const geom = JSON.parse(data.geometryGeojson!)
         const map = new maplibre.Map({
           container: mapContainer.current,
           style: {
@@ -98,21 +179,14 @@ export function AreaDetailPage() {
             id: 'area-outline-fill',
             type: 'fill',
             source: 'area-outline',
-            paint: {
-              'fill-color': '#2f7d4f',
-              'fill-opacity': 0.12,
-            },
+            paint: { 'fill-color': '#2f7d4f', 'fill-opacity': 0.14 },
           })
           map.addLayer({
             id: 'area-outline-line',
             type: 'line',
             source: 'area-outline',
-            paint: {
-              'line-color': '#2f7d4f',
-              'line-width': 2,
-            },
+            paint: { 'line-color': '#2f7d4f', 'line-width': 2.5 },
           })
-          // Add markers on top of the outline.
           if (markers.length > 0) {
             map.addSource('area-markers', {
               type: 'geojson',
@@ -120,10 +194,7 @@ export function AreaDetailPage() {
                 type: 'FeatureCollection',
                 features: markers.map((m) => ({
                   type: 'Feature',
-                  geometry: {
-                    type: 'Point',
-                    coordinates: [m.longitude, m.latitude],
-                  },
+                  geometry: { type: 'Point', coordinates: [m.longitude, m.latitude] },
                   properties: {},
                 })),
               },
@@ -133,22 +204,20 @@ export function AreaDetailPage() {
               type: 'circle',
               source: 'area-markers',
               paint: {
-                'circle-radius': 5,
+                'circle-radius': 6,
                 'circle-color': '#c94a2c',
                 'circle-stroke-color': '#ffffff',
-                'circle-stroke-width': 1,
+                'circle-stroke-width': 1.5,
+                'circle-opacity': 0.9,
               },
             })
           }
-          // Fit to the polygon bbox.
           try {
             const coords: [number, number][] = []
             const walk = (v: unknown): void => {
               if (
-                Array.isArray(v) &&
-                v.length === 2 &&
-                typeof v[0] === 'number' &&
-                typeof v[1] === 'number'
+                Array.isArray(v) && v.length === 2 &&
+                typeof v[0] === 'number' && typeof v[1] === 'number'
               ) {
                 coords.push([v[0] as number, v[1] as number])
               } else if (Array.isArray(v)) {
@@ -164,16 +233,16 @@ export function AreaDetailPage() {
                   [Math.min(...lons), Math.min(...lats)],
                   [Math.max(...lons), Math.max(...lats)],
                 ],
-                { padding: 24, animate: false },
+                { padding: 32, animate: false, maxZoom: 16 },
               )
             }
           } catch {
-            // ignore - map still shows outline at default center
+            /* ignore - map still shows outline */
           }
         })
       } catch (err) {
         if (!cancelled) {
-          setMapError('Map could not load. The sighting list below is still complete.')
+          setMapError('Map could not load. The report list below is still complete.')
         }
         // eslint-disable-next-line no-console
         console.warn('AreaDetailPage: failed to init MapLibre', err)
@@ -182,14 +251,12 @@ export function AreaDetailPage() {
     return () => {
       cancelled = true
       if (mapInstance && typeof (mapInstance as { remove?: () => void }).remove === 'function') {
-        try {
-          ;(mapInstance as { remove: () => void }).remove()
-        } catch {
-          /* ignore */
-        }
+        try { (mapInstance as { remove: () => void }).remove() } catch { /* ignore */ }
       }
     }
-  }, [extras?.geometryGeojson, markers])
+    // geometry_version is the AC 6.3.1 cache-bust signal; keying the
+    // effect on it re-runs when the OSM boundary is re-imported.
+  }, [data?.geometryGeojson, data?.geometryVersion, markers])
 
   if (!adoptionId) {
     return (
@@ -198,7 +265,6 @@ export function AreaDetailPage() {
       </main>
     )
   }
-
   if (isLoading) {
     return (
       <main className="area-detail">
@@ -208,7 +274,6 @@ export function AreaDetailPage() {
       </main>
     )
   }
-
   if (isError || !data) {
     return (
       <main className="area-detail">
@@ -221,133 +286,228 @@ export function AreaDetailPage() {
   }
 
   const i = data.indicators
-  const windowFrom = new Date(data.windowStartUtc).toLocaleDateString()
-  const windowTo = new Date(data.windowEndUtc).toLocaleDateString()
+  const windowFrom = new Date(data.windowStartUtc).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+  const windowTo = new Date(data.windowEndUtc).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+  const trend = trendCopy(i.changeDirection as Direction, i.changePct, i.tolerancePct)
+  const filtersActive = Boolean(plant || status)
 
   return (
     <main className="area-detail">
-      <header className="area-detail__header">
-        <Link to="/areas" className="area-detail__back">← Adopted areas</Link>
+      <Link to="/areas" className="area-detail__back">
+        <Icon name="ChevronLeft" size={16} color="currentColor" />
+        Back to adopted areas
+      </Link>
+
+      <header className="area-detail__title">
+        <span className="area-detail__type">
+          <Icon name="MapPin" size={13} color="var(--green-dark)" />
+          {data.placeType}
+        </span>
         <h1>{data.placeName}</h1>
-        <p className="area-detail__subtitle">
-          {data.placeType} · community monitoring activity {windowFrom} – {windowTo}
+        <p className="area-detail__window">
+          Community reports · {windowFrom} – {windowTo}
         </p>
       </header>
 
       <section className="area-detail__map" aria-label="Area outline and community reports">
-        <div
-          ref={mapContainer}
-          className="area-detail__map-canvas"
-          style={{ width: '100%', height: 320, borderRadius: 8, overflow: 'hidden' }}
-        />
+        <div ref={mapContainer} className="area-detail__map-canvas" />
         {mapError && (
           <p className="area-detail__map-error" role="status">{mapError}</p>
         )}
+        <div className="area-detail__map-legend" aria-hidden>
+          <span className="area-detail__map-legend-swatch area-detail__map-legend-swatch--area" />
+          <span>Area boundary</span>
+          <span className="area-detail__map-legend-swatch area-detail__map-legend-swatch--marker" />
+          <span>Community report</span>
+        </div>
       </section>
 
-      <section className="area-detail__indicators" aria-live="polite">
-        <h2>Last {i.windowDays} days</h2>
-        <dl>
-          <div>
-            <dt>Active sightings</dt>
-            <dd>{i.activeSightingCount}</dd>
-          </div>
-          <div>
-            <dt>Distinct species</dt>
-            <dd>{i.distinctSpeciesCount}</dd>
-          </div>
-          <div>
-            <dt>New reports</dt>
-            <dd>{i.reportsNew30d}</dd>
-          </div>
-          <div>
-            <dt>Removals reported</dt>
-            <dd>{i.removalReported30d}</dd>
-          </div>
-          <div>
-            <dt>Days since most recent</dt>
-            <dd>{i.daysSinceMostRecent ?? '—'}</dd>
-          </div>
-          <div>
-            <dt>Reports the previous 30 days</dt>
-            <dd>{i.reportsPrevious30d}</dd>
-          </div>
-        </dl>
-        {i.changeDirection === 'unchanged' && (
-          <p>Change is within ±{i.tolerancePct}% of the previous 30 days.</p>
+      {/* AC 6.3.3 - client-selectable filters. Kept above the KPI grid so
+          the numbers below always reflect what the user has selected. */}
+      <section className="area-detail__filters" aria-label="Filter community reports">
+        <div className="area-detail__filter">
+          <label htmlFor="filter-plant" className="area-detail__filter-label">Plant</label>
+          <select
+            id="filter-plant"
+            className="area-detail__filter-input"
+            value={plant}
+            onChange={(e) => setPlant(e.target.value)}
+          >
+            <option value="">All plants</option>
+            {plantOptions.map((opt) => (
+              <option key={opt.speciesId} value={opt.speciesId}>{opt.plantName}</option>
+            ))}
+          </select>
+        </div>
+        <div className="area-detail__filter">
+          <label htmlFor="filter-status" className="area-detail__filter-label">Status</label>
+          <select
+            id="filter-status"
+            className="area-detail__filter-input"
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+          >
+            <option value="">Any status</option>
+            {STATUS_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="area-detail__filter area-detail__filter--period" role="radiogroup" aria-label="Time window">
+          {PERIOD_OPTIONS.map((opt) => {
+            const on = periodDays === opt.value
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                className={`area-detail__period-chip${on ? ' area-detail__period-chip--on' : ''}`}
+                onClick={() => setPeriodDays(opt.value)}
+              >
+                {opt.label}
+              </button>
+            )
+          })}
+        </div>
+        {filtersActive && (
+          <button
+            type="button"
+            className="area-detail__filter-clear"
+            onClick={() => { setPlant(''); setStatus('') }}
+          >
+            Clear filters
+          </button>
         )}
-        {i.changeDirection === 'increase' && i.changePct !== null && (
-          <p>Reports are up {Math.abs(i.changePct).toFixed(0)}% vs the previous 30 days.</p>
-        )}
-        {i.changeDirection === 'increase' && i.changePct === null && (
-          <p>Reports increased from zero in the previous 30 days.</p>
-        )}
-        {i.changeDirection === 'decrease' && i.changePct !== null && (
-          <p>Reports are down {Math.abs(i.changePct).toFixed(0)}% vs the previous 30 days.</p>
-        )}
-        {i.changeDirection === 'insufficient_history' && (
-          <p>Not enough previous-period data to describe a trend.</p>
+        {isFetching && (
+          <span className="area-detail__filter-status" role="status" aria-live="polite">Updating…</span>
         )}
       </section>
 
-      <section className="area-detail__clusters">
-        <h2>Recent reporting concentration</h2>
-        {data.clusters.length === 0 ? (
-          <p>No cluster met the DBSCAN threshold in this window.</p>
-        ) : (
-          <ul className="area-detail__cluster-list">
-            {data.clusters.map((c) => (
-              <li key={c.clusterId}>
-                <strong>Cluster {c.clusterId + 1}</strong>
-                <span>{c.pointCount} sightings · {c.speciesIds.length} species</span>
-                <span className="area-detail__cluster-centroid">
-                  centroid {c.centroidLat.toFixed(4)}, {c.centroidLon.toFixed(4)}
+      <section className="area-detail__headline" aria-labelledby="detail-headline">
+        <div className="area-detail__headline-metric">
+          <span className="area-detail__headline-value">{i.reportsNew30d}</span>
+          <span id="detail-headline" className="area-detail__headline-label">
+            {periodDays === 30 ? 'New reports this month' : `Reports in last ${periodDays}d`}
+          </span>
+        </div>
+        <p className="area-detail__headline-trend">{trend}</p>
+      </section>
+
+      <section className="area-detail__kpi-grid" aria-label="Activity indicators">
+        <article className="area-detail__kpi">
+          <span className="area-detail__kpi-icon" aria-hidden><Icon name="MapPin" size={14} color="currentColor" /></span>
+          <span className="area-detail__kpi-value">{i.activeSightingCount}</span>
+          <span className="area-detail__kpi-label">Ongoing sightings</span>
+        </article>
+        <article className="area-detail__kpi">
+          <span className="area-detail__kpi-icon" aria-hidden><Icon name="Leaf" size={14} color="currentColor" /></span>
+          <span className="area-detail__kpi-value">{i.distinctSpeciesCount}</span>
+          <span className="area-detail__kpi-label">Different plants</span>
+        </article>
+        <article className="area-detail__kpi">
+          <span className="area-detail__kpi-icon" aria-hidden><Icon name="Check" size={14} color="currentColor" /></span>
+          <span className="area-detail__kpi-value">{i.removalReported30d}</span>
+          <span className="area-detail__kpi-label">Cleared by community</span>
+        </article>
+        <article className="area-detail__kpi">
+          <span className="area-detail__kpi-icon" aria-hidden><Icon name="Clock" size={14} color="currentColor" /></span>
+          <span className="area-detail__kpi-value">
+            {i.daysSinceMostRecent === null ? '—' : i.daysSinceMostRecent === 0 ? 'Today' : `${i.daysSinceMostRecent}d`}
+          </span>
+          <span className="area-detail__kpi-label">Last report</span>
+        </article>
+      </section>
+
+      {speciesBreakdown.length > 0 && (
+        <section className="area-detail__section" aria-labelledby="species-heading">
+          <h2 id="species-heading">Plants reported here</h2>
+          <ul className="area-detail__species-list">
+            {speciesBreakdown.map((s) => (
+              <li key={s.speciesId} className="area-detail__species-row">
+                <Link to={`/plants/${s.speciesId}`} className="area-detail__species-link">
+                  <span className="area-detail__species-icon" aria-hidden>
+                    <Icon name="Leaf" size={16} color="var(--green-dark)" />
+                  </span>
+                  <span className="area-detail__species-name">
+                    <strong>{s.plantName}</strong>
+                    {s.plantCommonName && <span> · {s.plantCommonName}</span>}
+                  </span>
+                </Link>
+                <span className="area-detail__species-count">
+                  {s.count} {s.count === 1 ? 'report' : 'reports'}
                 </span>
               </li>
             ))}
           </ul>
-        )}
-      </section>
+        </section>
+      )}
 
-      <section className="area-detail__markers">
-        <h2>Sightings in this window ({markers.length})</h2>
+      <section className="area-detail__section" aria-labelledby="reports-heading">
+        <h2 id="reports-heading">
+          Recent reports
+          <span className="area-detail__section-count">{markers.length}</span>
+        </h2>
         {markers.length === 0 ? (
-          <p>No community reports recorded for this area.</p>
+          <p className="area-detail__empty">
+            {filtersActive
+              ? 'No community reports match the current filters.'
+              : 'No community reports in this window.'}
+          </p>
         ) : (
-          <ol className="area-detail__marker-list">
+          <ol className="area-detail__reports">
             {markers.slice(0, 50).map((m) => (
-              <li key={m.sightingId}>
-                <span className="area-detail__marker-species">
-                  <strong>{m.plantName ?? m.speciesId}</strong>
-                  {m.plantCommonName && (
-                    <span className="area-detail__marker-common"> ({m.plantCommonName})</span>
-                  )}
-                </span>
-                <span className="area-detail__marker-report-label">
-                  {m.communityReportLabel ?? 'Community-reported sighting'}
-                </span>
-                <span className="area-detail__marker-status">
-                  Status: {m.currentStatus ?? m.status}
-                  {m.statusDate && (
-                    <> · updated {new Date(m.statusDate).toLocaleDateString()}</>
-                  )}
-                </span>
-                <span className="area-detail__marker-observed">
-                  Observed{' '}
-                  {m.observationDate
-                    ? new Date(m.observationDate).toLocaleDateString()
-                    : new Date(m.observedAt).toLocaleDateString()}
-                </span>
-                {m.clusterId !== null && (
-                  <span className="area-detail__marker-cluster">
-                    Cluster {m.clusterId + 1}
+              <li key={m.sightingId} className="area-detail__report">
+                <div className="area-detail__report-head">
+                  <span className="area-detail__report-name">
+                    {m.plantName ?? m.speciesId}
+                    {m.plantCommonName && (
+                      <span className="area-detail__report-common"> · {m.plantCommonName}</span>
+                    )}
                   </span>
-                )}
+                  <span className={`area-detail__report-status area-detail__report-status--${(m.currentStatus ?? m.status).toLowerCase()}`}>
+                    {(m.currentStatus ?? m.status).replace(/_/g, ' ')}
+                  </span>
+                </div>
+                <p className="area-detail__report-meta">
+                  <Icon name="CalendarDays" size={12} color="var(--muted)" />
+                  Observed{' '}
+                  {new Date(m.observationDate ?? m.observedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                  {m.clusterId !== null && (
+                    <>
+                      {' · '}
+                      <Icon name="Grid3x3" size={12} color="var(--muted)" />
+                      Cluster {m.clusterId + 1}
+                    </>
+                  )}
+                </p>
               </li>
             ))}
           </ol>
         )}
       </section>
+
+      {data.clusters.length > 0 && (
+        <section className="area-detail__section" aria-labelledby="clusters-heading">
+          <h2 id="clusters-heading">Recent reporting concentration</h2>
+          <p className="area-detail__section-hint">
+            Areas where multiple reports have come in close together this month.
+          </p>
+          <ul className="area-detail__clusters">
+            {data.clusters.map((c) => (
+              <li key={c.clusterId}>
+                <span className="area-detail__cluster-badge">Cluster {c.clusterId + 1}</span>
+                <span className="area-detail__cluster-meta">
+                  {c.pointCount} {c.pointCount === 1 ? 'sighting' : 'sightings'} ·
+                  {' '}{c.speciesIds.length} {c.speciesIds.length === 1 ? 'plant' : 'plants'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </main>
   )
 }
+
+export default AreaDetailPage

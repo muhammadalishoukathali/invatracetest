@@ -25,7 +25,6 @@ import {
 export const HISTORICAL_SOURCE_ID = 'historical-occurrences'
 export const HISTORICAL_LAYER_ID = 'historical-occurrences-points'
 const HISTORICAL_ICON_ID = 'historical-diamond'
-const SIGHTINGS_CLUSTERS_LAYER_ID = 'sightings-clusters'
 
 /** Diamond sprite so this layer is visually distinct from the circular
  *  sighting pins even for viewers with colour-vision deficiency.
@@ -102,6 +101,7 @@ type Props = {
   enabled: boolean
   speciesId?: string | null
   onSelect?: (occurrence: HistoricalOccurrence) => void
+  onCountChange?: (count: number | null) => void
 }
 
 export function HistoricalRecordsLayer({
@@ -110,6 +110,7 @@ export function HistoricalRecordsLayer({
   enabled,
   speciesId,
   onSelect,
+  onCountChange,
 }: Props) {
   const { data } = useHistoricalOccurrences(
     {
@@ -160,10 +161,10 @@ export function HistoricalRecordsLayer({
         })
       }
       if (!map.getLayer(HISTORICAL_LAYER_ID)) {
-        const beforeId = map.getLayer(SIGHTINGS_CLUSTERS_LAYER_ID)
-          ? SIGHTINGS_CLUSTERS_LAYER_ID
-          : undefined
-        map.addLayer(buildHistoricalLayerSpec(), beforeId)
+        // Render historical diamonds ABOVE every sightings layer so a
+        // dense cluster does not hide them - the whole point of turning
+        // the layer on is to see them.
+        map.addLayer(buildHistoricalLayerSpec())
       }
 
       const handleClick = (
@@ -203,6 +204,18 @@ export function HistoricalRecordsLayer({
     const source = map.getSource(HISTORICAL_SOURCE_ID) as GeoJSONSource | undefined
     source?.setData(occurrencesToFeatureCollection(data.items))
   }, [map, data])
+
+  // Surface the visible-viewport count so the toggle button can render it
+  // and tell the user whether "no diamonds visible" means the layer failed
+  // to install or just that the current bbox has zero historical records.
+  useEffect(() => {
+    if (!onCountChange) return
+    if (!enabled) {
+      onCountChange(null)
+      return
+    }
+    if (data) onCountChange(data.items.length)
+  }, [enabled, data, onCountChange])
 
   return null
 }

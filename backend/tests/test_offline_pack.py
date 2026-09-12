@@ -105,10 +105,11 @@ def test_pack_build_deterministic_and_hashes_match() -> None:
     # entering the manifest without a matching client contract.
     paths = {f.path for f in pack_a.files}
     assert "catalogue.json" in paths
-    # AC 5.3.2 - image files live under images/. The default catalogue
-    # ships 0/32 populated reference_image_url, so this pack contains
-    # zero image entries today (the images test below asserts the
-    # pipeline itself with a fixture species).
+    # AC 5.3.2 - image files live under images/. The seeded catalogue
+    # populates a reference_image_url for every species, so the pack
+    # emits image entries when the resolver root is populated. The
+    # dedicated resolver test below asserts the pipeline itself with a
+    # fixture species so we do not depend on filesystem contents here.
     assert all(
         p == "catalogue.json" or p.startswith("species/") or p.startswith("images/")
         for p in paths

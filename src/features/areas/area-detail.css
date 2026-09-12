@@ -1,0 +1,484 @@
+/* Iteration 2 Phase 7 - Epic 6 area-detail page styling.
+   The map + name + headline metric dominate the top half; KPI grid and
+   species/reports feeds sit below. Kept mobile-first so a phone user
+   never has to horizontally scroll. */
+
+.area-detail {
+  padding: 0 4px 32px;
+  max-width: 760px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.area-detail__status,
+.area-detail__error {
+  margin: 12px 4px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 13.5px;
+  color: var(--body);
+}
+.area-detail__error {
+  border-color: rgba(194, 65, 45, 0.32);
+  background: rgba(194, 65, 45, 0.06);
+  color: var(--red-text, #a12c1c);
+}
+.area-detail__error button {
+  margin-left: 6px;
+  padding: 4px 10px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+/* Back link */
+.area-detail__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  align-self: flex-start;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--body);
+  text-decoration: none;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.area-detail__back:hover { background: var(--green-light, #eaf6ef); color: var(--green-dark); }
+
+/* Title block */
+.area-detail__title { padding: 0 2px; }
+.area-detail__type {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--green-dark);
+  margin-bottom: 4px;
+}
+.area-detail__title h1 {
+  margin: 0 0 4px;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.area-detail__window {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+/* Map */
+.area-detail__map {
+  position: relative;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 4px 14px rgba(20, 40, 30, 0.06);
+}
+.area-detail__map-canvas {
+  width: 100%;
+  height: 280px;
+}
+.area-detail__map-error {
+  position: absolute;
+  inset: auto 12px 12px;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--body);
+  font-size: 12px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+}
+.area-detail__map-legend {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--body);
+  font-weight: 600;
+}
+.area-detail__map-legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+}
+.area-detail__map-legend-swatch--area {
+  background: rgba(47, 125, 79, 0.18);
+  border: 2px solid #2f7d4f;
+}
+.area-detail__map-legend-swatch--marker {
+  border-radius: 50%;
+  background: #c94a2c;
+  border: 1.5px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+/* AC 6.3.3 - filter row (plant / status / period). Wraps on narrow
+   viewports so a phone user still gets one input per line without
+   horizontal scroll. Values ride the query key upstream in the page. */
+.area-detail__filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 2px 2px 0;
+}
+.area-detail__filter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.area-detail__filter--period {
+  flex-direction: row;
+  gap: 4px;
+  align-self: flex-end;
+  padding-top: 0;
+}
+.area-detail__filter-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.area-detail__filter-input {
+  padding: 6px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 13px;
+  color: var(--ink);
+  min-width: 140px;
+}
+.area-detail__period-chip {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--body);
+  cursor: pointer;
+}
+.area-detail__period-chip--on {
+  background: var(--green-dark);
+  color: #fff;
+  border-color: var(--green-dark);
+}
+.area-detail__filter-clear {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  font-size: 12.5px;
+  color: var(--body);
+  cursor: pointer;
+  align-self: flex-end;
+}
+.area-detail__filter-clear:hover {
+  background: var(--surface);
+  color: var(--green-dark);
+}
+.area-detail__filter-status {
+  font-size: 12px;
+  color: var(--muted);
+  align-self: flex-end;
+  padding-bottom: 6px;
+}
+
+/* Headline metric card */
+.area-detail__headline {
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, var(--green-light, #eaf6ef) 0%, rgba(234, 246, 239, 0.4) 100%);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.area-detail__headline-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.area-detail__headline-value {
+  font-size: 40px;
+  font-weight: 800;
+  color: var(--green-dark);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.area-detail__headline-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+.area-detail__headline-trend {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.45;
+}
+
+/* Secondary KPI grid */
+.area-detail__kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.area-detail__kpi {
+  padding: 12px 8px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+  min-width: 0;
+}
+.area-detail__kpi-icon {
+  display: inline-flex;
+  color: var(--green-dark);
+  margin-bottom: 2px;
+}
+.area-detail__kpi-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1;
+}
+.area-detail__kpi-label {
+  font-size: 10.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+@media (max-width: 380px) {
+  .area-detail__kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Generic section blocks */
+.area-detail__section {
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+}
+.area-detail__section h2 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.area-detail__section-count {
+  font-size: 11.5px;
+  color: var(--muted);
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-weight: 600;
+}
+.area-detail__section-hint {
+  margin: 0 0 10px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.area-detail__empty {
+  margin: 0;
+  padding: 12px 0 4px;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+/* Species breakdown */
+.area-detail__species-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.area-detail__species-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.area-detail__species-link {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: inherit;
+}
+.area-detail__species-link:hover .area-detail__species-name strong,
+.area-detail__species-link:focus-visible .area-detail__species-name strong {
+  color: var(--green-dark);
+  text-decoration: underline;
+}
+.area-detail__species-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--green-light, #eaf6ef);
+}
+.area-detail__species-name {
+  font-size: 13.5px;
+  color: var(--body);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.area-detail__species-name strong { color: var(--ink); font-weight: 700; }
+.area-detail__species-count {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--green-light, #eaf6ef);
+  color: var(--green-dark);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+/* Recent reports feed */
+.area-detail__reports {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.area-detail__report {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.area-detail__report-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.area-detail__report-name {
+  min-width: 0;
+  flex: 1;
+  font-size: 13.5px;
+  color: var(--ink);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.area-detail__report-common {
+  color: var(--muted);
+  font-weight: 500;
+}
+.area-detail__report-status {
+  flex-shrink: 0;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: capitalize;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+.area-detail__report-status--removed {
+  background: rgba(46, 125, 74, 0.14);
+  border-color: rgba(46, 125, 74, 0.32);
+  color: var(--green-dark);
+}
+.area-detail__report-status--screened {
+  background: rgba(217, 136, 15, 0.14);
+  border-color: rgba(217, 136, 15, 0.32);
+  color: #8a5b0a;
+}
+.area-detail__report-meta {
+  margin: 4px 0 0;
+  font-size: 11.5px;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+/* Cluster summary */
+.area-detail__clusters {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.area-detail__clusters li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.area-detail__cluster-badge {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--green-light, #eaf6ef);
+  color: var(--green-dark);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.area-detail__cluster-meta {
+  font-size: 12.5px;
+  color: var(--muted);
+}

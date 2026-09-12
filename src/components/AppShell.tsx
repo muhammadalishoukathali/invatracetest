@@ -15,6 +15,8 @@ const TITLES: Record<string, [string, string]> = {
   '/map': ['Live threat map', 'Bukit Kiara · updated 2 hours ago'],
   '/profile': ['My profile', 'Identity, recovery and device access'],
   '/reports': ['My records', 'Your submitted field reports'],
+  '/plants': ['Plant catalogue', 'The 32 species InvaTrace tracks'],
+  '/areas': ['Adopted areas', 'Places you monitor for community reports'],
 }
 
 /**
@@ -44,11 +46,21 @@ export function AppShell() {
   if (!profile) return null
   const [title, subtitle] = pathname.startsWith('/reports/')
     ? ['Report details', 'Status and screening result']
-    : TITLES[pathname] ?? [NAV.find((n) => n.path === pathname)?.full ?? 'InvaTrace', '']
+    : pathname.startsWith('/areas/')
+      ? ['Area details', 'Recent community reports for this place']
+      : TITLES[pathname] ?? [NAV.find((n) => n.path === pathname)?.full ?? 'InvaTrace', '']
   const pageFillsAvailableSpace = pathname === '/map'
-  const showBottomTabs = !isDesktop && pathname === '/map'
-  const showProfileBack = !isDesktop && pathname === '/profile'
-  const showProfileShortcut = !isDesktop && pathname !== '/profile' && pathname !== '/reports'
+  // Show the primary bottom nav on every shell route on mobile so the map,
+  // records, plants and profile stay one tap apart. Profile page hides the
+  // duplicate back-arrow now that a Profile tab is always visible.
+  const showBottomTabs = !isDesktop
+  const showProfileBack = false
+  // Bottom nav holds the five primary destinations (Map, Records, Scan,
+  // Plants, Areas). On mobile, Profile moves back up to the top-right so
+  // users still have one-tap access without eating a bottom-nav slot. On
+  // desktop the sidebar already surfaces it, so the header shortcut stays
+  // off there to avoid a duplicate.
+  const showProfileShortcut = !isDesktop && pathname !== '/profile'
   const profileReturnTo = profileReturnPath(location.state)
 
   return (

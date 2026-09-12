@@ -66,7 +66,7 @@ services:
       APP_ENV: development
       DATABASE_URL: postgresql+psycopg://invatrace:invatrace@db:5432/invatrace
       REDIS_URL: redis://redis:6379/0
-      CORS_ORIGINS: '["http://localhost:5173"]'
+      CORS_ORIGINS: '["http://localhost:5173","http://localhost:5175"]'
       JWT_SECRET: development-only-jwt-secret-change-me
       CREDENTIAL_HASH_KEY: development-only-credential-key-change-me
       LOCATION_PRIVACY_KEY: development-only-location-key-change-me

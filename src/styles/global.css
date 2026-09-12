@@ -213,10 +213,11 @@ a, button, [role='button'], [role='link'] {
 }
 @media (max-width: 899.98px) {
   :root {
-    /* Scan FAB is centered, so legend and attribution can sit on the same
-       bottom edge on either side of it without overlapping. */
+    /* Scan FAB is 72px tall centered at the bottom. Legend + Historical
+       pills sit on a row above the FAB so a long label (e.g. "Historical
+       records") cannot clip into the FAB on narrow viewports. */
     --map-mobile-bottom-clearance: calc(14px + env(safe-area-inset-bottom));
-    --map-legend-bottom: calc(14px + env(safe-area-inset-bottom));
+    --map-legend-bottom: calc(72px + 22px + env(safe-area-inset-bottom));
   }
   .maplibregl-ctrl-bottom-right,
   .maplibregl-ctrl-bottom-left { bottom: var(--map-mobile-bottom-clearance) !important; }

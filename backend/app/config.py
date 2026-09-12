@@ -112,6 +112,13 @@ class Settings(BaseSettings):
     # Catalogue version served by /api/v1/catalogue and echoed on /config/limits
     # so clients can invalidate offline packs when the evidence set changes.
     catalogue_version: str = Field(default="v2026-09-08", min_length=1, max_length=32)
+    # AC 5.3.2 - filesystem root the offline pack builder reads reference
+    # image bytes from. The seed populates URLs shaped like
+    # /reference-images/<species_id_underscored>.jpg so the resolver walks
+    # the tail of the URL against this directory. Prod image bakes the
+    # files at /service/reference-images (see backend/Dockerfile); dev
+    # compose mounts invatrace-web/public/reference-images there.
+    reference_image_root: str = Field(default="/service/reference-images", min_length=1)
     # AC 7.1 - Prometheus histogram exporter for per-endpoint latency SLOs.
     # Off by default in tests so the /metrics scrape endpoint (and the
     # global process-wide registry the instrumentator installs into) does

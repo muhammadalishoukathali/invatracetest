@@ -58,16 +58,13 @@ export function BestiaryPage() {
 
   return (
     <main style={{ padding: 20, maxWidth: 960, margin: '0 auto' }}>
-      <header>
-        <h1 style={{ marginTop: 0 }}>Plant catalogue</h1>
-        {statusLine && (
-          <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 4 }}>
-            {statusLine}
-          </p>
-        )}
-      </header>
+      {statusLine && (
+        <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 0, marginBottom: 12 }}>
+          {statusLine}
+        </p>
+      )}
 
-      <div style={{ marginTop: 16 }}>
+      <div style={{ marginTop: 4 }}>
         <label
           htmlFor="bestiary-search"
           style={{ display: 'block', fontSize: 13, marginBottom: 6 }}

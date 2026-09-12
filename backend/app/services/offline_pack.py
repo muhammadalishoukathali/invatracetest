@@ -30,10 +30,10 @@ Reference images (AC 5.3.2): the pipeline walks every species with a
 populated ``reference_image_url`` and, when ``_resolve_image_bytes``
 returns bytes for the URL, packs them under ``images/{species_id}.{ext}``
 with the same per-file SHA-256 + manifest fingerprint pattern the JSON
-files use. Today the seed carries 0/32 populated URLs and no shipped
-asset store, so ``_resolve_image_bytes`` returns ``None`` and the pack
-still ships without images; once real assets land the resolver becomes
-a real fetch and no manifest shape change is needed on either side.
+files use. The resolver reads bytes off the filesystem at
+``settings.reference_image_root`` (baked in prod, volume-mounted in
+dev). URLs pointing outside ``/reference-images/`` are rejected so the
+resolver never serves arbitrary files.
 """
 
 from __future__ import annotations
@@ -42,10 +42,13 @@ import hashlib
 import json
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
+from pathlib import Path
+from urllib.parse import urlsplit
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.db.models import CatalogueVersion, Species
 from app.domain.evidence_catalogue import load_evidence_catalogue
 
@@ -109,22 +112,41 @@ def _image_extension(url: str) -> str:
     return "jpg"
 
 
-def _resolve_image_bytes(species_id: str, url: str) -> bytes | None:
-    """AC 5.3.2 placeholder resolver.
+_REFERENCE_URL_PREFIX = "/reference-images/"
 
-    The seed currently populates 0/32 ``reference_image_url`` values and
-    the repo has no shipped asset store, so this returns ``None`` for
-    every URL today. The pack builder walks the same code path either
-    way, which keeps the manifest pipeline honest: once real assets ship
-    (local ``assets/`` bundle or R2/MinIO), this function grows a real
-    resolver (path/S3 fetch, error-swallow to None) and no caller needs
-    to change.
+
+def _resolve_image_bytes(species_id: str, url: str) -> bytes | None:
+    """AC 5.3.2 filesystem resolver.
+
+    Reads bytes for a ``reference_image_url`` off the local filesystem
+    under ``settings.reference_image_root``. The seed shapes URLs like
+    ``/reference-images/<species_id_underscored>.jpg`` (see
+    ``app/seed.py``); anything not matching that prefix is rejected so
+    this resolver can never be tricked into reading arbitrary files.
+
+    Returns ``None`` on any resolution or read failure so the pack
+    builder can skip the entry and still emit a valid manifest -
+    matching AC 5.3.4's "keep the last valid pack" contract.
     """
-    # NOTE: intentionally minimal. Do not add unbounded network fetches
-    # here without an allowlist - the pack build endpoint is hit on
-    # every client install.
-    _ = (species_id, url)
-    return None
+    _ = species_id
+    if not url:
+        return None
+    path = urlsplit(url).path or url
+    if not path.startswith(_REFERENCE_URL_PREFIX):
+        return None
+    tail = path[len(_REFERENCE_URL_PREFIX):]
+    if not tail or "/" in tail or ".." in tail:
+        return None
+    root = Path(get_settings().reference_image_root).resolve()
+    candidate = (root / tail).resolve()
+    try:
+        candidate.relative_to(root)
+    except ValueError:
+        return None
+    try:
+        return candidate.read_bytes()
+    except (FileNotFoundError, IsADirectoryError, PermissionError, OSError):
+        return None
 
 
 def _species_summary(item: Species) -> dict:

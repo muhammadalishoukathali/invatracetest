@@ -34,6 +34,7 @@ import { useDialogA11y } from '@/hooks/useDialogA11y'
 import { useMapView as useMapStore } from '@/features/map/map-view-store'
 import type { Sighting } from '@/types'
 import { SightingDetailsSheet } from './SightingDetailsSheet'
+import { MapFilters } from './MapFilters'
 import { MapLegend } from './MapLegend'
 import { Icon } from '@/components/Icon'
 import { parseMapLocationTarget, type MapLocationTarget } from './map-location-link'
@@ -194,6 +195,7 @@ export function ThreatMapPage() {
   // chip sits inside MapLegend. Selecting a diamond opens a small sheet
   // that credits GBIF and links back to the source record.
   const [historicalEnabled, setHistoricalEnabled] = useState(false)
+  const [historicalCount, setHistoricalCount] = useState<number | null>(null)
   const [selectedHistorical, setSelectedHistorical] = useState<HistoricalOccurrence | null>(null)
 
   // When we successfully recenter the user, the toast is really just a
@@ -457,11 +459,20 @@ export function ThreatMapPage() {
       return true
     })
     latestVisibleSightings.current = filtered
+    const reportsJustLoaded = !reportsHaveLoaded.current
     reportsHaveLoaded.current = true
 
     if (sightingsSourceReady.current) {
       const source = map.current.getSource(SIGHTINGS_SOURCE_ID) as GeoJSONSource | undefined
       source?.setData(sightingsToFeatureCollection(filtered))
+    }
+
+    // If geolocation already failed before the reports arrived, the map is
+    // still sitting on the Bukit Kiara default. Re-run the community-reports
+    // fit now so the camera moves to the sightings the user cares about
+    // instead of a hardcoded city block.
+    if (reportsJustLoaded && locationFailed.current && !initialViewApplied.current) {
+      fitReportsFallback.current?.()
     }
 
     // If we got here from a notification tap or a "My Reports" link, the
@@ -521,11 +532,17 @@ export function ThreatMapPage() {
         viewportBbox={viewportBbox}
         enabled={historicalEnabled}
         onSelect={setSelectedHistorical}
+        onCountChange={setHistoricalCount}
       />
       <HistoricalRecordDetailsSheet
         occurrence={selectedHistorical}
         onClose={() => setSelectedHistorical(null)}
       />
+      {/* AC 4.2.3 - search box + species / status / risk filters. On desktop
+          the chips lay out inline; on mobile the filter button opens a
+          bottom sheet with the same choices. Filter state lives in
+          map-view-store so the marker-rebuild effect below picks it up. */}
+      <MapFilters />
       {/* Accessibility bit - the map canvas itself is basically invisible
           to keyboard-only or screen reader users. So we always render an
           AccessibleSightingList below that mirrors the pins, including
@@ -564,6 +581,7 @@ export function ThreatMapPage() {
         <MapLegend />
         <button
           type="button"
+          className={`map-toolbar-historical${historicalEnabled ? ' map-toolbar-historical--on' : ''}`}
           onClick={() => setHistoricalEnabled((v) => !v)}
           aria-pressed={historicalEnabled}
           aria-label={
@@ -571,37 +589,15 @@ export function ThreatMapPage() {
               ? 'Hide historical records layer'
               : 'Show historical records layer'
           }
-          style={{
-            position: 'absolute',
-            bottom: 12,
-            right: 12,
-            zIndex: 5,
-            padding: '8px 12px',
-            borderRadius: 'var(--r-chip)',
-            background: historicalEnabled ? '#6a4baa' : 'var(--surface)',
-            color: historicalEnabled ? '#ffffff' : 'var(--body)',
-            border: '1px solid ' + (historicalEnabled ? '#4b3178' : 'var(--border)'),
-            fontSize: 12,
-            fontWeight: 600,
-            cursor: 'pointer',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-          }}
         >
-          <span
-            aria-hidden
-            style={{
-              width: 10,
-              height: 10,
-              background: '#6a4baa',
-              transform: 'rotate(45deg)',
-              display: 'inline-block',
-              border: '1px solid #ffffff',
-            }}
-          />
-          {historicalEnabled ? 'Historical: on' : 'Historical records'}
+          <span aria-hidden className="map-toolbar-historical__glyph" />
+          <span className="map-toolbar-historical__label">
+            {historicalEnabled
+              ? historicalCount == null
+                ? 'Historical: …'
+                : `Historical: ${historicalCount}`
+              : 'Historical'}
+          </span>
         </button>
         <MapAttribution />
         {/* Same AC 4.2.3 - the visible count chip. We set aria-live so

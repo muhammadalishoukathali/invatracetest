@@ -471,6 +471,17 @@ def load_reference_data(session: Session) -> None:
     session.flush()
     _load_discovery_seed(session)
     session.flush()
+    # Populate reference_image_url for every species that does not carry
+    # one yet. The PWA ships the JPGs under public/reference-images/ so the
+    # frontend serves them at /reference-images/<species_id_underscored>.jpg.
+    # Kept as a fallback rather than baked into every SPECIES literal so a
+    # newly-added catalogue species inherits the same convention for free.
+    for species in session.scalars(select(Species)).all():
+        if species.reference_image_url is None:
+            species.reference_image_url = (
+                f"/reference-images/{species.id.replace('-', '_')}.jpg"
+            )
+    session.flush()
     for name, latitude, longitude in PLACES:
         if not session.scalar(select(MonitoredPlace.id).where(MonitoredPlace.name == name)):
             session.add(

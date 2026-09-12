@@ -1,0 +1,92 @@
+{
+  "acacia-auriculiformis": {
+    "title": "Acacia auriculiformis",
+    "page": "https://en.wikipedia.org/wiki/Acacia_auriculiformis",
+    "img_source": "https://upload.wikimedia.org/wikipedia/commons/1/17/Acacia_auriculiformis_flowers.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+  },
+  "acacia-mangium": {
+    "title": "Acacia mangium",
+    "page": "https://en.wikipedia.org/wiki/Acacia_mangium",
+    "img_source": "https://upload.wikimedia.org/wikipedia/commons/e/e4/Acaciamangium1web.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+  },
+  "arachis-pintoi": {
+    "title": "Arachis pintoi",
+    "page": "https://en.wikipedia.org/wiki/Arachis_pintoi",
+    "img_source": "https://upload.wikimedia.org/wikipedia/commons/2/2a/Arachis_pintoi_plant_with_flower.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+  },
+  "calopogonium-mucunoides": {
+    "title": "Calopogonium mucunoides",
+    "page": "https://en.wikipedia.org/wiki/Calopogonium_mucunoides",
+    "img_source": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3f/Calopogonium_mucunoides_4.jpg/3840px-Calopogonium_mucunoides_4.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+  },
+  "cecropia-peltata": {
+    "title": "Cecropia peltata",
+    "page": "https://en.wikipedia.org/wiki/Cecropia_peltata",
+    "img_source": "https://upload.wikimedia.org/wikipedia/commons/2/2d/19820-Cecropia_peltata-Tabaro.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+  },
+  "cleome-rutidosperma": {
+    "title": "Cleome rutidosperma",
+    "page": "https://en.wikipedia.org/wiki/Cleome_rutidosperma",
+    "img_source": "https://upload.wikimedia.org/wikipedia/commons/b/bd/Cleome_rutidosperma.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+  },
+  "cynodon-dactylon": {
+    "title": "Cynodon dactylon",
+    "page": "https://en.wikipedia.org/wiki/Cynodon_dactylon",
+    "img_source": "https://upload.wikimedia.org/wikipedia/commons/6/62/Cynodon_dactylon_2.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+  },
+  "cyperus-rotundus": {
+    "title": "Cyperus rotundus",
+    "page": "https://en.wikipedia.org/wiki/Cyperus_rotundus",
+    "img_source": "https://upload.wikimedia.org/wikipedia/commons/a/ac/Nutgrass_Cyperus_rotundus02.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+  },
+  "eleusine-indica": {
+    "title": "Eleusine indica",
+    "page": "https://en.wikipedia.org/wiki/Eleusine_indica",
+    "img_source": "https://upload.wikimedia.org/wikipedia/commons/a/ae/Eleusine_indica%2C_closeup.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+  },
+  "impatiens-balsamina": {
+    "title": "Impatiens balsamina",
+    "page": "https://en.wikipedia.org/wiki/Impatiens_balsamina",
+    "img_source": "https://upload.wikimedia.org/wikipedia/commons/7/78/Impatiens_balsamina_28_08_2009.JPG?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+  },
+  "limnocharis-flava": {
+    "title": "Limnocharis flava",
+    "page": "https://en.wikipedia.org/wiki/Limnocharis_flava",
+    "img_source": "https://upload.wikimedia.org/wikipedia/commons/4/47/Limnocharis_flava_HabitusFlower_BotGardBln0906.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+  },
+  "paspalum-vaginatum": {
+    "title": "Paspalum vaginatum",
+    "page": "https://en.wikipedia.org/wiki/Paspalum_vaginatum",
+    "img_source": "https://upload.wikimedia.org/wikipedia/commons/d/df/Paspalum_vaginatum_inflorescence_flowering.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+  },
+  "rottboellia-cochinchinensis": {
+    "title": "Rottboellia cochinchinensis",
+    "page": "https://en.wikipedia.org/wiki/Rottboellia_cochinchinensis",
+    "img_source": "https://upload.wikimedia.org/wikipedia/commons/1/1f/Rottbellia_cochinchinensis_2.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+  },
+  "ruellia-blechum": {
+    "title": "Ruellia blechum",
+    "page": "https://en.wikipedia.org/wiki/Ruellia_blechum",
+    "img_source": "https://upload.wikimedia.org/wikipedia/commons/e/e1/Green_Shrimp_Plant_%28997953606%29.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+  },
+  "salvinia-molesta": {
+    "title": "Salvinia molesta",
+    "page": "https://en.wikipedia.org/wiki/Salvinia_molesta",
+    "img_source": "https://upload.wikimedia.org/wikipedia/commons/9/96/Salvinia_molesta.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+  },
+  "striga-asiatica": {
+    "title": "Striga asiatica",
+    "page": "https://en.wikipedia.org/wiki/Striga_asiatica",
+    "img_source": "https://upload.wikimedia.org/wikipedia/en/f/f3/Strigaasiatica.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+  },
+  "synedrella-nodiflora": {
+    "title": "Synedrella",
+    "page": "https://en.wikipedia.org/wiki/Synedrella",
+    "img_source": "https://upload.wikimedia.org/wikipedia/commons/c/ce/Synedrella_nodiflora.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+  },
+  "urochloa-mutica": {
+    "title": "Urochloa mutica",
+    "page": "https://en.wikipedia.org/wiki/Urochloa_mutica",
+    "img_source": "https://upload.wikimedia.org/wikipedia/commons/d/d7/Panicum_barbinode_-_Species_graminum_-_Volume_3.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+  }
+}

@@ -35,6 +35,13 @@ COPY backend/alembic.ini ./alembic.ini
 # checksum guard), so the deployed image and the PWA are one source of truth.
 COPY shared/catalogue /service/shared/catalogue
 
+# AC 5.3.2 - reference image bytes for the offline pack. The PWA also
+# serves the same tree under /reference-images/*, so shipping one copy
+# in the backend image keeps the offline pack resolver deterministic
+# without a second asset store. `_resolve_image_bytes` reads from
+# settings.reference_image_root (defaults to /service/reference-images).
+COPY public/reference-images /service/reference-images
+
 COPY backend/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 

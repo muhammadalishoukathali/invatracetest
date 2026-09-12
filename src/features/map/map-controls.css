@@ -434,7 +434,9 @@
 .map-attribution {
   position: absolute;
   right: 12px;
-  bottom: var(--map-legend-bottom);
+  /* Sit one pill-row above the Legend/Historical row so they never overlap
+     - the Historical toggle also sits bottom-right on desktop. */
+  bottom: calc(var(--map-legend-bottom) + 52px);
   z-index: 5;
   padding: 4px 8px;
   border-radius: 999px;
@@ -533,6 +535,57 @@
   outline: none;
 }
 .map-legend-toggle:active { transform: translateY(1px); }
+
+/* Historical-records toggle - matches the legend pill so both floating
+   controls read as a pair rather than one design language per pill. */
+.map-toolbar-historical {
+  position: absolute;
+  right: 12px;
+  /* Desktop keeps Historical below the attribution chip so both bottom-right
+     controls read as a stack, not an overlap. Mobile lifts it up onto the
+     shared pill row above the Scan FAB - see the mobile media rule below. */
+  bottom: 12px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-translucent);
+  color: var(--body);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(20, 40, 30, 0.15);
+  backdrop-filter: saturate(1.2) blur(14px);
+  -webkit-backdrop-filter: saturate(1.2) blur(14px);
+  transition: transform 140ms ease-out, box-shadow 140ms ease-out, background-color 140ms ease-out;
+}
+.map-toolbar-historical:hover,
+.map-toolbar-historical:focus-visible {
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-md);
+  outline: none;
+}
+.map-toolbar-historical:active { transform: translateY(1px); }
+.map-toolbar-historical--on {
+  background: #6a4baa;
+  color: #ffffff;
+  border-color: #4b3178;
+}
+.map-toolbar-historical__glyph {
+  width: 10px;
+  height: 10px;
+  background: #6a4baa;
+  transform: rotate(45deg);
+  display: inline-block;
+  border: 1px solid #ffffff;
+}
+.map-toolbar-historical--on .map-toolbar-historical__glyph {
+  background: #ffffff;
+  border-color: #6a4baa;
+}
 
 .map-legend-card {
   position: absolute;
@@ -702,8 +755,15 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+@media (max-width: 899.98px) {
+  /* Mobile lifts Historical up onto the shared pill row above the FAB. */
+  .map-toolbar-historical { bottom: var(--map-legend-bottom); }
+}
 @media (max-width: 380px) {
-  .map-attribution { bottom: calc(var(--map-legend-bottom) + 54px); }
+  /* Even narrower viewports: keep the pills readable but cap the historical
+     records button so it never crowds the Scan FAB or the Legend pill. */
+  .map-toolbar-historical { max-width: 44vw; }
+  .map-toolbar-historical__label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
 
 @media (max-width: 350px) {

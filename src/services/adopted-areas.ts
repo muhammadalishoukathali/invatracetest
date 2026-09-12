@@ -18,6 +18,7 @@ export interface AdoptedAreaIndicators {
   reportsNew30d: number
   removalReported30d: number
   daysSinceMostRecent: number | null
+  mostRecentReportDate: string | null
   reportsPrevious30d: number
   changeDirection: ChangeDirection
   changePct: number | null
@@ -63,6 +64,14 @@ export interface ActivityMarker {
   longitude: number
   observedAt: string
   clusterId: number | null
+  // AC 6.3.2 - human-readable marker detail so the UI does not need to
+  // look up the species table for a marker popover.
+  plantName: string
+  plantCommonName: string | null
+  communityReportLabel: string
+  observationDate: string
+  currentStatus: string
+  statusDate: string
 }
 
 export interface ActivitySnapshot {
@@ -72,6 +81,10 @@ export interface ActivitySnapshot {
   placeType: string
   windowStartUtc: string
   windowEndUtc: string
+  // AC 6.3.1 - polygon boundary versioned + returned as GeoJSON so the
+  // client can cache by geometry_version.
+  geometryVersion: string
+  geometryGeojson: string | null
   indicators: AdoptedAreaIndicators
   clusters: ActivityCluster[]
   markers: ActivityMarker[]
@@ -82,6 +95,7 @@ export type AdoptedAreaSort =
   | 'active_sighting_count'
   | 'reports_new_30d'
   | 'place_name'
+  | 'recent_activity'
 
 export function listAdoptedAreas(
   sort: AdoptedAreaSort = 'adopted_at',
@@ -103,8 +117,25 @@ export function removeAdoption(adoptionId: string): Promise<void> {
   })
 }
 
+// AC 6.3.3 - client-selectable filters. Backend accepts species_id
+// (aliased to `plant` in code), status and period_days.
+export interface AdoptionActivityFilters {
+  speciesId?: string | null
+  status?: string | null
+  periodDays?: number | null
+}
+
 export function fetchAdoptionActivity(
   adoptionId: string,
+  filters: AdoptionActivityFilters = {},
 ): Promise<ActivitySnapshot> {
-  return api<ActivitySnapshot>(`/api/v1/adopted-areas/${adoptionId}/activity`)
+  const params = new URLSearchParams()
+  if (filters.speciesId) params.set('species_id', filters.speciesId)
+  if (filters.status) params.set('status', filters.status)
+  if (filters.periodDays != null) params.set('period_days', String(filters.periodDays))
+  const qs = params.toString()
+  const url = qs
+    ? `/api/v1/adopted-areas/${adoptionId}/activity?${qs}`
+    : `/api/v1/adopted-areas/${adoptionId}/activity`
+  return api<ActivitySnapshot>(url)
 }
