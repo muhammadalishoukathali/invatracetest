@@ -83,10 +83,17 @@ def test_axe_playwright_a11y_spec_exists() -> None:
 def test_removed_marker_carries_shape_cue() -> None:
     # AC 7.3 - marker states must be readable without colour. The
     # ThreatMap "removed" tier renders both a dashed ring AND a slash
-    # line on top of the muted fill.
+    # line on top of the muted fill. After the AC 7.1.2 canvas refactor
+    # the shape cues are baked into a MapLibre sprite image via
+    # `buildRemovedPinImage`, rather than inline SVG on a DOM marker, so
+    # the guard now checks the canvas primitives that draw them.
     threat_map = (REPO_ROOT / "src/features/map/ThreatMapPage.tsx").read_text()
-    assert "stroke-dasharray" in threat_map
-    assert "removedOverlay" in threat_map
+    assert "buildRemovedPinImage" in threat_map
+    # Dashed inner ring: canvas equivalent of SVG stroke-dasharray.
+    assert "setLineDash([" in threat_map
+    # Diagonal slash mark drawn as a second stroke on the sprite.
+    assert "REMOVED_ICON_ID" in threat_map
+    assert "UNCLUSTERED_REMOVED_LAYER_ID" in threat_map
     legend = (REPO_ROOT / "src/features/map/MapLegend.tsx").read_text()
     assert "removedPattern" in legend
     assert "dashed ring" in legend
