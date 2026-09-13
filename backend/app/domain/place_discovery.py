@@ -408,6 +408,14 @@ def list_places(
         simplified,
     )
     conditions = []
+    # Hide rows created by the pytest suite (fixtures name their places
+    # ``test-area-<hex>`` / ``test-place-<hex>``) from the user-facing
+    # place picker. They are load-bearing for the backend tests but must
+    # never appear in the app's Adopt-another-place search or the map's
+    # place layer. Excluded via ILIKE so the filter is index-friendly
+    # against the existing name index.
+    conditions.append(~MonitoredArea.name.ilike("test-area-%"))
+    conditions.append(~MonitoredArea.name.ilike("test-place-%"))
     if q and q.strip():
         conditions.append(MonitoredArea.name.ilike(f"%{q.strip()}%"))
     if place_type:

@@ -115,6 +115,12 @@ export type UsePlacesParams = {
   limit?: number
 }
 
+// Pytest fixtures used to seed the shared dev database name their rows
+// ``test-area-<hex>`` / ``test-place-<hex>``. The backend now filters
+// those out server-side, but we defend in depth here so a dev pointing
+// at an older API build never sees them either.
+const TEST_PLACE_NAME = /^test-(area|place)-[a-f0-9]+$/i
+
 /** Wave 2c — viewport/query-driven place index. Debouncing is a consumer
  *  concern (the map viewport listener owns it) so this hook is naive. */
 export function usePlaces(params: UsePlacesParams) {
@@ -122,14 +128,18 @@ export function usePlaces(params: UsePlacesParams) {
   const enabled = Boolean(bbox) || Boolean(q)
   return useQuery({
     queryKey: ['places', q ?? null, placeType ?? null, bbox ?? null, limit ?? null] as const,
-    queryFn: () => {
+    queryFn: async () => {
       const search = new URLSearchParams()
       if (q) search.set('q', q)
       if (placeType) search.set('place_type', placeType)
       if (bbox) search.set('bbox', bbox.join(','))
       if (typeof limit === 'number') search.set('limit', String(limit))
       const qs = search.toString()
-      return api<PlacesListResponse>(`/api/v1/places${qs ? `?${qs}` : ''}`)
+      const response = await api<PlacesListResponse>(`/api/v1/places${qs ? `?${qs}` : ''}`)
+      return {
+        ...response,
+        items: response.items.filter((item) => !TEST_PLACE_NAME.test(item.displayName)),
+      }
     },
     enabled,
     staleTime: 60_000,
