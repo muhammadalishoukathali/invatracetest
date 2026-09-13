@@ -607,6 +607,32 @@ def test_report_cannot_swap_species_or_confidence_from_scan() -> None:
         assert response.status_code == 422
         assert response.json()["code"] == "scan_model_version_mismatch"
 
+        # Capture-source swap - the scan recorded camera capture; the report
+        # cannot re-label it as an upload without a fresh scan.
+        source_swapped = {**base_payload, "captureSource": "upload"}
+        response = client.post(
+            "/api/v1/reports",
+            headers=auth(token, f"{key}:capture-source-swap"),
+            json=source_swapped,
+        )
+        assert response.status_code == 422
+        assert response.json()["code"] == "scan_capture_source_mismatch"
+
+        # Image hash mismatch - the client-declared SHA-256 must match the
+        # bytes the server actually persisted for the scan.
+        wrong_hash = hashlib.sha256(b"not the same image").hexdigest()
+        hash_swapped = {**base_payload, "imageSha256": wrong_hash}
+        response = client.post(
+            "/api/v1/reports",
+            headers=auth(token, f"{key}:image-hash-swap"),
+            json=hash_swapped,
+        )
+        assert response.status_code == 422
+        assert response.json()["code"] in {
+            "scan_image_hash_mismatch",
+            "image_hash_mismatch",
+        }
+
         # AC 4.1.3 - none of the rejected attempts must have left behind a
         # report row, so listing the profile's reports shows zero entries.
         listing = assert_ok(

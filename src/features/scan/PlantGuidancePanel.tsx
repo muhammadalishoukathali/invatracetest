@@ -21,6 +21,7 @@ import {
   findPlantStatus,
   type PlantStatusRecord,
 } from '@shared/catalogue'
+import { useSpeciesGuidance, type ServerGuidance } from '@/services/species-guidance'
 
 interface Props {
   scientificName?: string | null
@@ -98,6 +99,15 @@ export function PlantGuidancePanel({
     () => findPlantGuidance({ scientificName, modelLabel: speciesName, plantId }),
     [scientificName, speciesName, plantId],
   )
+  // AC 3.1.1 - always try to consume `/api/v1/species/:id/guidance` for the
+  // safety-critical review provenance. AC 3.1.4 - if the server responds with
+  // a shape that fails runtime validation, `useSpeciesGuidance` returns null
+  // and we drop to the observe-and-report fallback below rather than render
+  // half-verified active guidance.
+  const serverGuidanceQuery = useSpeciesGuidance(plant?.plant_id ?? plantId ?? null)
+  const serverGuidance = serverGuidanceQuery.data ?? null
+  const serverValidationFailed =
+    serverGuidanceQuery.isSuccess && serverGuidanceQuery.data === null
   // No action path should show up until the user has actually made a permission
   // choice - otherwise it's too easy to skim past and remove something you
   // shouldn't have.
@@ -129,6 +139,23 @@ export function PlantGuidancePanel({
       speciesId: plantId ?? null,
       scientificName: scientificName ?? null,
       modelLabel: speciesName ?? null,
+    })
+    return (
+      <MissingGuidanceFallback
+        speciesName={speciesName ?? scientificName ?? null}
+        catalogueRecord={catalogueRecord}
+      />
+    )
+  }
+
+  // AC 3.1.4 - if the server guidance response failed runtime schema
+  // validation for this plant, fall back to observe-and-report instead of
+  // rendering any active removal steps (even bundled ones).
+  if (serverValidationFailed) {
+    const catalogueRecord = findPlantStatus({
+      speciesId: plant.plant_id,
+      scientificName: plant.scientific_name,
+      modelLabel: plant.model_label,
     })
     return (
       <MissingGuidanceFallback
@@ -345,7 +372,7 @@ export function PlantGuidancePanel({
         </Block>
       )}
 
-      <SafetyPolicyFooter plant={plant} />
+      <SafetyPolicyFooter plant={plant} serverGuidance={serverGuidance} />
     </section>
   )
 }
@@ -932,13 +959,30 @@ function SourceLine({ ids, inline }: { ids: string[]; inline?: boolean }) {
   )
 }
 
-function SafetyPolicyFooter({ plant }: { plant: PlantGuidance }) {
+function SafetyPolicyFooter({
+  plant,
+  serverGuidance,
+}: {
+  plant: PlantGuidance
+  serverGuidance: ServerGuidance | null
+}) {
   const policy = plantGuidanceDataset.safety_policy
-  // Showing the review date and content version here lets the user see for
-  // themselves how current the guidance they're reading actually is.
-  const reviewLabel = plantGuidanceDataset.last_reviewed
-    ? `Guidance last reviewed ${plantGuidanceDataset.last_reviewed}`
+  // AC 3.1.4 / 3.2.4 - the review date and content version rendered here come
+  // from the server's guidance response whenever one is available for THIS
+  // plant, so the user is looking at the same version the API is serving
+  // rather than whatever was bundled into the app build.
+  const usingServerProvenance =
+    serverGuidance !== null && serverGuidance.plantId === plant.plant_id
+  const reviewDate = usingServerProvenance
+    ? serverGuidance.lastReviewed
+    : plantGuidanceDataset.last_reviewed
+  const contentVersion = usingServerProvenance
+    ? serverGuidance.contentVersion
+    : plantGuidanceDataset.content_version
+  const reviewLabel = reviewDate
+    ? `Guidance last reviewed ${reviewDate}`
     : 'Guidance review date unavailable'
+  const provenanceLabel = usingServerProvenance ? 'live' : 'cached'
   return (
     <details
       style={{
@@ -953,7 +997,7 @@ function SafetyPolicyFooter({ plant }: { plant: PlantGuidance }) {
         Safety notes and sources
       </summary>
       <p style={{ marginTop: 6, fontSize: 11.5, color: 'var(--muted)' }}>
-        <strong>{reviewLabel}</strong> · Content version {plantGuidanceDataset.content_version} · Plant {plant.plant_id}
+        <strong>{reviewLabel}</strong> · Content version {contentVersion} ({provenanceLabel}) · Plant {plant.plant_id}
       </p>
       <div style={{ marginTop: 10, fontSize: 12, color: 'var(--body)', lineHeight: 1.6 }}>
         <p><strong>Identification:</strong> A photo can suggest a species, but it cannot confirm one. If the result is unclear, photograph and report the plant without disturbing it.</p>
