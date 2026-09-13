@@ -260,6 +260,9 @@ export function ThreatMapPage() {
     const geolocate = new maplibregl.GeolocateControl({
       positionOptions: { enableHighAccuracy: true, timeout: 8_000, maximumAge: 300_000 },
       showUserLocation: true, trackUserLocation: false,
+      // Explicit tight zoom around the user so the map opens into their
+      // neighbourhood instead of MapLibre's default wide fit-to-accuracy.
+      fitBoundsOptions: { maxZoom: 16, duration: 650, padding: 40 },
     })
     m.addControl(geolocate, 'top-right')
     const showReportsFallback = (text: string) => {
@@ -267,8 +270,18 @@ export function ThreatMapPage() {
       fitReportsFallback.current?.()
       setLocationNotice({ tone: 'error', text })
     }
-    geolocate.on('geolocate', () => {
+    geolocate.on('geolocate', (event) => {
       initialViewApplied.current = true
+      // MapLibre's GeolocateControl already flies to the user; we also
+      // easeTo with a fixed close zoom so the arrival view is consistent
+      // regardless of reported GPS accuracy (some devices report huge
+      // accuracy circles that leave the camera zoomed way out).
+      const { longitude, latitude } = event.coords
+      m.easeTo({
+        center: [longitude, latitude],
+        zoom: isDesktop ? 15.5 : 16,
+        duration: 650,
+      })
       setLocationNotice({ tone: 'success', text: 'Map centred on your location' })
     })
     geolocate.on('error', () => {
@@ -581,22 +594,40 @@ export function ThreatMapPage() {
         <MapLegend />
         <button
           type="button"
+          role="switch"
           className={`map-toolbar-historical${historicalEnabled ? ' map-toolbar-historical--on' : ''}`}
           onClick={() => setHistoricalEnabled((v) => !v)}
-          aria-pressed={historicalEnabled}
+          aria-checked={historicalEnabled}
           aria-label={
             historicalEnabled
               ? 'Hide historical records layer'
               : 'Show historical records layer'
           }
+          title={
+            historicalEnabled
+              ? 'Historical GBIF records are shown on the map. Click to hide.'
+              : 'Overlay historical GBIF records (past occurrences) on the map.'
+          }
         >
-          <span aria-hidden className="map-toolbar-historical__glyph" />
+          <span className="map-toolbar-historical__icon" aria-hidden>
+            <Icon
+              name="Clock"
+              size={14}
+              color={historicalEnabled ? '#ffffff' : 'var(--body)'}
+            />
+          </span>
           <span className="map-toolbar-historical__label">
+            Historical records
+          </span>
+          <span
+            className={`map-toolbar-historical__state${historicalEnabled ? ' map-toolbar-historical__state--on' : ''}`}
+            aria-hidden
+          >
             {historicalEnabled
               ? historicalCount == null
-                ? 'Historical: …'
-                : `Historical: ${historicalCount}`
-              : 'Historical'}
+                ? 'Loading…'
+                : `On · ${historicalCount}`
+              : 'Off'}
           </span>
         </button>
         <MapAttribution />

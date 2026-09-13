@@ -1,16 +1,18 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useQuery } from '@tanstack/react-query'
 import { Icon } from '@/components/Icon'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
 import { useMapView } from '@/features/map/map-view-store'
 import { useDialogA11y } from '@/hooks/useDialogA11y'
 import { modelSpeciesCatalog } from '@/data/model-species-catalog'
-import type { SightingStatus, Risk } from '@/types'
+import { api } from '@/services/api-client'
+import type { Sighting, SightingStatus, Risk } from '@/types'
 import './map-controls.css'
 
-/** All the invasive classes the bundled model can actually output - I filter
- *  the full species catalog down to just these so the filter chips only ever
- *  show something the model would realistically flag. */
+/** Invasive classes the bundled model can flag. Used as the baseline chip
+ *  set so users always see canonical species even when the current dataset
+ *  has none of them. */
 export const MAP_FILTER_SPECIES = modelSpeciesCatalog.classes
   .filter((species) => species.malaysia_status === 'invasive')
   .map((species) => ({
@@ -45,6 +47,48 @@ export function MapFilters() {
     toggleSpecies, toggleStatus, toggleRisk, clearFilters,
   } = useMapView()
   const active = species.length + statuses.length + risks.length
+
+  // Pull the unfiltered sighting set so we can offer a chip for every
+  // species the map actually has data for - not just the 11 bundled model
+  // classes. Without this, dev/demo sightings (e.g. seeded species outside
+  // the bundled catalogue) can never be filtered from the UI even though
+  // they show on the map. AC 4.2.3: filter chips must be able to reduce
+  // every visible pin, not just the canonical eleven.
+  const { data: unfilteredData } = useQuery({
+    queryKey: ['sightings', 'filter-catalog'],
+    queryFn: () => api<{ items: Sighting[] }>('/api/v1/sightings'),
+    staleTime: 60_000,
+  })
+
+  // Group by displayed label so multiple database rows with the same
+  // common name (e.g. "Test Plant" seeded during backend tests) collapse
+  // to a single chip. The chip's `ids` tuple carries every species_id
+  // sharing that label - selecting the chip must select every underlying
+  // id or the map will keep showing unfiltered rows.
+  const speciesOptions = useMemo(() => {
+    const byLabel = new Map<string, { label: string; ids: string[]; count: number }>()
+    for (const base of MAP_FILTER_SPECIES) {
+      byLabel.set(base.label, { label: base.label, ids: [base.id], count: 0 })
+    }
+    for (const sighting of unfilteredData?.items ?? []) {
+      const existing = byLabel.get(sighting.speciesName)
+      if (existing) {
+        if (!existing.ids.includes(sighting.speciesId)) existing.ids.push(sighting.speciesId)
+        existing.count += 1
+      } else {
+        byLabel.set(sighting.speciesName, {
+          label: sighting.speciesName,
+          ids: [sighting.speciesId],
+          count: 1,
+        })
+      }
+    }
+    // Sort: species with observations first (desc by count), then alpha.
+    return Array.from(byLabel.values()).sort((a, b) => {
+      if (a.count !== b.count) return b.count - a.count
+      return a.label.localeCompare(b.label)
+    })
+  }, [unfilteredData])
 
   return (
     <div className="map-toolbar">
@@ -102,9 +146,9 @@ export function MapFilters() {
       {isDesktop && (
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
           <div role="group" aria-label="Species filters" style={{ display: 'contents' }}>
-            {MAP_FILTER_SPECIES.map((s) => (
-              <Chip key={s.id} label={s.label} on={species.includes(s.id)}
-                    onClick={() => toggleSpecies(s.id)} />
+            {speciesOptions.map((s) => (
+              <Chip key={s.label} label={s.label} on={species.includes(s.ids[0])}
+                    onClick={() => toggleSpecies(s.ids)} />
             ))}
           </div>
           <Divider />
@@ -142,7 +186,8 @@ export function MapFilters() {
           selectedSpecies={species}
           selectedStatuses={statuses}
           selectedRisks={risks}
-          toggleSpecies={toggleSpecies}
+          speciesOptions={speciesOptions}
+          onToggleSpeciesGroup={toggleSpecies}
           toggleStatus={toggleStatus}
           toggleRisk={toggleRisk}
           clearFilters={clearFilters}
@@ -164,13 +209,15 @@ function Divider() {
  *  "Filters" button up top once the screen is too narrow for inline chips. */
 function FiltersSheet({
   onClose, selectedSpecies, selectedStatuses, selectedRisks,
-  toggleSpecies, toggleStatus, toggleRisk, clearFilters, active,
+  speciesOptions,
+  onToggleSpeciesGroup, toggleStatus, toggleRisk, clearFilters, active,
 }: {
   onClose: () => void
   selectedSpecies: readonly string[]
   selectedStatuses: readonly SightingStatus[]
   selectedRisks: readonly Risk[]
-  toggleSpecies: (id: string) => void
+  speciesOptions: readonly { label: string; ids: string[]; count: number }[]
+  onToggleSpeciesGroup: (ids: string[]) => void
   toggleStatus: (s: SightingStatus) => void
   toggleRisk: (r: Risk) => void
   clearFilters: () => void
@@ -212,9 +259,12 @@ function FiltersSheet({
           </FilterGroup>
           <FilterGroup title="Species" description="Choose one or more tracked plants.">
             <div className="filter-option-grid">
-            {MAP_FILTER_SPECIES.map((s) => (
-                <FilterOption key={s.id} label={s.label} on={selectedSpecies.includes(s.id)}
-                              onClick={() => toggleSpecies(s.id)} />
+            {speciesOptions.map((s) => (
+                <FilterOption
+                  key={s.label}
+                  label={s.count > 0 ? `${s.label} · ${s.count}` : s.label}
+                  on={selectedSpecies.includes(s.ids[0])}
+                  onClick={() => onToggleSpeciesGroup(s.ids)} />
             ))}
             </div>
           </FilterGroup>

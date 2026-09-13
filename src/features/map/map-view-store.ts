@@ -19,7 +19,7 @@ interface MapState {
   search: string
   selectedId: string | null
 
-  toggleSpecies: (id: string) => void
+  toggleSpecies: (id: string | string[]) => void
   toggleStatus: (s: SightingStatus) => void
   toggleRisk: (r: Risk) => void
   clearFilters: () => void
@@ -35,8 +35,21 @@ export const useMapView = create<MapState>((set, get) => ({
   selectedId: null,
 
   toggleSpecies: (id) => {
+    const ids = Array.isArray(id) ? id : [id]
+    if (ids.length === 0) return
     const cur = get().species
-    set({ species: cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id] })
+    // A group is "on" when the first id in the group is already selected.
+    // We treat toggling as an all-or-nothing operation for the group so a
+    // single "Test Plant" chip flips every underlying species_id together.
+    const isOn = cur.includes(ids[0])
+    if (isOn) {
+      const drop = new Set(ids)
+      set({ species: cur.filter((x) => !drop.has(x)) })
+    } else {
+      const merged = new Set(cur)
+      for (const value of ids) merged.add(value)
+      set({ species: Array.from(merged) })
+    }
   },
 
   toggleStatus: (s) => {
