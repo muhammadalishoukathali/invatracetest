@@ -21,6 +21,7 @@ import { Icon } from '@/components/Icon'
 import { useCatalogueDetail, type CatalogueDetail, type EvidenceCode } from '@/services/catalogue'
 import { readOfflineImageUrl } from '@/services/offline-pack'
 import { useINaturalistPhoto, type INatPhoto } from '@/services/inaturalist'
+import { useSpeciesWikipedia } from '@/services/wikipedia'
 import { findPlantGuidance, type PlantGuidance } from '@/data/plant-guidance'
 
 const EVIDENCE_LABEL: Record<EvidenceCode, string> = {
@@ -63,6 +64,36 @@ const STATUS_TONE: Record<string, { bg: string; border: string; color: string }>
   native: { bg: 'var(--green-light)', border: 'var(--green-border)', color: 'var(--green-dark)' },
   information_only: { bg: '#EEF3F7', border: '#D5DEE7', color: '#2F5F86' },
   status_uncertain: { bg: '#FEF3E2', border: '#F0D9A8', color: 'var(--amber, #A15C07)' },
+}
+
+// Every catalogue row carries evidence codes even when a species has no
+// curated guidance record; derive a coarse Malaysia status label from
+// those codes so the detail page still leads with a status heading. Any
+// species listed on GRIIS Malaysia is treated as invasive per the DMP-
+// authoritative status source; codes A/B (agriculture / biosecurity
+// flags) alone produce the softer "listed" phrasing.
+function deriveStatusFromEvidence(codes: readonly EvidenceCode[]): PlantGuidance['malaysia_status'] | null {
+  if (codes.length === 0) return null
+  if (codes.includes('G')) {
+    return {
+      category: 'invasive',
+      display_label: 'Listed as invasive in Malaysia (GRIIS)',
+      confidence: 'high',
+      note: 'Recorded on the Malaysian entry of the Global Register of Introduced and Invasive Species.',
+      source_ids: [],
+    }
+  }
+  return {
+    category: 'status_uncertain',
+    display_label: 'Flagged by Malaysian regulators',
+    confidence: 'medium',
+    note: codes.includes('A') && codes.includes('B')
+      ? 'Flagged in the Department of Agriculture and biosecurity registers.'
+      : codes.includes('A')
+        ? 'Flagged in the Department of Agriculture register.'
+        : 'Flagged in the biosecurity register.',
+    source_ids: [],
+  }
 }
 
 const BANNER_TONE: Record<'info' | 'warn' | 'danger', { bg: string; border: string; color: string }> = {
@@ -220,8 +251,18 @@ function PlantDetailView({ detail }: { detail: CatalogueDetail }) {
     detail.identifyingCharacteristics ?? extras?.identifying_features ?? null
   const habitat = detail.typicalHabitat ?? extras?.typical_habitat ?? null
   const impacts = detail.documentedImpacts ?? extras?.documented_impacts ?? null
-  const generalInfo = guidance?.general_information ?? null
-  const status = guidance?.malaysia_status ?? null
+  // Fallback description from Wikipedia (linked from every iNaturalist
+  // taxon, so the DMP-referenced iNaturalist article is the same article).
+  // Only fetched when the curated guidance has no general_information -
+  // curated copy is always preferred.
+  const wiki = useSpeciesWikipedia(guidance?.general_information ? null : detail.scientificName)
+  const generalInfo = guidance?.general_information ?? wiki.data?.extract ?? null
+  const generalInfoSource: 'guidance' | 'wikipedia' | null = guidance?.general_information
+    ? 'guidance'
+    : wiki.data?.extract
+      ? 'wikipedia'
+      : null
+  const status = guidance?.malaysia_status ?? deriveStatusFromEvidence(detail.evidenceCodes)
   const riskFlags = guidance?.risk_flags ?? []
   const followUp = guidance?.follow_up ?? []
   const identificationNote = guidance?.identification_note ?? null
@@ -351,7 +392,14 @@ function PlantDetailView({ detail }: { detail: CatalogueDetail }) {
       {generalInfo && (
         <section style={{ marginTop: 24 }}>
           <h2 style={{ fontSize: 16, margin: '0 0 8px' }}>About this plant</h2>
-          <p style={{ margin: 0, lineHeight: 1.55 }}>{generalInfo}</p>
+          <p style={{ margin: 0, lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{generalInfo}</p>
+          {generalInfoSource === 'wikipedia' && wiki.data && (
+            <p style={{ margin: '8px 0 0', fontSize: 11.5, color: 'var(--muted)' }}>
+              Source: <a href={wiki.data.pageUrl} target="_blank" rel="noreferrer noopener">
+                Wikipedia
+              </a> · CC BY-SA
+            </p>
+          )}
         </section>
       )}
 
