@@ -11,6 +11,15 @@ import { Icon } from './Icon'
 import { profileReturnPath, profileStateFromPath } from '@/features/private-access/profile-navigation'
 import './app-shell.css'
 
+function backLabelForReturnTo(returnTo: '/map' | '/reports' | '/plants' | '/areas'): string {
+  switch (returnTo) {
+    case '/reports': return 'Back to my records'
+    case '/plants': return 'Back to plant catalogue'
+    case '/areas': return 'Back to adopted areas'
+    default: return 'Back to threat map'
+  }
+}
+
 const TITLES: Record<string, [string, string]> = {
   '/map': ['Live threat map', 'Bukit Kiara · updated 2 hours ago'],
   '/profile': ['My profile', 'Identity, recovery and device access'],
@@ -51,17 +60,20 @@ export function AppShell() {
       : TITLES[pathname] ?? [NAV.find((n) => n.path === pathname)?.full ?? 'InvaTrace', '']
   const pageFillsAvailableSpace = pathname === '/map'
   // Show the primary bottom nav on every shell route on mobile so the map,
-  // records, plants and profile stay one tap apart. Profile page hides the
-  // duplicate back-arrow now that a Profile tab is always visible.
+  // records, plants and profile stay one tap apart.
   const showBottomTabs = !isDesktop
-  const showProfileBack = false
+  const profileReturnTo = profileReturnPath(location.state)
+  // Render an explicit back arrow on the profile screen. Without it users on
+  // mobile have no in-page control that returns them to the peer route they
+  // opened profile from (records, plants, areas) and the top-right shortcut
+  // is only "go TO profile" so the trip is one-way.
+  const showProfileBack = pathname === '/profile'
   // Bottom nav holds the five primary destinations (Map, Records, Scan,
   // Plants, Areas). On mobile, Profile moves back up to the top-right so
   // users still have one-tap access without eating a bottom-nav slot. On
   // desktop the sidebar already surfaces it, so the header shortcut stays
   // off there to avoid a duplicate.
   const showProfileShortcut = !isDesktop && pathname !== '/profile'
-  const profileReturnTo = profileReturnPath(location.state)
 
   return (
     <div style={{ display: 'flex', flexDirection: isDesktop ? 'row' : 'column',
@@ -78,7 +90,7 @@ export function AppShell() {
               <button
                 type="button"
                 className="app-header__back"
-                aria-label={profileReturnTo === '/reports' ? 'Back to my records' : 'Back to threat map'}
+                aria-label={backLabelForReturnTo(profileReturnTo)}
                 onClick={() => navigate(profileReturnTo, { replace: true })}
               >
                 <Icon name="ChevronLeft" size={20} color="var(--body)" />
