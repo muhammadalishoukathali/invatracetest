@@ -471,6 +471,8 @@ def load_reference_data(session: Session) -> None:
     session.flush()
     _load_discovery_seed(session)
     session.flush()
+    _load_kl_monitored_areas(session)
+    session.flush()
     # Populate reference_image_url for every species that does not carry
     # one yet. The PWA ships the JPGs under public/reference-images/ so the
     # frontend serves them at /reference-images/<species_id_underscored>.jpg.
@@ -701,6 +703,147 @@ _DISCOVERY_PLACE_WKT = (
     "101.6355 3.1450"
     ")))"
 )
+
+
+# Hand-authored polygons for well-known Kuala Lumpur parks / reserves so the
+# adoption picker has a real list of adoptable places on a fresh dev DB
+# instead of a single point. Coordinates are small rectangular envelopes
+# around each park's public footprint; anything closer to the real polygon
+# comes from an OSM import (invatrace import-osm). Each rectangle is
+# ~200-800 m per side so a sighting inside the park lands inside the
+# polygon and one on the far side of the city does not.
+_KL_MONITORED_AREAS: tuple[tuple[str, str, str], ...] = (
+    (
+        "KLCC Public Park",
+        "park",
+        "MULTIPOLYGON((("
+        "101.7095 3.1520, 101.7195 3.1520, "
+        "101.7195 3.1615, 101.7095 3.1615, 101.7095 3.1520"
+        ")))",
+    ),
+    (
+        "Titiwangsa Lake Gardens",
+        "park",
+        "MULTIPOLYGON((("
+        "101.6980 3.1690, 101.7100 3.1690, "
+        "101.7100 3.1810, 101.6980 3.1810, 101.6980 3.1690"
+        ")))",
+    ),
+    (
+        "Perdana Botanical Gardens",
+        "park",
+        "MULTIPOLYGON((("
+        "101.6795 3.1400, 101.6915 3.1400, "
+        "101.6915 3.1510, 101.6795 3.1510, 101.6795 3.1400"
+        ")))",
+    ),
+    (
+        "Taman Tugu Urban Forest",
+        "park",
+        "MULTIPOLYGON((("
+        "101.6790 3.1442, 101.6850 3.1442, "
+        "101.6850 3.1512, 101.6790 3.1512, 101.6790 3.1442"
+        ")))",
+    ),
+    (
+        "Bukit Nanas Forest Reserve",
+        "forest",
+        "MULTIPOLYGON((("
+        "101.6980 3.1490, 101.7060 3.1490, "
+        "101.7060 3.1570, 101.6980 3.1570, 101.6980 3.1490"
+        ")))",
+    ),
+    (
+        "FRIM Kepong",
+        "forest",
+        "MULTIPOLYGON((("
+        "101.6230 3.2260, 101.6410 3.2260, "
+        "101.6410 3.2450, 101.6230 3.2450, 101.6230 3.2260"
+        ")))",
+    ),
+    (
+        "Ampang Forest Reserve",
+        "forest",
+        "MULTIPOLYGON((("
+        "101.7620 3.1580, 101.8020 3.1580, "
+        "101.8020 3.2020, 101.7620 3.2020, 101.7620 3.1580"
+        ")))",
+    ),
+    (
+        "Kepong Metropolitan Park",
+        "park",
+        "MULTIPOLYGON((("
+        "101.6280 3.2010, 101.6400 3.2010, "
+        "101.6400 3.2130, 101.6280 3.2130, 101.6280 3.2010"
+        ")))",
+    ),
+    (
+        "Bukit Gasing Educational Forest",
+        "forest",
+        "MULTIPOLYGON((("
+        "101.6510 3.1020, 101.6620 3.1020, "
+        "101.6620 3.1120, 101.6510 3.1120, 101.6510 3.1020"
+        ")))",
+    ),
+    (
+        "Kota Damansara Community Forest",
+        "forest",
+        "MULTIPOLYGON((("
+        "101.5800 3.1550, 101.5980 3.1550, "
+        "101.5980 3.1720, 101.5800 3.1720, 101.5800 3.1550"
+        ")))",
+    ),
+    (
+        "Taman Rimba Kiara",
+        "park",
+        "MULTIPOLYGON((("
+        "101.6248 3.1595, 101.6335 3.1595, "
+        "101.6335 3.1670, 101.6248 3.1670, 101.6248 3.1595"
+        ")))",
+    ),
+    (
+        "Desa ParkCity Central Park",
+        "park",
+        "MULTIPOLYGON((("
+        "101.6250 3.1930, 101.6340 3.1930, "
+        "101.6340 3.2010, 101.6250 3.2010, 101.6250 3.1930"
+        ")))",
+    ),
+)
+
+
+def _load_kl_monitored_areas(session: Session) -> None:
+    """Idempotent upsert of the KL park / reserve list for the adoption
+    picker. Matched by name. Kept separate from the Bukit Kiara discovery
+    seed so a fresh dev DB gets both, and re-running the seed against an
+    older database (with only the discovery park) fills in the gap.
+    """
+    for name, place_type, wkt in _KL_MONITORED_AREAS:
+        geom = func.ST_Multi(func.ST_GeomFromText(wkt, 4326))
+        existing = session.scalar(
+            select(MonitoredArea).where(MonitoredArea.name == name)
+        )
+        if existing is None:
+            session.add(
+                MonitoredArea(
+                    name=name,
+                    geometry=geom,
+                    metadata_json={
+                        "tags": {
+                            "leisure" if place_type == "park" else "landuse":
+                                place_type if place_type == "park" else "forest",
+                        }
+                    },
+                    place_type=place_type,
+                    geometry_status="authoritative",
+                    geometry_version="seed-2026-09-kl-parks",
+                )
+            )
+        else:
+            existing.geometry = geom
+            existing.place_type = place_type
+            existing.geometry_status = "authoritative"
+            existing.geometry_version = "seed-2026-09-kl-parks"
 
 # One directed waterway skirting the eastern boundary of the park so a
 # freshwater species with an occurrence a few hundred metres upstream can

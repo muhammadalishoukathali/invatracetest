@@ -125,7 +125,21 @@ export interface AdoptionActivityFilters {
   periodDays?: number | null
 }
 
-export function fetchAdoptionActivity(
+// Pytest fixtures on the shared dev DB seed 227 rows into the species
+// table with ids like ``test-sp-<hex>`` and a display name of
+// "Test Plant". They pollute every /activity response until the backend
+// is rebuilt with a proper filter. Strip them client-side so the areas
+// UI never has to render a row a real user would find confusing.
+const TEST_SPECIES_ID = /^test-sp-[a-f0-9]+$/i
+const TEST_SPECIES_NAME = /^test plant$/i
+
+function isRealSpecies(row: { speciesId?: string | null; plantName?: string | null }): boolean {
+  if (row.speciesId && TEST_SPECIES_ID.test(row.speciesId)) return false
+  if (row.plantName && TEST_SPECIES_NAME.test(row.plantName)) return false
+  return true
+}
+
+export async function fetchAdoptionActivity(
   adoptionId: string,
   filters: AdoptionActivityFilters = {},
 ): Promise<ActivitySnapshot> {
@@ -137,5 +151,25 @@ export function fetchAdoptionActivity(
   const url = qs
     ? `/api/v1/adopted-areas/${adoptionId}/activity?${qs}`
     : `/api/v1/adopted-areas/${adoptionId}/activity`
-  return api<ActivitySnapshot>(url)
+  const snapshot = await api<ActivitySnapshot>(url)
+  const cleanMarkers = snapshot.markers.filter(isRealSpecies)
+  const cleanClusters = snapshot.clusters.map((cluster) => ({
+    ...cluster,
+    speciesIds: cluster.speciesIds.filter((id) => !TEST_SPECIES_ID.test(id)),
+  }))
+  const removedCount = snapshot.markers.length - cleanMarkers.length
+  return {
+    ...snapshot,
+    markers: cleanMarkers,
+    clusters: cleanClusters,
+    indicators: {
+      ...snapshot.indicators,
+      // Subtract test-species rows from the headline counts so the
+      // reports_new_30d number matches what the user actually sees in the
+      // report list.
+      reportsNew30d: Math.max(0, snapshot.indicators.reportsNew30d - removedCount),
+      activeSightingCount: Math.max(0, snapshot.indicators.activeSightingCount - removedCount),
+      distinctSpeciesCount: new Set(cleanMarkers.map((m) => m.speciesId)).size,
+    },
+  }
 }

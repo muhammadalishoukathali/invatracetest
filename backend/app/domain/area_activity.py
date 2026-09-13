@@ -134,11 +134,17 @@ def _classify_change(
 def _filter_by_place(query, area_id: uuid.UUID):
     """Restrict a Sighting query to the polygon of ``area_id``. Trail
     buffer support lives here so callers stay clean when we add
-    trail_area places.
+    trail_area places. Also drops sightings for pytest-fixture species
+    (``test-sp-<hex>``) so a shared dev DB does not surface them to the
+    UI.
     """
 
     area_geom = select(MonitoredArea.geometry).where(MonitoredArea.id == area_id).scalar_subquery()
-    return query.where(func.ST_Covers(area_geom, Sighting.location))
+    return (
+        query
+        .where(func.ST_Covers(area_geom, Sighting.location))
+        .where(~Sighting.species_id.like("test-sp-%"))
+    )
 
 
 def compute_activity(

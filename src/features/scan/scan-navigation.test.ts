@@ -13,6 +13,12 @@ describe('scan navigation', () => {
     expect(scanReturnPath({ returnTo: '/profile' })).toBe('/profile')
   })
 
+  it('returns to areas when the scan starts from an adopted area', () => {
+    expect(scanStateFromPath('/areas')).toEqual({ returnTo: '/areas' })
+    expect(scanStateFromPath('/areas/some-id')).toEqual({ returnTo: '/areas' })
+    expect(scanReturnPath({ returnTo: '/areas' })).toBe('/areas')
+  })
+
   it('falls back to the map for unknown or malformed state', () => {
     expect(scanStateFromPath('/map')).toEqual({ returnTo: '/map' })
     expect(scanReturnPath(null)).toBe('/map')

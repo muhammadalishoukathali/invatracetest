@@ -311,14 +311,25 @@ export function AreaDetailPage() {
       </Link>
 
       <header className="area-detail__title">
-        <span className="area-detail__type">
-          <Icon name="MapPin" size={13} color="var(--green-dark)" />
-          {data.placeType}
-        </span>
-        <h1>{data.placeName}</h1>
-        <p className="area-detail__window">
-          Community reports · {windowFrom} – {windowTo}
-        </p>
+        <div className="area-detail__title-lead">
+          <span className="area-detail__type">
+            <Icon name="MapPin" size={13} color="var(--green-dark)" />
+            {data.placeType}
+          </span>
+          <h1>{data.placeName}</h1>
+          <p className="area-detail__window">
+            Community reports · {windowFrom} – {windowTo}
+          </p>
+        </div>
+        <Link
+          to="/scan"
+          state={{ returnTo: '/areas' }}
+          className="area-detail__report-cta"
+          aria-label={`Report a new sighting in ${data.placeName}`}
+        >
+          <Icon name="ScanLine" size={16} color="#fff" />
+          <span>Report a sighting here</span>
+        </Link>
       </header>
 
       <section className="area-detail__map" aria-label="Area outline and community reports">

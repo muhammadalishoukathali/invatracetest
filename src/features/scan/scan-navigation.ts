@@ -8,17 +8,22 @@
  * instead of each one guessing at router state on its own.
  */
 export interface ScanNavigationState {
-  returnTo: '/map' | '/reports' | '/profile'
+  returnTo: '/map' | '/reports' | '/profile' | '/areas'
 }
+
+const VALID: readonly ScanNavigationState['returnTo'][] = ['/map', '/reports', '/profile', '/areas']
 
 export function scanReturnPath(state: unknown): ScanNavigationState['returnTo'] {
   if (!state || typeof state !== 'object' || !('returnTo' in state)) return '/map'
   const returnTo = (state as { returnTo?: unknown }).returnTo
-  return returnTo === '/reports' || returnTo === '/profile' ? returnTo : '/map'
+  return (VALID as readonly string[]).includes(returnTo as string)
+    ? (returnTo as ScanNavigationState['returnTo'])
+    : '/map'
 }
 
 export function scanStateFromPath(pathname: string): ScanNavigationState {
   if (pathname.startsWith('/reports')) return { returnTo: '/reports' }
   if (pathname === '/profile') return { returnTo: '/profile' }
+  if (pathname.startsWith('/areas')) return { returnTo: '/areas' }
   return { returnTo: '/map' }
 }
