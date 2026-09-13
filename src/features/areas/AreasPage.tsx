@@ -78,24 +78,34 @@ function AreaCard({ item, onAskRemove }: {
 }) {
   const i = item.indicators
   const trend = trendStatement(i.changeDirection, i.changePct, i.tolerancePct)
+  const lastReport = i.daysSinceMostRecent === null
+    ? '—'
+    : i.daysSinceMostRecent === 0
+      ? 'Today'
+      : i.daysSinceMostRecent === 1
+        ? 'Yesterday'
+        : `${i.daysSinceMostRecent}d ago`
   return (
     <li className="areas-card">
       <Link to={`/areas/${item.adoptionId}`} className="areas-card__link" aria-label={`Open activity for ${item.placeName}`}>
-        <div className="areas-card__title-row">
+        <header className="areas-card__title-row">
           <div className="areas-card__title-body">
             <span className="areas-card__type">
               <Icon name="MapPin" size={13} color="var(--green-dark)" />
               {item.placeType}
             </span>
             <h3 className="areas-card__title">{item.placeName}</h3>
+            <span className="areas-card__adopted-inline">
+              Adopted {new Date(item.adoptedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+            </span>
           </div>
-          <Icon name="ChevronRight" size={20} color="var(--muted)" />
-        </div>
+          <Icon name="ChevronRight" size={18} color="var(--muted)" />
+        </header>
 
-        <div className="areas-card__feature">
-          <div className="areas-card__feature-metric">
-            <span className="areas-card__feature-value">{i.reportsNew30d}</span>
-            <span className="areas-card__feature-label">New reports this month</span>
+        <div className="areas-card__headline">
+          <div className="areas-card__headline-metric">
+            <span className="areas-card__headline-value">{i.reportsNew30d}</span>
+            <span className="areas-card__headline-label">reports this month</span>
           </div>
           <ChangePill
             direction={i.changeDirection}
@@ -105,33 +115,29 @@ function AreaCard({ item, onAskRemove }: {
         </div>
         <p className="areas-card__trend">{trend}</p>
 
-        <dl className="areas-card__stats">
-          <div>
-            <dt>Ongoing sightings</dt>
-            <dd>{i.activeSightingCount}</dd>
-          </div>
-          <div>
-            <dt>Plants seen</dt>
-            <dd>{i.distinctSpeciesCount}</dd>
-          </div>
-          <div>
-            <dt>Cleared</dt>
-            <dd>{i.removalReported30d}</dd>
-          </div>
-          <div>
-            <dt>Last report</dt>
-            <dd>{i.daysSinceMostRecent === null
-              ? '—'
-              : i.daysSinceMostRecent === 0
-                ? 'Today'
-                : `${i.daysSinceMostRecent}d ago`}</dd>
-          </div>
-        </dl>
+        <ul className="areas-card__stats" aria-label="Area indicators">
+          <li>
+            <span className="areas-card__stat-value">{i.activeSightingCount}</span>
+            <span className="areas-card__stat-label">Ongoing</span>
+          </li>
+          <li>
+            <span className="areas-card__stat-value">{i.distinctSpeciesCount}</span>
+            <span className="areas-card__stat-label">Plants</span>
+          </li>
+          <li>
+            <span className="areas-card__stat-value">{i.removalReported30d}</span>
+            <span className="areas-card__stat-label">Cleared</span>
+          </li>
+          <li>
+            <span className="areas-card__stat-value">{lastReport}</span>
+            <span className="areas-card__stat-label">Last seen</span>
+          </li>
+        </ul>
       </Link>
 
       <footer className="areas-card__foot">
-        <span className="areas-card__adopted-at">
-          Adopted {new Date(item.adoptedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+        <span className="areas-card__foot-cta">
+          Tap to view activity
         </span>
         <button
           type="button"

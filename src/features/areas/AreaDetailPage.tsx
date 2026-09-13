@@ -40,9 +40,21 @@ const PERIOD_OPTIONS: { value: number; label: string }[] = [
 // (removal_reported). Anything else (processing/rejected) is hidden
 // from the map anyway, so exposing it here would be misleading.
 const STATUS_OPTIONS: { value: string; label: string }[] = [
-  { value: 'screened', label: 'Sighting' },
+  { value: 'screened', label: 'Active sightings' },
   { value: 'removal_reported', label: 'Cleared' },
 ]
+
+// Small translation table so a raw enum like "removal_reported" reads as
+// something a volunteer actually understands in the report feed.
+const STATUS_LABEL: Record<string, string> = {
+  screened: 'Sighting',
+  removal_reported: 'Cleared',
+  processing: 'Screening',
+  rejected: 'Rejected',
+  needs_rescan: 'Needs rescan',
+  merged: 'Merged',
+  validation_unavailable: 'Screening paused',
+}
 
 function trendCopy(dir: Direction, pct: number | null, tol: number) {
   if (dir === 'insufficient_history') return 'Not enough previous-month data to describe a trend.'
@@ -322,66 +334,119 @@ export function AreaDetailPage() {
         </div>
       </section>
 
-      {/* AC 6.3.3 - client-selectable filters. Kept above the KPI grid so
-          the numbers below always reflect what the user has selected. */}
+      {/* AC 6.3.3 - client-selectable filters as chip rows: works on mobile
+          without a native select tap, plumbed straight to the same
+          backend query params, and every applied filter reflects in the
+          KPIs, map layer and report feed below. */}
       <section className="area-detail__filters" aria-label="Filter community reports">
-        <div className="area-detail__filter">
-          <label htmlFor="filter-plant" className="area-detail__filter-label">Plant</label>
-          <select
-            id="filter-plant"
-            className="area-detail__filter-input"
-            value={plant}
-            onChange={(e) => setPlant(e.target.value)}
-          >
-            <option value="">All plants</option>
-            {plantOptions.map((opt) => (
-              <option key={opt.speciesId} value={opt.speciesId}>{opt.plantName}</option>
-            ))}
-          </select>
+        <div className="area-detail__filter-row" role="radiogroup" aria-label="Time window">
+          <span className="area-detail__filter-row-label">Window</span>
+          <div className="area-detail__filter-chips">
+            {PERIOD_OPTIONS.map((opt) => {
+              const on = periodDays === opt.value
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  className={`area-detail__chip${on ? ' area-detail__chip--on' : ''}`}
+                  onClick={() => setPeriodDays(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              )
+            })}
+          </div>
         </div>
-        <div className="area-detail__filter">
-          <label htmlFor="filter-status" className="area-detail__filter-label">Status</label>
-          <select
-            id="filter-status"
-            className="area-detail__filter-input"
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-          >
-            <option value="">Any status</option>
-            {STATUS_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
+
+        <div className="area-detail__filter-row" role="radiogroup" aria-label="Filter by status">
+          <span className="area-detail__filter-row-label">Status</span>
+          <div className="area-detail__filter-chips">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={!status}
+              className={`area-detail__chip${!status ? ' area-detail__chip--on' : ''}`}
+              onClick={() => setStatus('')}
+            >
+              Any
+            </button>
+            {STATUS_OPTIONS.map((opt) => {
+              const on = status === opt.value
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  className={`area-detail__chip${on ? ' area-detail__chip--on' : ''}`}
+                  onClick={() => setStatus(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              )
+            })}
+          </div>
         </div>
-        <div className="area-detail__filter area-detail__filter--period" role="radiogroup" aria-label="Time window">
-          {PERIOD_OPTIONS.map((opt) => {
-            const on = periodDays === opt.value
-            return (
+
+        {plantOptions.length > 0 && (
+          <div className="area-detail__filter-row" role="radiogroup" aria-label="Filter by plant">
+            <span className="area-detail__filter-row-label">Plant</span>
+            <div className="area-detail__filter-chips area-detail__filter-chips--scroll">
               <button
-                key={opt.value}
                 type="button"
                 role="radio"
-                aria-checked={on}
-                className={`area-detail__period-chip${on ? ' area-detail__period-chip--on' : ''}`}
-                onClick={() => setPeriodDays(opt.value)}
+                aria-checked={!plant}
+                className={`area-detail__chip${!plant ? ' area-detail__chip--on' : ''}`}
+                onClick={() => setPlant('')}
               >
-                {opt.label}
+                All
               </button>
-            )
-          })}
+              {plantOptions.map((opt) => {
+                const on = plant === opt.speciesId
+                return (
+                  <button
+                    key={opt.speciesId}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    className={`area-detail__chip${on ? ' area-detail__chip--on' : ''}`}
+                    onClick={() => setPlant(opt.speciesId)}
+                    title={opt.plantName}
+                  >
+                    {opt.plantName}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        <div className="area-detail__filter-summary" aria-live="polite">
+          {filtersActive ? (
+            <>
+              <span className="area-detail__filter-count">
+                {[plant, status].filter(Boolean).length} filter
+                {[plant, status].filter(Boolean).length === 1 ? '' : 's'} active
+              </span>
+              <button
+                type="button"
+                className="area-detail__filter-clear"
+                onClick={() => { setPlant(''); setStatus('') }}
+              >
+                Clear
+              </button>
+            </>
+          ) : (
+            <span className="area-detail__filter-count area-detail__filter-count--muted">
+              Showing all community reports in this window
+            </span>
+          )}
+          {isFetching && (
+            <span className="area-detail__filter-status" role="status">Updating…</span>
+          )}
         </div>
-        {filtersActive && (
-          <button
-            type="button"
-            className="area-detail__filter-clear"
-            onClick={() => { setPlant(''); setStatus('') }}
-          >
-            Clear filters
-          </button>
-        )}
-        {isFetching && (
-          <span className="area-detail__filter-status" role="status" aria-live="polite">Updating…</span>
-        )}
       </section>
 
       <section className="area-detail__headline" aria-labelledby="detail-headline">
@@ -466,7 +531,7 @@ export function AreaDetailPage() {
                     )}
                   </span>
                   <span className={`area-detail__report-status area-detail__report-status--${(m.currentStatus ?? m.status).toLowerCase()}`}>
-                    {(m.currentStatus ?? m.status).replace(/_/g, ' ')}
+                    {STATUS_LABEL[(m.currentStatus ?? m.status).toLowerCase()] ?? (m.currentStatus ?? m.status).replace(/_/g, ' ')}
                   </span>
                 </div>
                 <p className="area-detail__report-meta">
