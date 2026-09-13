@@ -29,6 +29,48 @@ const EVIDENCE_LABEL: Record<EvidenceCode, string> = {
   B: 'Biosecurity flagged',
 }
 
+// Business info: the three curated guidance modes drive a single user-
+// facing action banner. Kept as literal strings so future edits go through
+// the same review path as the rest of the safety-policy copy.
+const GUIDANCE_MODE_COPY: Record<string, { tone: 'info' | 'warn' | 'danger'; title: string; body: string }> = {
+  general_information: {
+    tone: 'info',
+    title: 'Information only. Do not remove.',
+    body: 'This plant is included for context and identification. Leave it in place.',
+  },
+  active_guidance: {
+    tone: 'warn',
+    title: 'Beginner-safe action may apply.',
+    body: 'Follow the reviewed action pathway below only when its eligibility conditions are met.',
+  },
+  site_manager_confirmation_required: {
+    tone: 'warn',
+    title: 'Observe and report. Site manager approval required.',
+    body: 'The site may be protected, or land ownership may be unclear. Photograph, record location, and submit the sighting; do not remove without explicit permission.',
+  },
+  report_only: {
+    tone: 'danger',
+    title: 'Report only. Do not attempt removal.',
+    body: 'This species is outside the beginner-safe scope. Photograph, record location, and submit the sighting for a specialist response.',
+  },
+}
+
+const STATUS_TONE: Record<string, { bg: string; border: string; color: string }> = {
+  invasive: { bg: 'var(--red-light)', border: 'var(--red-border)', color: 'var(--red-text)' },
+  naturalised: { bg: 'var(--amber-light, #FEF3E2)', border: '#F0D9A8', color: 'var(--amber, #A15C07)' },
+  introduced: { bg: 'var(--amber-light, #FEF3E2)', border: '#F0D9A8', color: 'var(--amber, #A15C07)' },
+  cultivated: { bg: '#EEF3F7', border: '#D5DEE7', color: '#2F5F86' },
+  native: { bg: 'var(--green-light)', border: 'var(--green-border)', color: 'var(--green-dark)' },
+  information_only: { bg: '#EEF3F7', border: '#D5DEE7', color: '#2F5F86' },
+  status_uncertain: { bg: '#FEF3E2', border: '#F0D9A8', color: 'var(--amber, #A15C07)' },
+}
+
+const BANNER_TONE: Record<'info' | 'warn' | 'danger', { bg: string; border: string; color: string }> = {
+  info: { bg: '#EEF3F7', border: '#D5DEE7', color: '#2F5F86' },
+  warn: { bg: '#FEF3E2', border: '#F0D9A8', color: 'var(--amber, #A15C07)' },
+  danger: { bg: 'var(--red-light)', border: 'var(--red-border)', color: 'var(--red-text)' },
+}
+
 export const FORMAL_SEVERITY_UNAVAILABLE_COPY =
   'Formal severity assessment not available'
 export const BEGINNER_SAFE_UNAVAILABLE_COPY =
@@ -169,11 +211,28 @@ function PlantDetailView({ detail }: { detail: CatalogueDetail }) {
     typical_habitat?: string | null
     documented_impacts?: string | null
   } | null
+  // AC 5.2.4 constraint: the frontend must never invent identifying
+  // characteristics from a generic "trust the model" caveat. Only real,
+  // reviewed content (backend field or the curated identifying_features
+  // extra) qualifies. identification_note is surfaced separately as a
+  // clearly-labelled caveat below.
   const identifying =
-    detail.identifyingCharacteristics ?? extras?.identifying_features ?? guidance?.identification_note ?? null
+    detail.identifyingCharacteristics ?? extras?.identifying_features ?? null
   const habitat = detail.typicalHabitat ?? extras?.typical_habitat ?? null
   const impacts = detail.documentedImpacts ?? extras?.documented_impacts ?? null
   const generalInfo = guidance?.general_information ?? null
+  const status = guidance?.malaysia_status ?? null
+  const riskFlags = guidance?.risk_flags ?? []
+  const followUp = guidance?.follow_up ?? []
+  const identificationNote = guidance?.identification_note ?? null
+
+  // The three high-level guidance modes map to a single user-facing action
+  // banner - kept in one spot so the same wording renders on every plant
+  // detail page. Business info: E3 safety policy requires site-manager
+  // approval whenever ownership or protected status is unclear.
+  const guidanceBanner = guidance?.guidance_mode
+    ? GUIDANCE_MODE_COPY[guidance.guidance_mode] ?? null
+    : null
 
   return (
     <main style={{ padding: 20, maxWidth: 760, margin: '0 auto' }}>
@@ -253,10 +312,65 @@ function PlantDetailView({ detail }: { detail: CatalogueDetail }) {
         scientificName={detail.scientificName}
       />
 
+      {status && (
+        <section style={{ marginTop: 20 }} aria-labelledby="plant-detail-status">
+          <h2 id="plant-detail-status" style={{ fontSize: 16, margin: '0 0 8px' }}>Malaysia status</h2>
+          <div style={{
+            padding: '10px 14px', borderRadius: 'var(--r-input)',
+            background: (STATUS_TONE[status.category] ?? STATUS_TONE.status_uncertain).bg,
+            border: `1px solid ${(STATUS_TONE[status.category] ?? STATUS_TONE.status_uncertain).border}`,
+            color: (STATUS_TONE[status.category] ?? STATUS_TONE.status_uncertain).color,
+          }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700 }}>{status.display_label}</div>
+            {status.note && (
+              <p style={{ margin: '6px 0 0', fontSize: 13, lineHeight: 1.5 }}>{status.note}</p>
+            )}
+            <p style={{ margin: '6px 0 0', fontSize: 11.5, opacity: 0.85 }}>
+              Confidence: {status.confidence}
+            </p>
+          </div>
+        </section>
+      )}
+
+      {guidanceBanner && (
+        <section style={{ marginTop: 16 }} aria-labelledby="plant-detail-action-banner">
+          <div style={{
+            padding: '10px 14px', borderRadius: 'var(--r-input)',
+            background: BANNER_TONE[guidanceBanner.tone].bg,
+            border: `1px solid ${BANNER_TONE[guidanceBanner.tone].border}`,
+            color: BANNER_TONE[guidanceBanner.tone].color,
+          }}>
+            <div id="plant-detail-action-banner" style={{ fontSize: 13.5, fontWeight: 700 }}>
+              {guidanceBanner.title}
+            </div>
+            <p style={{ margin: '6px 0 0', fontSize: 13, lineHeight: 1.5 }}>{guidanceBanner.body}</p>
+          </div>
+        </section>
+      )}
+
       {generalInfo && (
         <section style={{ marginTop: 24 }}>
           <h2 style={{ fontSize: 16, margin: '0 0 8px' }}>About this plant</h2>
           <p style={{ margin: 0, lineHeight: 1.55 }}>{generalInfo}</p>
+        </section>
+      )}
+
+      {riskFlags.length > 0 && (
+        <section style={{ marginTop: 20 }} aria-labelledby="plant-detail-risks">
+          <h2 id="plant-detail-risks" style={{ fontSize: 16, margin: '0 0 8px' }}>Safety flags</h2>
+          <ul style={{
+            listStyle: 'none', padding: 0, margin: 0,
+            display: 'flex', flexWrap: 'wrap', gap: 6,
+          }}>
+            {riskFlags.map((flag) => (
+              <li key={flag} style={{
+                fontSize: 12, padding: '4px 10px', borderRadius: 999,
+                background: 'var(--red-light)',
+                border: '1px solid var(--red-border)',
+                color: 'var(--red-text)', fontWeight: 600,
+              }}>{flag}</li>
+            ))}
+          </ul>
         </section>
       )}
 
@@ -267,6 +381,16 @@ function PlantDetailView({ detail }: { detail: CatalogueDetail }) {
             {identifying}
           </p>
         </section>
+      )}
+
+      {identificationNote && (
+        <p style={{
+          marginTop: 12, padding: '10px 14px', borderRadius: 'var(--r-input)',
+          background: '#EEF3F7', border: '1px solid #D5DEE7',
+          fontSize: 12.5, color: '#2F5F86', lineHeight: 1.55,
+        }} role="note">
+          <strong>Identification caveat:</strong> {identificationNote}
+        </p>
       )}
 
       {habitat && (
@@ -305,6 +429,25 @@ function PlantDetailView({ detail }: { detail: CatalogueDetail }) {
         </section>
       )}
 
+      {guidance?.actions && (
+        <ActionPathways
+          protectedPath={guidance.actions.protected_or_permission_unknown}
+          authorisedPath={guidance.actions.authorised_site}
+          canShowAuthorisedSteps={detail.beginnerSafeActionAvailable}
+        />
+      )}
+
+      {followUp.length > 0 && (
+        <section style={{ marginTop: 20 }}>
+          <h2 style={{ fontSize: 16, margin: '0 0 8px' }}>Follow up</h2>
+          <ul style={{ margin: 0, paddingLeft: 18, lineHeight: 1.55 }}>
+            {followUp.map((item, index) => (
+              <li key={index}>{item.text}</li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <PlantDetailStatusSections
         formalSeverityAssessmentAvailable={detail.formalSeverityAssessmentAvailable}
         beginnerSafeActionAvailable={detail.beginnerSafeActionAvailable}
@@ -312,6 +455,85 @@ function PlantDetailView({ detail }: { detail: CatalogueDetail }) {
 
       <SourcesAndCredits detail={detail} />
     </main>
+  )
+}
+
+function ActionPathways({
+  protectedPath, authorisedPath, canShowAuthorisedSteps,
+}: {
+  protectedPath: import('@/data/plant-guidance').ActionPath
+  authorisedPath: import('@/data/plant-guidance').ActionPath
+  canShowAuthorisedSteps: boolean
+}) {
+  // The "observe and report" pathway is safe to show for every species -
+  // it never asks the user to touch the plant. The "authorised site"
+  // (beginner-safe removal) pathway can only render its full step list
+  // when the backend's beginner_safe_action_available flag confirms it;
+  // AC 5.2.4 forbids the frontend from inventing a beginner-safe action.
+  return (
+    <section style={{ marginTop: 20 }} aria-labelledby="plant-detail-actions">
+      <h2 id="plant-detail-actions" style={{ fontSize: 16, margin: '0 0 8px' }}>Action pathways</h2>
+
+      <article style={{
+        padding: '12px 14px', borderRadius: 'var(--r-input)',
+        background: 'var(--surface)', border: '1px solid var(--border)', marginTop: 8,
+      }}>
+        <h3 style={{ fontSize: 14, margin: '0 0 6px' }}>{protectedPath.title}</h3>
+        {protectedPath.eligibility && (
+          <p style={{ margin: '0 0 8px', fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.5 }}>
+            {protectedPath.eligibility}
+          </p>
+        )}
+        {protectedPath.steps.length > 0 && (
+          <ol style={{ margin: '4px 0 0', paddingLeft: 20, lineHeight: 1.55, fontSize: 13.5 }}>
+            {protectedPath.steps.map((step, index) => <li key={index}>{step.text}</li>)}
+          </ol>
+        )}
+        {protectedPath.stop_conditions.length > 0 && (
+          <div style={{ marginTop: 8, fontSize: 12.5, color: 'var(--red-text)' }}>
+            <strong>Stop if: </strong>
+            {protectedPath.stop_conditions.map((condition) => condition.text).join(' ')}
+          </div>
+        )}
+      </article>
+
+      <article style={{
+        padding: '12px 14px', borderRadius: 'var(--r-input)',
+        background: 'var(--surface)', border: '1px solid var(--border)', marginTop: 10,
+      }}>
+        <h3 style={{ fontSize: 14, margin: '0 0 6px' }}>{authorisedPath.title}</h3>
+        {authorisedPath.eligibility && (
+          <p style={{ margin: '0 0 8px', fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.5 }}>
+            {authorisedPath.eligibility}
+          </p>
+        )}
+        {canShowAuthorisedSteps ? (
+          <>
+            {authorisedPath.steps.length > 0 && (
+              <ol style={{ margin: '4px 0 0', paddingLeft: 20, lineHeight: 1.55, fontSize: 13.5 }}>
+                {authorisedPath.steps.map((step, index) => <li key={index}>{step.text}</li>)}
+              </ol>
+            )}
+            {authorisedPath.stop_conditions.length > 0 && (
+              <div style={{ marginTop: 8, fontSize: 12.5, color: 'var(--red-text)' }}>
+                <strong>Stop if: </strong>
+                {authorisedPath.stop_conditions.map((condition) => condition.text).join(' ')}
+              </div>
+            )}
+            {authorisedPath.disposal.length > 0 && (
+              <div style={{ marginTop: 8, fontSize: 12.5, color: 'var(--body)' }}>
+                <strong>Disposal: </strong>
+                {authorisedPath.disposal.map((step) => step.text).join(' ')}
+              </div>
+            )}
+          </>
+        ) : (
+          <p style={{ margin: '4px 0 0', fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.55 }}>
+            {BEGINNER_SAFE_UNAVAILABLE_COPY} for this species. Follow the observe-and-report pathway above.
+          </p>
+        )}
+      </article>
+    </section>
   )
 }
 
