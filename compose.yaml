@@ -102,6 +102,18 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  seed-demo:
+    # Optional acceptance-criteria demo dataset. Runs on demand:
+    #   docker compose --profile demo up --build seed-demo
+    # Idempotent - re-running it against a populated DB is a no-op.
+    profiles: ["demo"]
+    build: *backend-build
+    environment: *backend-environment
+    command: ["python", "-m", "app.cli", "seed-acceptance-demo"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
   api:
     build: *backend-build
     environment:
