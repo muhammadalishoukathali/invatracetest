@@ -38,6 +38,7 @@ export type ResultPathway =
   | 'status_uncertain'
   | 'other_plant'
   | 'uncertain'
+  | 'retake_recommended'
 
 export interface ResolvedPathway {
   pathway: ResultPathway
@@ -76,6 +77,12 @@ export function isReportEligible(state: MalaysiaStatusState | null): boolean {
  * tested without having to mount the whole page.
  */
 export function resolveResultPathway(result: IdentifyResult): ResolvedPathway {
+  // Retake takes precedence over every other pathway: the local model already
+  // said the photo isn't classifiable, so nothing downstream (PlantNet, the
+  // catalogue lookup) should carry weight in the UI.
+  if (result.retakeAdvice) {
+    return { pathway: 'retake_recommended', statusState: null, canReport: false, canAction: false }
+  }
   if (result.outcome === 'uncertain') {
     return { pathway: 'uncertain', statusState: null, canReport: false, canAction: false }
   }

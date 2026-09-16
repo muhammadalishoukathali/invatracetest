@@ -37,6 +37,15 @@ interface RuntimeManifest {
   std: [number, number, number]
   temperature: number
   unknownProbabilityThreshold: number
+  /** Max core probability at or above which the local model's answer is used
+   *  directly - no PlantNet handover. */
+  confidentThreshold?: number
+  /** Below `confidentThreshold` but at or above this value, the adapter asks
+   *  PlantNet for a second opinion. */
+  handoverThreshold?: number
+  /** At or below this value the adapter refuses to spend a PlantNet call on
+   *  the photo and asks the user to retake instead. */
+  retakeThreshold?: number
 }
 
 interface SpeciesEntry {
@@ -244,10 +253,30 @@ function interpret(
   const bestCore = coreRanked[0]
   const maxCoreProbability = bestCore.probability
 
-  // Unknown gate: if no core-target class clears the calibrated threshold,
-  // the prediction collapses to the Unknown bucket regardless of what the
-  // raw argmax says. This matches the release contract in the model README.
-  const isUnknown = maxCoreProbability < manifest.unknownProbabilityThreshold
+  // Three-tier confidence band, tuned by the runtime manifest so we can
+  // shift the boundaries without an app release. The bands are:
+  //   * >= confidentThreshold           - trust the local classification
+  //   * [handoverThreshold, confident)  - uncertain, hand over to PlantNet
+  //   * [retakeThreshold, handover)     - too weak for PlantNet, retake first
+  //   *  < retakeThreshold              - extreme low certainty, retake with a
+  //                                       stronger nudge
+  // confidentThreshold falls back to the historical unknownProbabilityThreshold
+  // so a manifest without the new fields keeps the old two-tier behaviour.
+  const confidentThreshold = manifest.confidentThreshold ?? manifest.unknownProbabilityThreshold
+  const handoverThreshold = manifest.handoverThreshold ?? manifest.unknownProbabilityThreshold
+  const retakeThreshold = manifest.retakeThreshold ?? 0
+  const isUnknown = maxCoreProbability < confidentThreshold
+  const retakeAdvice = maxCoreProbability < retakeThreshold
+    ? {
+        reason: 'low_certainty' as const,
+        message: 'The plant could not be recognised from this photo. Try again with better lighting and one leaf or flower in focus.',
+      }
+    : maxCoreProbability < handoverThreshold
+      ? {
+          reason: 'low_certainty' as const,
+          message: 'The photo was too unclear for a reliable identification. Retake with the plant filling the frame and even lighting.',
+        }
+      : undefined
 
   const topPredictions = coreRanked.slice(0, 3).map((item) => {
     const entry = catalog.classes[item.classIndex]
@@ -268,6 +297,7 @@ function interpret(
       unknownProbability: probabilities[unknownIndex] ?? (1 - maxCoreProbability),
       topPredictions,
       reportable: false,
+      ...(retakeAdvice ? { retakeAdvice } : {}),
     }
   }
 
@@ -281,6 +311,7 @@ function interpret(
       unknownProbability: probabilities[unknownIndex] ?? (1 - maxCoreProbability),
       topPredictions,
       reportable: false,
+      ...(retakeAdvice ? { retakeAdvice } : {}),
     }
   }
   return {

@@ -13,8 +13,10 @@ import './scan-result.css'
 
 /**
  * Shows what a finished scan came back with - target species, other plant,
- * or uncertain - plus the confidence band, and for identified species the
- * Malaysia status and the PlantGuidancePanel with removal/reporting steps.
+ * or uncertain - and for identified species the Malaysia status and the
+ * PlantGuidancePanel with removal/reporting steps. Raw model confidence
+ * is deliberately hidden from users; the outcome band + copy carries the
+ * appropriate qualifier instead.
  * This is basically the identification review screen from the requirements:
  * the point where the user actually checks the model's guess before deciding
  * whether to bother starting a report. If there's no result sitting in
@@ -137,6 +139,7 @@ export function ScanResultPage() {
       )}
       {pathway.pathway === 'other_plant' && <OtherPlantResult result={result} />}
       {pathway.pathway === 'uncertain' && <UncertainResult result={result} />}
+      {pathway.pathway === 'retake_recommended' && <RetakeResult result={result} />}
 
       {statusUncertain && (
         <div style={{
@@ -238,6 +241,7 @@ const PATHWAY_CONFIG: Record<ResultPathway, {
   status_uncertain: { label: 'Status uncertain. Take another photo.', bg: '#FEF3E2', border: '#F0D9A8', color: 'var(--amber)', icon: 'HelpCircle' },
   other_plant: { label: 'Not a target species', bg: 'var(--green-light)', border: 'var(--green-border)', color: 'var(--green)', icon: 'Check' },
   uncertain: { label: 'Uncertain result. Take another photo.', bg: '#FEF3E2', border: '#F0D9A8', color: 'var(--amber)', icon: 'HelpCircle' },
+  retake_recommended: { label: 'Photo needs another try', bg: '#FEF3E2', border: '#F0D9A8', color: 'var(--amber)', icon: 'Camera' },
 }
 
 function OutcomeBadge({ pathway }: { pathway: ResultPathway }) {
@@ -276,8 +280,6 @@ function TargetResult({
           </p>
         )}
       </div>
-
-      <ConfidenceBand confidence={result.confidence} />
 
       {detail.nativeTwin && (
         <Section title="Compare with the native look-alike" icon="Leaf">
@@ -387,7 +389,6 @@ function OtherPlantResult({ result }: { result: IdentifyResult }) {
           credit="Species reference image"
         />
       )}
-      <ConfidenceBand confidence={result.confidence} />
     </div>
   )
 }
@@ -423,7 +424,6 @@ function InformationOnlyResult({ result }: { result: IdentifyResult }) {
           credit="Species reference image"
         />
       )}
-      <ConfidenceBand confidence={result.confidence} />
     </div>
   )
 }
@@ -459,9 +459,6 @@ function UncertainResult({ result }: { result: IdentifyResult }) {
   const commonName = identifiedAsNative
     ? (verification!.species!.commonNames ?? [])[0] ?? null
     : null
-  const plantnetScore = identifiedAsNative
-    ? Math.round((verification!.species!.score ?? 0) * 100)
-    : null
   return (
     <div style={{ marginTop: 16, padding: '16px 18px', borderRadius: 'var(--r-card)', background: 'var(--surface)', border: '1px solid var(--border)' }}>
       <h2 style={{ fontSize: 16, fontWeight: 600 }}>{headline}</h2>
@@ -472,9 +469,9 @@ function UncertainResult({ result }: { result: IdentifyResult }) {
             {commonName ? <> · {commonName}</> : null}
           </p>
           <p style={{ marginTop: 6, color: 'var(--muted)', fontSize: 12, lineHeight: 1.5 }}>
-            Not in the InvaTrace invasive catalogue. PlantNet identified this
-            plant with {plantnetScore ?? 0}% match confidence. Treat this as a
-            cross-check, not a formal ecological determination.
+            Not in the InvaTrace invasive catalogue. Result cross-checked with a
+            second identifier. Treat this as a cross-check, not a formal
+            ecological determination.
           </p>
         </>
       ) : (
@@ -497,7 +494,42 @@ function UncertainResult({ result }: { result: IdentifyResult }) {
           )}
         </>
       )}
-      <ConfidenceBand confidence={result.confidence} />
+      <button type="button" onClick={retake} style={{
+        marginTop: 14, width: '100%', height: 'var(--h-primary)',
+        borderRadius: 'var(--r-button)', border: 'none',
+        background: 'var(--green)', color: '#fff', fontWeight: 600, fontSize: 14,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer',
+      }}>
+        <Icon name="Camera" size={16} color="#fff" />
+        Retake photo
+      </button>
+    </div>
+  )
+}
+
+function RetakeResult({ result }: { result: IdentifyResult }) {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const retake = () => {
+    useScan.getState().reset()
+    navigate('/scan', { replace: true, state: location.state })
+  }
+  const message = result.retakeAdvice?.message
+    ?? 'The plant could not be recognised from this photo. Try again with better lighting and one leaf or flower in focus.'
+  return (
+    <div style={{
+      marginTop: 16, padding: '16px 18px', borderRadius: 'var(--r-card)',
+      background: 'var(--surface)', border: '1px solid var(--border)',
+    }}>
+      <h2 style={{ fontSize: 16, fontWeight: 600 }}>Take another photo</h2>
+      <p style={{ marginTop: 8, color: 'var(--body)', fontSize: 13.5, lineHeight: 1.6 }}>
+        {message}
+      </p>
+      <ul style={{ marginTop: 8, paddingLeft: 18, fontSize: 13, color: 'var(--body)', lineHeight: 1.7 }}>
+        <li>Fill the frame with a single leaf or flower</li>
+        <li>Hold the phone steady in even daylight</li>
+        <li>Avoid busy backgrounds and heavy shadows</li>
+      </ul>
       <button type="button" onClick={retake} style={{
         marginTop: 14, width: '100%', height: 'var(--h-primary)',
         borderRadius: 'var(--r-button)', border: 'none',
@@ -557,7 +589,6 @@ function UnsupportedTargetResult({ result }: { result: IdentifyResult }) {
           ? firstSentence(guidance.general_information)
           : 'We do not have reviewed field advice for this plant yet. Leave it in place.'}
       </p>
-      <ConfidenceBand confidence={result.confidence} />
     </div>
   )
 }
@@ -583,26 +614,6 @@ function humanReviewedDate(iso: string): string {
     'July', 'August', 'September', 'October', 'November', 'December',
   ]
   return `${months[monthIndex]} ${year}`
-}
-
-function ConfidenceBand({ confidence }: { confidence: number }) {
-  const pct = Math.round(confidence * 100)
-  const color = confidence >= 0.7 ? 'var(--green)' : confidence >= 0.5 ? 'var(--amber)' : 'var(--red)'
-  return (
-    <div style={{ marginTop: 14 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
-        <span style={{ color: 'var(--muted)', fontWeight: 500 }}>Confidence</span>
-        <span style={{ fontWeight: 600, color }}>{pct}%</span>
-      </div>
-      <div style={{
-        height: 6, borderRadius: 3, background: 'var(--border)', overflow: 'hidden',
-      }}>
-        <div style={{
-          width: `${pct}%`, height: '100%', borderRadius: 3, background: color,
-        }} />
-      </div>
-    </div>
-  )
 }
 
 function Section({ title, icon, children }: { title: string; icon?: string; children: React.ReactNode }) {
