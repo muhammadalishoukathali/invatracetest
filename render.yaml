@@ -27,6 +27,14 @@ services:
     envVars:
       - key: APP_ENV
         value: production
+      # Set to `true` on a demo/staging deploy to auto-load the
+      # acceptance-criteria demo dataset (profiles across every trust tier,
+      # reports covering every status, sightings, notifications, adopted
+      # areas, recovery codes, place-sighting evidence). Idempotent - safe to
+      # leave enabled through re-deploys. Do NOT enable on a real production
+      # deploy that has genuine user data.
+      - key: SEED_ACCEPTANCE_DEMO
+        sync: false
       - key: DATABASE_URL
         sync: false
       - key: REDIS_URL
