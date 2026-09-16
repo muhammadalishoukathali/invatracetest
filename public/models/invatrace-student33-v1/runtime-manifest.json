@@ -14,5 +14,8 @@
   "mean": [0.485, 0.456, 0.406],
   "std": [0.229, 0.224, 0.225],
   "temperature": 1.4795616984698878,
-  "unknownProbabilityThreshold": 0.21
+  "unknownProbabilityThreshold": 0.21,
+  "confidentThreshold": 0.55,
+  "handoverThreshold": 0.30,
+  "retakeThreshold": 0.15
 }

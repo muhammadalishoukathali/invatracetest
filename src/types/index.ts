@@ -118,6 +118,18 @@ export interface IdentifyResult {
    * plantnet-verify.ts for the call path.
    */
   verification?: VerificationResult
+  /**
+   * Present when the on-device model's max core-class probability is below the
+   * `retakeThreshold` in the runtime manifest, or an obvious quality gate
+   * (image too small) fails. The scan result screen renders a retake CTA in
+   * this case and the adapter skips the PlantNet fallback - there's no point
+   * spending quota on a photo the model already labelled as too weak to
+   * classify.
+   */
+  retakeAdvice?: {
+    reason: 'low_certainty' | 'image_too_small'
+    message: string
+  }
 }
 
 /** Product-level label the UI shows on top of the raw model outcome. */

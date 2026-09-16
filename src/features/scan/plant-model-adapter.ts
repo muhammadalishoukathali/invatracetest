@@ -143,6 +143,33 @@ class PulihAdapter implements ModelAdapter {
   }
 
   async identify(image: Blob, onProgress?: (loaded: number, total: number) => void) {
+    // Cheap pre-flight: images below the model's expected crop size can't
+    // possibly produce a useful prediction, so short-circuit to a retake CTA
+    // before spending the ONNX session. Uses createImageBitmap directly
+    // rather than the quality() gate because quality() returns a message
+    // for the capture screen; here we want to inject the same signal into
+    // the identify pipeline as a structured retakeAdvice.
+    try {
+      const bitmap = await createImageBitmap(image)
+      const minSide = Math.min(bitmap.width, bitmap.height)
+      bitmap.close()
+      if (minSide > 0 && minSide < 256) {
+        const preCheck: IdentifyResult = {
+          outcome: 'uncertain',
+          confidence: 0,
+          modelVersion: 'pulih:pre-check',
+          reportable: false,
+          retakeAdvice: {
+            reason: 'image_too_small',
+            message: 'The photo resolution is too low for a reliable identification. Move closer and try again.',
+          },
+        }
+        return preCheck
+      }
+    } catch {
+      // If we can't even decode the image, let the ONNX pipeline throw so the
+      // capture screen surfaces its own error path.
+    }
     const result = await this.model.predict(image, onProgress)
     // Two-stage identification: the on-device Student33 model runs first and
     // owns the "Invasive" verdict for anything in the 32-species catalogue.
@@ -150,6 +177,11 @@ class PulihAdapter implements ModelAdapter {
     // PlantNet via the backend proxy so the UI can still show a useful
     // "Native Species" or "Not Sure" answer instead of a bare "uncertain".
     if (result.outcome !== 'uncertain') return result
+    // Extreme low certainty: the local model already flagged the photo as
+    // unrecoverable. Spending a PlantNet call here would burn free-tier quota
+    // on a frame that won't produce a useful cross-check; hand the user a
+    // retake CTA in the UI instead.
+    if (result.retakeAdvice) return result
     const verification = await verifyWithPlantNet(image)
     return { ...result, verification }
   }
