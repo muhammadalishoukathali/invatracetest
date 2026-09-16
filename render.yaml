@@ -27,14 +27,15 @@ services:
     envVars:
       - key: APP_ENV
         value: production
-      # Set to `true` on a demo/staging deploy to auto-load the
+      # This deploy is the AC-demonstration environment for mentors, so the
       # acceptance-criteria demo dataset (profiles across every trust tier,
       # reports covering every status, sightings, notifications, adopted
-      # areas, recovery codes, place-sighting evidence). Idempotent - safe to
-      # leave enabled through re-deploys. Do NOT enable on a real production
-      # deploy that has genuine user data.
+      # areas, recovery codes, place-sighting evidence) is loaded on every
+      # boot. Idempotent - re-deploys are no-ops. Flip to "false" (or delete
+      # the env var) if this service ever hosts a real production DB with
+      # genuine user data.
       - key: SEED_ACCEPTANCE_DEMO
-        sync: false
+        value: "true"
       - key: DATABASE_URL
         sync: false
       - key: REDIS_URL
